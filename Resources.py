@@ -49,10 +49,11 @@ PrintableChar =         AlphaNum + Space + Comma + Period + ['!', '\"', '#', '$'
                                                              ')', '*', '+', '-', '/', ':', ';', '<', '=', '>',
                                                              '?', '@', '[', '\\', ']', '^', '_', '`', '{',
                                                              '|', '}', '~']
+G = ["G"] # for delim 14, Rparenth uses this: subfunc()Gotolerate
 
 # Delimiters
 sdelim =                Space
-delim1 =                Space + LParenth
+delim1 =                Space + LParenth + RParenth
 delim2 =                Space + Terminator
 delim3 =                Colon
 delim4 =                Space + GreaterThan
@@ -65,7 +66,7 @@ delim10 =               Space + LParenth + LSqrBrkt + Terminator
 delim11 =               Space + ComAlpha
 delim12 =               Space + LParenth + ComAlpha + AssignOp
 delim13 =               Space + LParenth + AlphaNum + RParenth + ExclaMark + Minus
-delim14 =               Space + Terminator + MathOp + LSqrBrkt + Ampersand + VerticalBar + LessThan + GreaterThan + AssignOp + Newline + RParenth + Comma
+delim14 =               Space + Terminator + MathOp + LSqrBrkt + Ampersand + VerticalBar + LessThan + GreaterThan + AssignOp + Newline + Comma + RParenth + G
 delim15 =               Space + Newline + RegSglQtMark + RegDblQtMark + AlphaNum + LSqrBrkt + RSqrBrkt
 delim16 =               Space + Newline + Terminator + ComAlpha + RSqrBrkt + Comma
 delim17 =               Space + AlphaNum + RegSglQtMark + RegDblQtMark + LSqrBrkt
@@ -85,7 +86,7 @@ Sun_delim =             (Space + RParenth + RCurBrace + RSqrBrkt + Terminator + 
 Luhman_delim =          (Space + RParenth + RSqrBrkt + Terminator + Comma + Ampersand + VerticalBar
                         + ExclaMark + MathOp + AssignOp + GreaterThan + LessThan)
 Starsys_delim =         Space + RParenth + Comma + Terminator + LessThan
-Boolean_delim =         Space + Terminator + RParenth + Ampersand + VerticalBar + ExclaMark + Comma + RSqrBrkt
+Boolean_delim =         Space + Terminator + RParenth + Ampersand + VerticalBar + ExclaMark + Comma + RSqrBrkt 
 Identifier_delim =      (Space + Terminator + LParenth + RParenth + LCurBrace + RSqrBrkt + MathOp
                         + Ampersand + VerticalBar + ExclaMark + AssignOp + GreaterThan + LessThan + Comma + Period + Colon + Tilde + LSqrBrkt + Newline + RCurBrace)
 
@@ -169,3 +170,17 @@ WordSymbolDelims =      {
                         "StarsysLiteral": Starsys_delim,
                         "Space":        delim27
                     }
+
+Datatype = ["Sun", "Luhman", "Starsys"]
+Datatype1 = "Boolean"
+Datatype2 = ["Sun", "Luhman", "Starsys","Boolean"]
+Datatype3 = ["Sun", "Luhman"]
+Value = ["SunLiteral", "LuhmanLiteral", "StarsysLiteral", "Identifier"]
+Value1 = ["SunLiteral", "LuhmanLiteral", "StarsysLiteral", "Identifier", "True", "False"]
+Value2 = ["SunLiteral", "LuhmanLiteral", "Identifier"]
+Value3 = ["SunLiteral", "Identifier"]
+bool_lit = ["True", "False"]
+mathop = ["+","-","*","/", "%", "**"]
+condop = ["==", "!=", "<", ">", "<=", ">=", "&&", "||", "!", "+", "-", "*", "/", "%"]
+loopup = ["++", "--"]
+loopbrkcont = ["Deviate", "Proceed"]
