@@ -1605,35 +1605,6 @@ class Lexer:
                     else:
                         self.current_lexeme += self.current_char
                 self.advance()
-
-            """
-            if (self.current_char not in Resources.PrintableChar and self.current_char != "\n" and self.current_char != '\t') and self.current_char is not None:
-                self.Errors.append(
-                    f"(Line {self.line_num}, Column {self.column_num}) | Lexical Error: {repr(self.current_lexeme)} starsys literal has illegal character {repr(self.current_char)}")
-                self.current_lexeme = ""
-                self.starsys_flag = False
-                return
-        
-            if self.current_char == "\n" and (self.current_lexeme.count("\"") == 1 or self.current_lexeme.count("\'") == 1):
-                if self.current_char == "\n":
-                    self.current_lexeme += "\n"
-                    return
-            elif self.current_char == "\t":
-                if self.current_char == "\t":
-                    self.current_lexeme += "\t"
-                    return
-            elif (self.line_num == len(self.lines) and self.current_char is None) and (self.current_lexeme.count("\"") == 1 or self.current_lexeme.count("\'") == 1):
-                if self.current_lexeme.count("\'") == 1 and self.current_lexeme[0] == "\'":
-                    self.Errors.append(
-                        f"(Line {self.line_num}, Column {self.column_num}) | Lexical Error: {repr(self.current_lexeme)} is missing terminating starsys \"\'\" character.")
-
-                elif self.current_lexeme.count("\"") == 1 and self.current_lexeme[0] == "\"":
-                    self.Errors.append(
-                        f"(Line {self.line_num}, Column {self.column_num}) | Lexical Error: {repr(self.current_lexeme)} is missing terminating starsys \'\"\' character.")
-                self.current_lexeme = ""
-                self.starsys_flag = False
-                return
-            """
             
 def read_text(file):
     contents = open(file, "r").read()
