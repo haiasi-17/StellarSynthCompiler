@@ -158,6 +158,17 @@ class SyntaxAnalyzer:
                     else:
                         self.errors.append(
                             f"Syntax error: Expected '#', '<<' but found '{self.current_token}'")
+                #  access module/s, function path
+                elif self.peek_next_token() == "." and re.match(r'Identifier\d*$', self.peek_previous_token()):
+                    self.instance_path_output(".")  # >>>>call method
+                    #  terminate it?
+                    if self.peek_next_token() == "#":
+                        return True
+                    #  another disp?
+                    elif self.peek_next_token() == "<<":
+                        self.match_output("<<")
+                    else:
+                        self.errors.append(f"Syntax error: Expected '<<', '#' after '{self.peek_previous_token()}'")
                 else:
                     return True  # else: last identifier has no following '<<' to display
             else:
@@ -570,10 +581,69 @@ class SyntaxAnalyzer:
                 else:
                     self.errors.append(f"Syntax Error: Expected ')', '+', '-', '*', '/', '%', '**'")
             #  check if it is followed by these values:
-            elif (re.match(r'Identifier\d*$', self.peek_next_token()) or self.peek_next_token() == "SunLiteral"
-                  or self.peek_next_token() == "LuhmanLiteral" or self.peek_next_token() == "StarsysLiteral"):
-                self.match(Resources.Value)
+            elif (self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral"
+                  or self.peek_next_token() == "StarsysLiteral"):
+                self.match(Resources.Value5)
                 if self.peek_next_token() == ",":
+                    self.match(",")
+                    if re.match(r'Identifier\d*$', self.peek_next_token()):
+                        self.matchID_mult("Identifier")
+                        if self.peek_next_token() == "=":
+                            self.match_mult_assign("=")
+                        else:
+                            return True  # else: last identifier has no assigned value (=)
+                    else:
+                        self.errors.append(
+                            f"Syntax error: Expected '{expected_token}' after '{self.peek_previous_token()}'")
+                #  add is next
+                elif self.peek_next_token() == "+":
+                    self.match_mathop("+")
+                #  exponentiation is next
+                elif self.peek_next_token() == "**":
+                    self.match_exponent("**")
+                #  subtract is next
+                elif self.peek_next_token() == "-":
+                    self.match_mathop("-")
+                #  multiply is next
+                elif self.peek_next_token() == "*":
+                    self.match_mathop("*")
+                #  divide is next
+                elif self.peek_next_token() == "/":
+                    self.match_mathop("/")
+                #  modulo is next
+                elif self.peek_next_token() == "%":
+                    self.match_mathop("%")
+                else:
+                    return True  # else: last identifier has no following identifiers (comma)
+            #  function assign value path
+            elif re.match(r'Identifier\d*$', self.peek_next_token()):
+                self.match("Identifier") # consume
+                #  is '(' next?
+                if self.peek_next_token() == "(":
+                    self.match("(")
+                    #  assign values
+                    if (self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral"
+                            or self.peek_next_token() == "StarsysLiteral" or re.match(r'Identifier\d*$',self.peek_next_token())
+                            or self.peek_next_token() == "True" or self.peek_next_token() == "False"):
+                        self.matchValue_mult(Resources.Value1)
+                        # close it
+                        if self.peek_next_token() == ")":
+                            self.match(")")
+                            return True
+                        #  error: expected ')'
+                        else:
+                            self.errors.append(
+                                f"Syntax error: Expected ')' after '{self.peek_previous_token()}'")
+                    #  not followed by values (close it)
+                    elif self.peek_next_token() == ")":
+                        self.match(")")
+                        return True
+                    # error: not followed by any values
+                    else:
+                        self.errors.append(
+                            f"Syntax error: Expected ')', 'SunLiteral', 'LuhmanLiteral', 'StarsysLiteral', 'Identifier' after '{self.peek_previous_token()}'")
+                #  assign value?
+                elif self.peek_next_token() == ",":
                     self.match(",")
                     if re.match(r'Identifier\d*$', self.peek_next_token()):
                         self.matchID_mult("Identifier")
@@ -659,6 +729,34 @@ class SyntaxAnalyzer:
             self.errors.append(f"Syntax error: Expected '{expected_token}' but found '{self.current_token}'")
             return False
 
+    #  method that handles multiple identifiers separated with comma
+    def matchValue_mult(self, expected_token):
+        self.get_next_token()
+        while self.current_token == "Space":
+            self.get_next_token()
+
+        #  expected token could be: id, sunliteral, luhmanliteral, starsysliteral, true, false
+        if isinstance(expected_token, list):
+            if (self.current_token == "SunLiteral" or self.current_token == "LuhmanLiteral"
+                    or self.current_token == "StarsysLiteral" or re.match(r'Identifier\d*$', self.current_token)
+                    or self.current_token == "True" or self.current_token == "False"):
+                #  if the next is a comma proceed to check if it is followed by an identifier
+                if self.peek_next_token() == ",":
+                    self.match(",")
+                    if (self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral"
+                            or self.peek_next_token() == "StarsysLiteral" or re.match(r'Identifier\d*$',self.peek_next_token())
+                            or self.peek_next_token() == "True" or self.peek_next_token() == "False"):
+                        self.matchValue_mult(Resources.Value1)
+                    # else: if it is not followed by an id, it shows the error
+                    else:
+                        self.errors.append(f"Syntax error: Expected 'Identifier', '#', '=' "
+                                           f"after '{self.peek_previous_token()}'")
+                else:
+                    return True  # else: last identifier has no following identifiers (comma)
+            else:
+                self.errors.append(f"Syntax error: Expected '{expected_token}' but found '{self.current_token}'")
+                return False
+
     #  method for Autom declaration
     def match_auto_assign(self, expected_token):
         self.get_next_token()
@@ -709,55 +807,10 @@ class SyntaxAnalyzer:
                     self.match_mathop("%")
                 else:
                     return True  # else: last identifier has no following identifiers (comma)
-            #  type conversion path
-            elif self.peek_next_token() == "Sun":
-                self.match("Sun")
-                if self.peek_next_token() == "(":
-                    self.match_parenth("(")
-                    if self.peek_previous_token() == ")":
-                        return True
-                    else:
-                        self.errors.append(f"Syntax Error: Expected ')', '+', '-', '*', '/', '%', '**'")
-                else:
-                    self.errors.append(
-                        f"Syntax error: Expected '(' after '{self.peek_previous_token()}'")
-            elif self.peek_next_token() == "Luhman":
-                self.match("Luhman")
-                if self.peek_next_token() == "(":
-                    self.match_parenth("(")
-                    if self.peek_previous_token() == ")":
-                        return True
-                    else:
-                        self.errors.append(f"Syntax Error: Expected ')', '+', '-', '*', '/', '%', '**'")
-                else:
-                    self.errors.append(
-                        f"Syntax error: Expected '(' after '{self.peek_previous_token()}'")
-            # Starsys type convert
-            elif self.peek_next_token() == "Starsys":
-                self.match("Starsys")
-                if self.peek_next_token() == "(":
-                    self.match("(")
-                    if self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral"\
-                            or self.peek_next_token() == "True" or self.peek_next_token() == "False":
-                        self.match(Resources.Value4)  # consume values
-                        #  close it with ')'
-                        if self.peek_next_token() == ")":
-                            self.match(")")
-                            return True
-                        #  error: not followed by ')'
-                        else:
-                            self.errors.append(f"Syntax Error: Expected ')' after {self.peek_previous_token()}")
-                    #  error: values are not as expected
-                    else:
-                        self.errors.append(f"Syntax Error: Expected 'SunLiteral', "
-                                           f"'LuhmanLiteral', 'True', 'False' after {self.peek_previous_token()}")
-                else:
-                    self.errors.append(
-                        f"Syntax error: Expected '(' after '{self.peek_previous_token()}'")
             #  else: if it is not followed by any of the value it shows the error
             else:
                 self.errors.append(
-                    f"Syntax error: Expected 'Sun', 'Luhman', 'Starsys', 'Identifier', "
+                    f"Syntax error: Expected  'Identifier', "
                     f"'SunLiteral', 'LuhmanLiteral', 'StarsysLiteral', 'True', 'False' after '{self.peek_previous_token()}'")
         #  else: no equals sign
         else:
@@ -1940,6 +1993,15 @@ class SyntaxAnalyzer:
                     #  error: no Disintegrate
                     else:
                         self.errors.append(f"Syntax Error: Expected 'Disintegrate' after {self.peek_previous_token()}")
+                # has Class
+                elif self.peek_next_token() == "Class":
+                    self.match_class("Class")
+                    #  Disintegrate
+                    if self.peek_next_token() == "Disintegrate":
+                        self.match("Disintegrate")
+                    #  error: no Disintegrate
+                    else:
+                        self.errors.append(f"Syntax Error: Expected 'Disintegrate' after {self.peek_previous_token()}")
                 #  no Disintegrate
                 else:
                     self.errors.append(f"Syntax Error: Expected 'Disintegrate', 'Class', 'Void', 'Sun', 'Luhman',"
@@ -1950,6 +2012,1082 @@ class SyntaxAnalyzer:
             self.errors.append(
                 f"Syntax error: Expected '[' after {self.peek_previous_token()}")
 
+    #  class method
+    def match_class(self, expected_token):
+        self.get_next_token()
+        while self.current_token == "Space":
+            self.get_next_token()
+
+        if expected_token == "Class":
+            #  must be followed by an identifier
+            if re.match(r'Identifier\d*$', self.peek_next_token()):
+                self.match("Identifier")
+                #  access specifier path derived: Class MyClass : Private BaseClass
+                if self.peek_next_token() == ":":
+                    self.match(":")  # consume ':'
+                    #  must be followed by any of these access specifiers
+                    if (self.peek_next_token() == "Public" or self.peek_next_token() == "Private"
+                            or self.peek_next_token() == "Protected"):
+                        self.match(Resources.access_specifier)  # consume access specifiers
+                        #  must be followed by the id
+                        if re.match(r'Identifier\d*$', self.peek_next_token()):
+                            self.match("Identifier")
+                            # follow with '['
+                            if self.peek_next_token() == "[":
+                                self.match("[")
+                                self.parse_class_body() #  body
+                                #  terminate the class
+                                if self.peek_next_token() == "#":
+                                    self.match("#")
+                                    if self.peek_next_token() == "Disintegrate":
+                                        return True
+                                    # has subfunction next
+                                    elif (self.peek_next_token() == "Sun" or self.peek_next_token() == "Luhman"
+                                          or self.peek_next_token() == "Starsys" or self.peek_next_token() == "Boolean"):
+                                        self.match_subfunc(Resources.Datatype2)  # consume datatypes
+                                    #  void function next
+                                    elif self.peek_next_token() == "Void":
+                                        self.match_voidfunc("Void")
+                                    #  has class next
+                                    elif self.peek_next_token() == "Class":
+                                        self.match_class("Class")
+                                #  error: not terminated
+                                else:
+                                    self.errors.append(
+                                        f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                            #  error: not followed by '['
+                            else:
+                                self.errors.append(
+                                    f"Syntax error: Expected '[' after {self.peek_previous_token()}")
+                        #  error: not followed by an identifier
+                        else:
+                            self.errors.append(
+                                f"Syntax error: Expected 'Identifier' after {self.peek_previous_token()}")
+                    #  error: not followed by access specifiers
+                    else:
+                        self.errors.append(
+                            f"Syntax error: Expected 'Public', 'Private', 'Protected' after {self.peek_previous_token()}")
+                # follow with '[', no derived
+                elif self.peek_next_token() == "[":
+                    self.match("[")
+                    self.parse_class_body()  # body
+                    #  terminate the class
+                    if self.peek_next_token() == "#":
+                        self.match("#")
+                        if self.peek_next_token() == "Disintegrate":
+                            return True
+                        # has subfunction next
+                        elif (self.peek_next_token() == "Sun" or self.peek_next_token() == "Luhman"
+                                or self.peek_next_token() == "Starsys" or self.peek_next_token() == "Boolean"):
+                            self.match_subfunc(Resources.Datatype2)  # consume datatypes
+                        #  void function next
+                        elif self.peek_next_token() == "Void":
+                            self.match_voidfunc("Void")
+                        #  has class next
+                        elif self.peek_next_token() == "Class":
+                            self.match_class("Class")
+                    #  error: not terminated
+                    else:
+                        self.errors.append(
+                            f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                #  error: not followed by any expected next
+                else:
+                    self.errors.append(
+                        f"Syntax error: Expected ':', '[' after {self.peek_previous_token()}")
+            #  error: no identifier
+            else:
+                self.errors.append(
+                    f"Syntax error: Expected 'Identifier' after {self.peek_previous_token()}")
+
+    #  class method (inside functions, main, struct)
+    def match_class_stmnt(self, expected_token):
+        self.get_next_token()
+        while self.current_token == "Space":
+            self.get_next_token()
+
+        if expected_token == "Class":
+            #  must be followed by an identifier
+            if re.match(r'Identifier\d*$', self.peek_next_token()):
+                self.match("Identifier")
+                #  access specifier path derived: Class MyClass : Private BaseClass
+                if self.peek_next_token() == ":":
+                    self.match(":")  # consume ':'
+                    #  must be followed by any of these access specifiers
+                    if (self.peek_next_token() == "Public" or self.peek_next_token() == "Private"
+                            or self.peek_next_token() == "Protected"):
+                        self.match(Resources.access_specifier)  # consume access specifiers
+                        #  must be followed by the id
+                        if re.match(r'Identifier\d*$', self.peek_next_token()):
+                            self.match("Identifier")
+                            # follow with '['
+                            if self.peek_next_token() == "[":
+                                self.match("[")
+                                self.parse_class_body() #  body
+                                #  terminate the class
+                                if self.peek_next_token() == "#":
+                                    self.match("#")
+                                #  error: not terminated
+                                else:
+                                    self.errors.append(
+                                        f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                            #  error: not followed by '['
+                            else:
+                                self.errors.append(
+                                    f"Syntax error: Expected '[' after {self.peek_previous_token()}")
+                        #  error: not followed by an identifier
+                        else:
+                            self.errors.append(
+                                f"Syntax error: Expected 'Identifier' after {self.peek_previous_token()}")
+                    #  error: not followed by access specifiers
+                    else:
+                        self.errors.append(
+                            f"Syntax error: Expected 'Public', 'Private', 'Protected' after {self.peek_previous_token()}")
+                # follow with '[', no derived
+                elif self.peek_next_token() == "[":
+                    self.match("[")
+                    self.parse_class_body()  # body
+                    #  terminate the class
+                    if self.peek_next_token() == "#":
+                        self.match("#")
+                    #  error: not terminated
+                    else:
+                        self.errors.append(
+                            f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                #  class instance path
+                elif re.match(r'Identifier\d*$', self.peek_next_token()):
+                    self.match("Identifier")
+                    #  terminate
+                    if self.peek_next_token() == "#":
+                        self.match("#")
+                    #  multiple instance path
+                    elif self.peek_next_token() == ",":
+                        self.match(",")
+                        # assign id
+                        if re.match(r'Identifier\d*$', self.peek_next_token()):
+                            self.matchID_mult("Identifier")
+                            #  terminate it
+                            if self.peek_next_token() == "#":
+                                self.match("#")
+                            #  error: not terminated
+                            else:
+                                self.errors.append(
+                                    f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                        #  error: no id next
+                        else:
+                            self.errors.append(
+                                f"Syntax error: Expected 'Identifier' after {self.peek_previous_token()}")
+                    #  error: not terminated, or no following multiple instances
+                    else:
+                        self.errors.append(
+                            f"Syntax error: Expected '#', ',' after {self.peek_previous_token()}")
+                #  global scope res path
+                elif self.peek_next_token() == "::":
+                    self.match("::")
+                    # must be followed by the id
+                    if re.match(r'Identifier\d*$', self.peek_next_token()):
+                        self.match("Identifier")
+                        #  must be followed by another identifier
+                        if re.match(r'Identifier\d*$', self.peek_next_token()):
+                            self.match("Identifier")
+                            #  terminate it
+                            if self.peek_next_token() == "#":
+                                self.match("#")
+                            #  error: not terminated
+                            else:
+                                self.errors.append(
+                                    f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                        #  error: not followed by an identifier
+                        else:
+                            self.errors.append(
+                                f"Syntax error: Expected 'Identifier' after {self.peek_previous_token()}")
+                    #  error: not followed by an identifier
+                    else:
+                        self.errors.append(
+                            f"Syntax error: Expected 'Identifier' after {self.peek_previous_token()}")
+                #  error: not followed by any expected next
+                else:
+                    self.errors.append(
+                        f"Syntax error: Expected ':', '[', 'Identifier', '::' after {self.peek_previous_token()}")
+            #  error: no identifier
+            else:
+                self.errors.append(
+                    f"Syntax error: Expected 'Identifier' after {self.peek_previous_token()}")
+
+    #  struct method
+    def match_struct(self, expected_token):
+        self.get_next_token()
+        while self.current_token == "Space":
+            self.get_next_token()
+
+        if expected_token == "ISS":
+            #  must be followed by an identifier
+            if re.match(r'Identifier\d*$', self.peek_next_token()):
+                self.match("Identifier")
+                #  access specifier path derived: ISS MyStruct : Private BaseStruct
+                if self.peek_next_token() == ":":
+                    self.match(":")  # consume ':'
+                    #  must be followed by any of these access specifiers
+                    if (self.peek_next_token() == "Public" or self.peek_next_token() == "Private"
+                            or self.peek_next_token() == "Protected"):
+                        self.match(Resources.access_specifier)  # consume access specifiers
+                        #  must be followed by the id
+                        if re.match(r'Identifier\d*$', self.peek_next_token()):
+                            self.match("Identifier")
+                            # follow with '['
+                            if self.peek_next_token() == "[":
+                                self.match("[")
+                                self.parse_struct_body() #  body
+                                #  terminate the iss
+                                if self.peek_next_token() == "#":
+                                    self.match("#")
+                                #  error: not terminated
+                                else:
+                                    self.errors.append(
+                                        f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                            #  error: not followed by '['
+                            else:
+                                self.errors.append(
+                                    f"Syntax error: Expected '[' after {self.peek_previous_token()}")
+                        #  error: not followed by an identifier
+                        else:
+                            self.errors.append(
+                                f"Syntax error: Expected 'Identifier' after {self.peek_previous_token()}")
+                    #  error: not followed by access specifiers
+                    else:
+                        self.errors.append(
+                            f"Syntax error: Expected 'Public', 'Private', 'Protected' after {self.peek_previous_token()}")
+                # follow with '[', no derived
+                elif self.peek_next_token() == "[":
+                    self.match("[")
+                    self.parse_struct_body()  # body
+                    #  terminate the struct
+                    if self.peek_next_token() == "#":
+                        self.match("#")
+                    #  error: not terminated
+                    else:
+                        self.errors.append(
+                            f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                #  class instance path
+                elif re.match(r'Identifier\d*$', self.peek_next_token()):
+                    self.match("Identifier")
+                    #  terminate
+                    if self.peek_next_token() == "#":
+                        self.match("#")
+                    #  multiple instance path
+                    elif self.peek_next_token() == ",":
+                        self.match(",")
+                        # assign id
+                        if re.match(r'Identifier\d*$', self.peek_next_token()):
+                            self.matchID_mult("Identifier")
+                            #  terminate it
+                            if self.peek_next_token() == "#":
+                                self.match("#")
+                            #  error: not terminated
+                            else:
+                                self.errors.append(
+                                    f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                        #  error: no id next
+                        else:
+                            self.errors.append(
+                                f"Syntax error: Expected 'Identifier' after {self.peek_previous_token()}")
+                    #  error: not terminated, or no following multiple instances
+                    else:
+                        self.errors.append(
+                            f"Syntax error: Expected '#', ',' after {self.peek_previous_token()}")
+                #  global scope res path
+                elif self.peek_next_token() == "::":
+                    self.match("::")
+                    # must be followed by the id
+                    if re.match(r'Identifier\d*$', self.peek_next_token()):
+                        self.match("Identifier")
+                        #  must be followed by another identifier
+                        if re.match(r'Identifier\d*$', self.peek_next_token()):
+                            self.match("Identifier")
+                            #  terminate it
+                            if self.peek_next_token() == "#":
+                                self.match("#")
+                            #  error: not terminated
+                            else:
+                                self.errors.append(
+                                    f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                        #  error: not followed by an identifier
+                        else:
+                            self.errors.append(
+                                f"Syntax error: Expected 'Identifier' after {self.peek_previous_token()}")
+                    #  error: not followed by an identifier
+                    else:
+                        self.errors.append(
+                            f"Syntax error: Expected 'Identifier' after {self.peek_previous_token()}")
+
+                #  error: not followed by any expected next
+                else:
+                    self.errors.append(
+                        f"Syntax error: Expected ':', '[', 'Identifier', '::' after {self.peek_previous_token()}")
+            #  error: no identifier
+            else:
+                self.errors.append(
+                    f"Syntax error: Expected 'Identifier' after {self.peek_previous_token()}")
+
+    # for struct and class
+    def match_assignment(self, expected_token):
+        self.get_next_token()
+        while self.current_token == "Space":
+            self.get_next_token()
+        if re.match(r'Identifier\d*$', expected_token):
+            #  constructor path
+            if self.peek_next_token() == "(":
+                self.match("(")
+                if self.peek_next_token() == "Static":
+                    self.match("Static")
+                    # has parameter path
+                    if (self.peek_next_token() == "Sun" or self.peek_next_token() == "Luhman"
+                            or self.peek_next_token() == "Boolean" or self.peek_next_token() == "Starsys"):
+                        self.match(Resources.Datatype2)
+                        if re.match(r'Identifier\d*$', self.peek_next_token()):
+                            self.match("Identifier")
+                            if self.peek_next_token() == "=":
+                                self.match_param_assign("=")
+                                #  close with ')' after assigning value/s
+                                if self.peek_next_token() == ")":
+                                    self.match(")")
+                                    #  follow it with '['
+                                    if self.peek_next_token() == "[":
+                                        self.parse_constructor_definition_statement()  # body
+                                        #  close it
+                                        if self.peek_next_token() == "]":
+                                            self.match("]")
+                                        #  error: not closed
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                    #  error: not followed
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                #  error: not closed
+                                else:
+                                    self.errors.append(
+                                        f"Syntax error: Expected ')' after {self.peek_previous_token()}")
+                            #  check: if closed, single id no value
+                            elif self.peek_next_token() == ")":
+                                self.match(")")
+                                #  followed it with '['
+                                if self.peek_next_token() == "[":
+                                    self.parse_constructor_definition_statement()  # body
+                                    #  close it
+                                    if self.peek_next_token() == "]":
+                                        self.match("]")
+                                    #  error: not closed
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                #  error: not followed by '['
+                                else:
+                                    self.errors.append(
+                                        f"Syntax error: Expected '[' after {self.peek_previous_token()}")
+                            #  single id is followed by a comma
+                            elif self.peek_next_token() == ",":
+                                self.match_param_assign_mult(",")
+                                #  close with ')' after assigning value/s
+                                if self.peek_next_token() == ")":
+                                    self.match(")")
+                                    #  followed by '['
+                                    if self.peek_next_token() == "[":
+                                        self.parse_constructor_definition_statement()  # body
+                                        #  close it
+                                        if self.peek_next_token() == "]":
+                                            self.match("]")
+                                        #  error: not closed
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                    #  error: not followed by '['
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected '[' after {self.peek_previous_token()}")
+                            #  unexpected end: no ')' to close, or comma to followed by, or (=) to assign values
+                            else:
+                                self.errors.append(
+                                    f"Syntax error: Expected ')', ',', '=' after {self.peek_previous_token()}")
+                        #  error: no identifier after the datatype
+                        else:
+                            self.errors.append(
+                                f"Syntax error: Expected 'Identifier' after {self.peek_previous_token()}")
+                    #  no datatype after static
+                    else:
+                        self.errors.append(
+                            f"Syntax error: Expected 'Sun', 'Luhman', 'Boolean', 'Starsys' after {self.peek_previous_token()}")
+                # has parameter path
+                elif (self.peek_next_token() == "Sun" or self.peek_next_token() == "Luhman"
+                      or self.peek_next_token() == "Boolean" or self.peek_next_token() == "Starsys"):
+                    self.match(Resources.Datatype2)
+                    if re.match(r'Identifier\d*$', self.peek_next_token()):
+                        self.match("Identifier")
+                        if self.peek_next_token() == "=":
+                            self.match_param_assign("=")
+                            #  close with ')' after assigning value/s
+                            if self.peek_next_token() == ")":
+                                self.match(")")
+                                #  follow '['
+                                if self.peek_next_token() == "[":
+                                    self.parse_constructor_definition_statement()  # body
+                                    #  close it
+                                    if self.peek_next_token() == "]":
+                                        self.match("]")
+                                    #  error: not closed
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                #  error: not followed by '['
+                                else:
+                                    self.errors.append(
+                                        f"Syntax error: Expected '[' after {self.peek_previous_token()}")
+                            #  error: not closed
+                            else:
+                                self.errors.append(
+                                    f"Syntax error: Expected ')' after {self.peek_previous_token()}")
+                        #  check: if closed, single id no value
+                        elif self.peek_next_token() == ")":
+                            self.match(")")
+                            #  followed by '['
+                            if self.peek_next_token() == "[":
+                                self.parse_constructor_definition_statement()  # body
+                                #  close it
+                                if self.peek_next_token() == "]":
+                                    self.match("]")
+                                #  error: not closed
+                                else:
+                                    self.errors.append(
+                                        f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                            #  error: not followed by '['
+                            else:
+                                self.errors.append(
+                                    f"Syntax error: Expected '[' after {self.peek_previous_token()}")
+                        #  single id is followed by a comma
+                        elif self.peek_next_token() == ",":
+                            self.match_param_assign_mult(",")
+                            #  close with ')' after assigning value/s
+                            if self.peek_next_token() == ")":
+                                self.match(")")
+                                #  followed by '['
+                                if self.peek_next_token() == "[":
+                                    self.parse_constructor_definition_statement()  # body
+                                    #  close it
+                                    if self.peek_next_token() == "]":
+                                        self.match("]")
+                                    #  error: not closed
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                #  error: not followed by '['
+                                else:
+                                    self.errors.append(
+                                        f"Syntax error: Expected '[' after {self.peek_previous_token()}")
+                        #  unexpected end: no ')' to close, or comma to followed by, or (=) to assign values
+                        else:
+                            self.errors.append(
+                                f"Syntax error: Expected ')', ',', '=' after {self.peek_previous_token()}")
+                    #  error: no identifier after the datatype
+                    else:
+                        self.errors.append(
+                            f"Syntax error: Expected 'Identifier' after {self.peek_previous_token()}")
+                #  no parameter
+                elif self.peek_next_token() == ")":
+                    self.match(")")
+                    #  must be followed by '['
+                    if self.peek_next_token() == "[":
+                        self.parse_constructor_definition_statement()  # body
+                        #  close it
+                        if self.peek_next_token() == "]":
+                            self.match("]")
+                        #  error: not closed
+                        else:
+                            self.errors.append(
+                                f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                    #  function call (no values)
+                    #  terminate it
+                    elif self.peek_next_token() == "#":
+                        self.match("#")
+                    #  error: not followed by '['
+                    else:
+                        self.errors.append(
+                            f"Syntax error: Expected '[', '#' after {self.peek_previous_token()}")
+                #  function call path (has values)
+                elif (self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral"
+                        or self.peek_next_token() == "StarsysLiteral" or re.match(r'Identifier\d*$',
+                        self.peek_next_token()) or self.peek_next_token() == "True" or self.peek_next_token() == "False"):
+                    self.matchValue_mult(Resources.Value1)
+                    # close it
+                    if self.peek_next_token() == ")":
+                        self.match(")")
+                        #  terminate it
+                        if self.peek_next_token() == "#":
+                            self.match("#")
+                        #  error: not terminated
+                        else:
+                            self.errors.append(
+                                f"Syntax error: Expected '#' after '{self.peek_previous_token()}'")
+                    #  error: expected ')'
+                    else:
+                        self.errors.append(
+                            f"Syntax error: Expected ')' after '{self.peek_previous_token()}'")
+                else:
+                    self.errors.append(f"Syntax Error: Expected ')' after {self.peek_previous_token()}")
+            #  assignment path
+            elif self.peek_next_token() == "=":
+                self.match("=")  # consume =
+                #  must be followed by these values
+                if (self.peek_next_token() == "StarsysLiteral" or self.peek_next_token() == "True"
+                        or self.peek_next_token() == "False" ):
+                    self.match(Resources.Value6) # consume values
+                    # must be terminated
+                    if self.peek_next_token() == "#":
+                        self.match("#")
+                    #  error: not terminated
+                    else:
+                        self.errors.append(f"Syntax Error: Expected '#' after {self.peek_previous_token()}")
+                #  numbers, id, is the value
+                elif (self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral"
+                        or re.match(r'Identifier\d*$',self.peek_next_token())):
+                    self.match(Resources.Value2) # consume values
+                    # terminate it?
+                    if self.peek_next_token() == "#":
+                        self.match("#")
+                    #  assign subfunction val path
+                    elif re.match(r'Identifier\d*$',self.peek_previous_token()) and self.peek_next_token() == "(":
+                        self.match("(")
+                        #  followed by these values
+                        if (self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral"
+                                or self.peek_next_token() == "StarsysLiteral" or re.match(r'Identifier\d*$',
+                                self.peek_next_token()) or self.peek_next_token() == "True" or self.peek_next_token() == "False"):
+                            self.matchValue_mult(Resources.Value1)
+                            # close it
+                            if self.peek_next_token() == ")":
+                                self.match(")")
+                                #  terminate it
+                                if self.peek_next_token() == "#":
+                                    self.match("#")
+                                #  error: not terminated
+                                else:
+                                    self.errors.append(
+                                        f"Syntax error: Expected '#' after '{self.peek_previous_token()}'")
+                            #  error: expected ')'
+                            else:
+                                self.errors.append(
+                                    f"Syntax error: Expected ')' after '{self.peek_previous_token()}'")
+                        #  not followed by any values (empty)
+                        elif self.peek_next_token() == ")":
+                            self.match(")")
+                            #  terminate it
+                            if self.peek_next_token() == "#":
+                                self.match("#")
+                            #  error: not terminated
+                            else:
+                                self.errors.append(
+                                    f"Syntax error: Expected '#' after '{self.peek_previous_token()}'")
+                        #  error: no expected next
+                        else:
+                            self.errors.append(
+                                f"Syntax error: Expected ')', 'SunLiteral', 'LuhmanLiteral', 'StarsysLiteral', 'Idnetifier',"
+                                f"'True', 'False' after '{self.peek_previous_token()}'")
+                    #  add it?
+                    elif self.peek_next_token() == "+":
+                        self.match_mathop2("+")
+                        # terminate it
+                        if self.peek_next_token() == "#":
+                            self.match("#")
+                        #  error: not terminated
+                        else:
+                            self.errors.append(f"Syntax Error: Expected '#' after {self.peek_previous_token()}")
+                    #  subtract it?
+                    elif self.peek_next_token() == "-":
+                        self.match_mathop2("-")
+                        # terminate it
+                        if self.peek_next_token() == "#":
+                            self.match("#")
+                        #  error: not terminated
+                        else:
+                            self.errors.append(f"Syntax Error: Expected '#' after {self.peek_previous_token()}")
+                    #  multiply it?
+                    elif self.peek_next_token() == "*":
+                        self.match_mathop2("*")
+                        # terminate it
+                        if self.peek_next_token() == "#":
+                            self.match("#")
+                        #  error: not terminated
+                        else:
+                            self.errors.append(f"Syntax Error: Expected '#' after {self.peek_previous_token()}")
+                    #  divide it?
+                    elif self.peek_next_token() == "/":
+                        self.match_mathop2("/")
+                        # terminate it
+                        if self.peek_next_token() == "#":
+                            self.match("#")
+                        #  error: not terminated
+                        else:
+                            self.errors.append(f"Syntax Error: Expected '#' after {self.peek_previous_token()}")
+                    #  modulo it?
+                    elif self.peek_next_token() == "%":
+                        self.match_mathop2("%")
+                        # terminate it
+                        if self.peek_next_token() == "#":
+                            self.match("#")
+                        #  error: not terminated
+                        else:
+                            self.errors.append(f"Syntax Error: Expected '#' after {self.peek_previous_token()}")
+                    #  exponentiate it?
+                    elif self.peek_next_token() == "**":
+                        self.match_exponent2("**")
+                        # terminate it
+                        if self.peek_next_token() == "#":
+                            self.match("#")
+                        #  error: not terminated
+                        else:
+                            self.errors.append(f"Syntax Error: Expected '#' after {self.peek_previous_token()}")
+                    #  error: not terminated
+                    else:
+                        self.errors.append(f"Syntax Error: Expected '(', '#', '+', '-', '*', '/', '%', '**' after {self.peek_previous_token()}")
+                #  error: not followed by any of the values
+                else:
+                    self.errors.append(f"Syntax Error: Expected 'SunLiteral', 'LuhmanLiteral', 'StarsysLiteral'"
+                                       f" , 'Identifier', 'True', 'False', after {self.peek_previous_token()}")
+            #  access module/s, function path
+            elif self.peek_next_token() == ".":
+                self.instance_path(".")  # >>>>call method
+            else:
+                self.errors.append(f"Syntax Error: Expected '(', '=', '.' after {self.peek_previous_token()}")
+
+    #  for main function, functions, if-else, loops, switch
+    def match_assignment1(self, expected_token):
+        self.get_next_token()
+        while self.current_token == "Space":
+            self.get_next_token()
+        if re.match(r'Identifier\d*$', expected_token):
+            #  call function direct path
+            if self.peek_next_token() == "(":
+                self.match("(")
+                #  has values inside?
+                if (self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral"
+                        or self.peek_next_token() == "StarsysLiteral"
+                        or re.match(r'Identifier\d*$', self.peek_next_token()) or self.peek_next_token() == "True"
+                        or self.peek_next_token() == "False"):
+                    self.matchValue_mult(Resources.Value1)
+                    # close it
+                    if self.peek_next_token() == ")":
+                        self.match(")")
+                        #  terminate it
+                        if self.peek_next_token() == "#":
+                            self.match("#")
+                        #  error: not terminated
+                        else:
+                            self.errors.append(
+                                f"Syntax error: Expected '#' after '{self.peek_previous_token()}'")
+                    #  error: expected ')'
+                    else:
+                        self.errors.append(
+                            f"Syntax error: Expected ')' after '{self.peek_previous_token()}'")
+                #  no values inside
+                elif self.peek_next_token() == ")":
+                    self.match(")")
+                    #  terminate it
+                    if self.peek_next_token() == "#":
+                        self.match("#")
+                    #  error: not terminated
+                    else:
+                        self.errors.append(
+                            f"Syntax error: Expected '#' after '{self.peek_previous_token()}'")
+            #  assignment path
+            elif self.peek_next_token() == "=":
+                self.match("=")  # consume =
+                #  must be followed by these values
+                if (self.peek_next_token() == "StarsysLiteral" or self.peek_next_token() == "True"
+                        or self.peek_next_token() == "False" ):
+                    self.match(Resources.Value6) # consume values
+                    # must be terminated
+                    if self.peek_next_token() == "#":
+                        self.match("#")
+                    #  error: not terminated
+                    else:
+                        self.errors.append(f"Syntax Error: Expected '#' after {self.peek_previous_token()}")
+                #  numbers, id, is the value
+                elif (self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral"
+                        or re.match(r'Identifier\d*$',self.peek_next_token())):
+                    self.match(Resources.Value2) # consume values
+                    # terminate it?
+                    if self.peek_next_token() == "#":
+                        self.match("#")
+                    #  assign subfunction val path
+                    elif re.match(r'Identifier\d*$',self.peek_previous_token()) and self.peek_next_token() == "(":
+                        self.match("(")
+                        #  followed by these values
+                        if (self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral"
+                                or self.peek_next_token() == "StarsysLiteral" or re.match(r'Identifier\d*$',
+                                self.peek_next_token()) or self.peek_next_token() == "True" or self.peek_next_token() == "False"):
+                            self.matchValue_mult(Resources.Value1)
+                            # close it
+                            if self.peek_next_token() == ")":
+                                self.match(")")
+                                #  terminate it
+                                if self.peek_next_token() == "#":
+                                    self.match("#")
+                                #  error: not terminated
+                                else:
+                                    self.errors.append(
+                                        f"Syntax error: Expected '#' after '{self.peek_previous_token()}'")
+                            #  error: expected ')'
+                            else:
+                                self.errors.append(
+                                    f"Syntax error: Expected ')' after '{self.peek_previous_token()}'")
+                        #  not followed by any values (empty)
+                        elif self.peek_next_token() == ")":
+                            self.match(")")
+                            #  terminate it
+                            if self.peek_next_token() == "#":
+                                self.match("#")
+                            #  error: not terminated
+                            else:
+                                self.errors.append(
+                                    f"Syntax error: Expected '#' after '{self.peek_previous_token()}'")
+                        #  error: no expected next
+                        else:
+                            self.errors.append(
+                                f"Syntax error: Expected ')', 'SunLiteral', 'LuhmanLiteral', 'StarsysLiteral', 'Idnetifier',"
+                                f"'True', 'False' after '{self.peek_previous_token()}'")
+                    #  add it?
+                    elif self.peek_next_token() == "+":
+                        self.match_mathop2("+")
+                        # terminate it
+                        if self.peek_next_token() == "#":
+                            self.match("#")
+                        #  error: not terminated
+                        else:
+                            self.errors.append(f"Syntax Error: Expected '#' after {self.peek_previous_token()}")
+                    #  subtract it?
+                    elif self.peek_next_token() == "-":
+                        self.match_mathop2("-")
+                        # terminate it
+                        if self.peek_next_token() == "#":
+                            self.match("#")
+                        #  error: not terminated
+                        else:
+                            self.errors.append(f"Syntax Error: Expected '#' after {self.peek_previous_token()}")
+                    #  multiply it?
+                    elif self.peek_next_token() == "*":
+                        self.match_mathop2("*")
+                        # terminate it
+                        if self.peek_next_token() == "#":
+                            self.match("#")
+                        #  error: not terminated
+                        else:
+                            self.errors.append(f"Syntax Error: Expected '#' after {self.peek_previous_token()}")
+                    #  divide it?
+                    elif self.peek_next_token() == "/":
+                        self.match_mathop2("/")
+                        # terminate it
+                        if self.peek_next_token() == "#":
+                            self.match("#")
+                        #  error: not terminated
+                        else:
+                            self.errors.append(f"Syntax Error: Expected '#' after {self.peek_previous_token()}")
+                    #  modulo it?
+                    elif self.peek_next_token() == "%":
+                        self.match_mathop2("%")
+                        # terminate it
+                        if self.peek_next_token() == "#":
+                            self.match("#")
+                        #  error: not terminated
+                        else:
+                            self.errors.append(f"Syntax Error: Expected '#' after {self.peek_previous_token()}")
+                    #  exponentiate it?
+                    elif self.peek_next_token() == "**":
+                        self.match_exponent2("**")
+                        # terminate it
+                        if self.peek_next_token() == "#":
+                            self.match("#")
+                        #  error: not terminated
+                        else:
+                            self.errors.append(f"Syntax Error: Expected '#' after {self.peek_previous_token()}")
+                    #  error: not terminated
+                    else:
+                        self.errors.append(f"Syntax Error: Expected '(', '#', '+', '-', '*', '/', '%', '**' after {self.peek_previous_token()}")
+                #  error: not followed by any of the values
+                else:
+                    self.errors.append(f"Syntax Error: Expected 'SunLiteral', 'LuhmanLiteral', 'StarsysLiteral'"
+                                       f" , 'Identifier', 'True', 'False', after {self.peek_previous_token()}")
+            #  access module/s, function path
+            elif self.peek_next_token() == ".":
+                self.instance_path(".")  #>>>>call method
+            else:
+                self.errors.append(f"Syntax Error: Expected '(', '=', '.' after {self.peek_previous_token()}")
+
+    def instance_path(self, expected_token):
+        self.get_next_token()
+        while self.current_token == "Space":
+            self.get_next_token()
+        if re.match(r'Identifier\d*$', self.peek_next_token()):
+            self.match("Identifier")
+            #  access the module of the module?
+            if self.peek_next_token() == ".":
+                self.instance_path(".")
+            #  call a function (id.id()#)
+            elif self.peek_next_token() == "(":
+                self.match("(")
+                #  has values inside?
+                if (self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral"
+                        or self.peek_next_token() == "StarsysLiteral"
+                        or re.match(r'Identifier\d*$', self.peek_next_token()) or self.peek_next_token() == "True"
+                        or self.peek_next_token() == "False"):
+                    self.matchValue_mult(Resources.Value1)
+                    # close it
+                    if self.peek_next_token() == ")":
+                        self.match(")")
+                        #  terminate it
+                        if self.peek_next_token() == "#":
+                            self.match("#")
+                        #  error: not terminated
+                        else:
+                            self.errors.append(
+                                f"Syntax error: Expected '#' after '{self.peek_previous_token()}'")
+                    #  error: expected ')'
+                    else:
+                        self.errors.append(
+                            f"Syntax error: Expected ')' after '{self.peek_previous_token()}'")
+                #  no values inside
+                elif self.peek_next_token() == ")":
+                    self.match(")")
+                    #  terminate it
+                    if self.peek_next_token() == "#":
+                        self.match("#")
+                    #  error: not terminated
+                    else:
+                        self.errors.append(
+                            f"Syntax error: Expected '#' after '{self.peek_previous_token()}'")
+                else:
+                    self.errors.append(
+                        f"Syntax Error: Expected ')', 'SunLiteral', 'LuhmanLiteral', 'StarsysLiteral', 'Identifier', 'True',"
+                        f"'False' after {self.peek_previous_token()}")
+            #  assign a value to it (id.id = 5#)
+            elif self.peek_next_token() == "=":
+                self.match("=")
+                # assign a value
+                if (self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral"
+                        or self.peek_next_token() == "StarsysLiteral" or re.match(r'Identifier\d*$',
+                                                                                  self.peek_next_token())
+                        or self.peek_next_token() == "True" or self.peek_next_token() == "False"):
+                    self.match(Resources.Value1)
+                    #  terminate it
+                    if self.peek_next_token() == "#":
+                        self.match("#")
+                    #  not terminated
+                    else:
+                        self.errors.append(
+                            f"Syntax Error: Expected '#' after {self.peek_previous_token()}")
+                #  error: values are not assigned
+                else:
+                    self.errors.append(
+                        f"Syntax Error: Expected 'SunLiteral', 'LuhmanLiteral', 'StarsysLiteral',"
+                        f" 'Identifier', 'True', 'False' after {self.peek_previous_token()}")
+            #  terminate it (no more next)
+            elif self.peek_next_token() == "#":
+                self.match("#")
+            #  values next are not expected
+            else:
+                self.errors.append(
+                    f"Syntax Error: Expected '#', '(', '.', '=' after {self.peek_previous_token()}")
+        else:
+            self.errors.append(
+                f"Syntax Error: Expected 'Identifier' after {self.peek_previous_token()}")
+
+    def instance_path_output(self, expected_token):
+        self.get_next_token()
+        while self.current_token == "Space":
+            self.get_next_token()
+        if re.match(r'Identifier\d*$', self.peek_next_token()):
+            self.match("Identifier")
+            #  access the module of the module?
+            if self.peek_next_token() == ".":
+                self.instance_path(".")
+            #  terminate it (no more next)
+            elif self.peek_next_token() == "#":
+                return True
+            #  more display
+            elif self.peek_next_token() == "<<":
+                return True
+            #  values next are not expected
+            else:
+                return False
+        else:
+            self.errors.append(
+                f"Syntax Error: Expected 'Identifier' after {self.peek_previous_token()}")
+
+    #  class body
+    def parse_class_body(self):
+        #  is it under a class specifier?
+        if (self.peek_next_token() == "Public" or self.peek_next_token() == "Private"
+                or self.peek_next_token() == "Protected"):
+            self.match(Resources.access_specifier)  # consume access specifiers
+            #  must be followed by ':'
+            if self.peek_next_token() == ":":
+                self.match(":")  # consume ':'
+                self.parse_statements2()  #  statements
+                # is the next statements or code block under a class specifier again?
+                if (self.peek_next_token() == "Public" or self.peek_next_token() == "Private"
+                        or self.peek_next_token() == "Protected"):
+                    self.parse_class_body()  # consume access specifiers
+                #  close it?
+                elif self.peek_next_token() == "]":
+                    self.match("]")
+                    #  terminate it
+                    if self.peek_next_token() == "#":
+                        return True
+                    #  error: not terminated
+                    else:
+                        self.errors.append(
+                            f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                #  error: not closed or followed by any of the values
+                else:
+                    self.errors.append(
+                        f"Syntax error: Expected ']', 'Public', 'Private', 'Protected', "
+                        f"'Sun', 'Luhman', 'Starsys', 'Identifier', 'Boolean', 'Void', 'Class'  after {self.peek_previous_token()}")
+            #  error: not followed by ':'
+            else:
+                self.errors.append(
+                    f"Syntax error: Expected ':' after {self.peek_previous_token()}")
+        #  statements are not under an access specifier
+        else:
+            self.parse_statements2()
+            # is the statement/ code blocks next under an access specifier?
+            if (self.peek_next_token() == "Public" or self.peek_next_token() == "Private"
+                    or self.peek_next_token() == "Protected"):
+                self.parse_class_body()
+            #  close it?
+            elif self.peek_next_token() == "]":
+                self.match("]")
+                #  terminate it
+                if self.peek_next_token() == "#":
+                    return True
+                #  error: not terminated
+                else:
+                    self.errors.append(
+                        f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+            #  error: not closed or followed by any of the values
+            else:
+                self.errors.append(
+                    f"Syntax error: Expected ']', 'Public', 'Private', 'Protected', "
+                    f"'Sun', 'Luhman', 'Starsys', 'Identifier', 'Boolean', 'Void', 'Class'  after {self.peek_previous_token()}")
+
+    #  struct body
+    def parse_struct_body(self):
+        #  is it under a class specifier?
+        if (self.peek_next_token() == "Public" or self.peek_next_token() == "Private"
+                or self.peek_next_token() == "Protected"):
+            self.match(Resources.access_specifier)  # consume access specifiers
+            #  must be followed by ':'
+            if self.peek_next_token() == ":":
+                self.match(":")  # consume ':'
+                self.parse_statements2()  #  statements
+                # is the next statements or code block under a class specifier again?
+                if (self.peek_next_token() == "Public" or self.peek_next_token() == "Private"
+                        or self.peek_next_token() == "Protected"):
+                    self.parse_struct_body()  # consume access specifiers
+                #  close it?
+                elif self.peek_next_token() == "]":
+                    self.match("]")
+                    #  terminate it
+                    if self.peek_next_token() == "#":
+                        return True
+                    # struct initial instance path
+                    elif re.match(r'Identifier\d*$', self.peek_next_token()):
+                        self.match("Identifier")
+                        #  terminate
+                        if self.peek_next_token() == "#":
+                            return True
+                        #  multiple instance path
+                        elif self.peek_next_token() == ",":
+                            self.match(",")
+                            # assign id
+                            if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                self.matchID_mult("Identifier")
+                                #  terminate it
+                                if self.peek_next_token() == "#":
+                                    return True
+                                #  error: not terminated
+                                else:
+                                    self.errors.append(
+                                        f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                            #  error: no id next
+                            else:
+                                self.errors.append(
+                                    f"Syntax error: Expected 'Identifier' after {self.peek_previous_token()}")
+                        #  error: not terminated, or no following multiple instances
+                        else:
+                            self.errors.append(
+                                f"Syntax error: Expected '#', ',' after {self.peek_previous_token()}")
+                    #  error: not terminated
+                    else:
+                        self.errors.append(
+                            f"Syntax error: Expected '#', 'Idnetifier' after {self.peek_previous_token()}")
+                #  error: not closed or followed by any of the values
+                else:
+                    self.errors.append(
+                        f"Syntax error: Expected ']', 'Public', 'Private', 'Protected', "
+                        f"'Sun', 'Luhman', 'Starsys', 'Identifier', 'Boolean', 'Void', 'Class'  after {self.peek_previous_token()}")
+            #  error: not followed by ':'
+            else:
+                self.errors.append(
+                    f"Syntax error: Expected ':' after {self.peek_previous_token()}")
+        #  statements are not under an access specifier
+        else:
+            self.parse_statements2()
+            # is the statement/ code blocks next under an access specifier?
+            if (self.peek_next_token() == "Public" or self.peek_next_token() == "Private"
+                    or self.peek_next_token() == "Protected"):
+                self.parse_struct_body()
+            #  close it?
+            elif self.peek_next_token() == "]":
+                self.match("]")
+                #  terminate it
+                if self.peek_next_token() == "#":
+                    return True
+                # struct initial instance path
+                elif re.match(r'Identifier\d*$', self.peek_next_token()):
+                    self.match("Identifier")
+                    #  terminate
+                    if self.peek_next_token() == "#":
+                        return True
+                    #  multiple instance path
+                    elif self.peek_next_token() == ",":
+                        self.match(",")
+                        # assign id
+                        if re.match(r'Identifier\d*$', self.peek_next_token()):
+                            self.matchID_mult("Identifier")
+                            #  terminate it
+                            if self.peek_next_token() == "#":
+                                return True
+                            #  error: not terminated
+                            else:
+                                self.errors.append(
+                                    f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                        #  error: no id next
+                        else:
+                            self.errors.append(
+                                f"Syntax error: Expected 'Identifier' after {self.peek_previous_token()}")
+                    #  error: not terminated, or no following multiple instances
+                    else:
+                        self.errors.append(
+                            f"Syntax error: Expected '#', ',' after {self.peek_previous_token()}")
+                #  error: not terminated
+                else:
+                    self.errors.append(
+                        f"Syntax error: Expected '#', 'Identifier' after {self.peek_previous_token()}")
+            #  error: not closed or followed by any of the values
+            else:
+                self.errors.append(
+                    f"Syntax error: Expected ']', 'Public', 'Private', 'Protected', "
+                    f"'Sun', 'Luhman', 'Starsys', 'Identifier', 'Boolean', 'Void', 'Class'  after {self.peek_previous_token()}")
+
+
+    #  match subfunc
     def match_subfunc(self, expected_token):
         self.get_next_token()
         while self.current_token == "Space":
@@ -3218,6 +4356,20 @@ class SyntaxAnalyzer:
             self.errors.append(
                 f"Syntax error: Expected '[' after {self.peek_previous_token()}")
 
+    #  method for constructor definition (statement)
+    def parse_constructor_definition_statement(self):
+        if self.peek_next_token() == "[":
+            self.match("[")
+            self.parse_statements1()  # body
+
+            if self.peek_next_token() == "]":
+                return True  # close it
+            else:
+                self.errors.append(f"Syntax Error: Expected ']' after {self.peek_previous_token()}")
+        else:
+            self.errors.append(
+                f"Syntax error: Expected '[' after {self.peek_previous_token()}")
+
     #  method for void function definition
     def parse_void_function_definition(self):
         if self.peek_next_token() == "[":
@@ -3236,6 +4388,9 @@ class SyntaxAnalyzer:
                 #  void function is next
                 elif self.peek_next_token() == "Void":
                     self.match_voidfunc("Void")
+                #  has class next
+                elif self.peek_next_token() == "Class":
+                    self.match_class("Class")
                 #  no next
                 else:
                     self.errors.append(f"Syntax Error: Expected 'Disintegrate', 'Sun', 'Luhman',"
@@ -3267,6 +4422,9 @@ class SyntaxAnalyzer:
                     #  void function is next
                     elif self.peek_next_token() == "Void":
                         self.match_voidfunc("Void")
+                    #  has class next
+                    elif self.peek_next_token() == "Class":
+                        self.match_class("Class")
                     #  no next
                     else:
                         self.errors.append(f"Syntax Error: Expected 'Disintegrate', 'Sun', 'Luhman',"
@@ -3658,11 +4816,12 @@ class SyntaxAnalyzer:
         else:
             return
 
-    #  method for statements of functions (incld main), classes, and structs
+    #  method for statements of functions (incld main)
     def parse_statements(self):
         # Parse: is it a Sun global variable declaration or a subfunction prototype?
-        while self.peek_next_token() in ["Static", "Sun", "Luhman", "Starsys", "Boolean", "Autom", "Disp", "Capt", "If",
-                                         "Divert", "Fore", "Span", "Perform", "Void", "Test"]:
+        while (self.peek_next_token() in ["Static", "Sun", "Luhman", "Starsys", "Boolean", "Autom", "Disp", "Capt", "If",
+                                         "Divert", "Fore", "Span", "Perform", "Void", "Test", "ISS", "Class"]
+               or re.match(r'Identifier\d*$', self.peek_next_token())):
             #  Parse: is it a constant dec?
             if self.peek_next_token() == "Static":
                 self.match("Static")  # consume Static
@@ -3821,14 +4980,25 @@ class SyntaxAnalyzer:
             #  Parse: is it a Try-Catch?
             elif self.peek_next_token() == "Test":
                 self.parse_trycatch()
+            #  Parse: is it a Struct?
+            elif self.peek_next_token() == "ISS":
+                self.match_struct("ISS")
+            #  Parse: is it a globally declared Class?
+            elif self.peek_next_token() == "Class":
+                self.match_class_stmnt("Class")
+            #  is it am assignment, or function call, or module access? (a = a#
+            #  a(value)# : mod.mod1.mod2#/s.func()#)
+            elif re.match(r'Identifier\d*$', self.peek_next_token()):
+                self.match_assignment1("Identifier")
             else:
                 break
 
     #  statements for if-else, switch, loops, try-catch
     def parse_statements1(self):
         # Parse: is it a Sun global variable declaration or a subfunction prototype?
-        while self.peek_next_token() in ["Static", "Sun", "Luhman", "Starsys", "Boolean", "Autom", "Disp", "Capt", "If",
-                                         "Divert", "Fore", "Span", "Perform", "Void", "Test"]:
+        while (self.peek_next_token() in ["Static", "Sun", "Luhman", "Starsys", "Boolean", "Autom", "Disp", "Capt", "If",
+                                         "Divert", "Fore", "Span", "Perform", "Test"]
+               or re.match(r'Identifier\d*$', self.peek_next_token())):
             #  Parse: is it a constant dec?
             if self.peek_next_token() == "Static":
                 self.match("Static")  # consume Static
@@ -3984,6 +5154,188 @@ class SyntaxAnalyzer:
             #  Parse: is it a Try-Catch?
             elif self.peek_next_token() == "Test":
                 self.parse_trycatch()
+            #  is it am assignment, or function call, or module access? (a = a#
+            #  a(value)# : mod.mod1.mod2#/s.func()#)
+            elif re.match(r'Identifier\d*$', self.peek_next_token()):
+                self.match_assignment1("Identifier")
+            else:
+                break
+
+    #  method for statements of ISS and Class
+    def parse_statements2(self):
+        # Parse: is it a Sun global variable declaration or a subfunction prototype?
+        while (self.peek_next_token() in ["Static", "Sun", "Luhman", "Starsys", "Boolean", "Autom", "Disp", "Capt", "If",
+                                         "Divert", "Fore", "Span", "Perform", "Void", "Test", "ISS", "Class"]
+               or re.match(r'Identifier\d*$', self.peek_next_token())):
+            #  Parse: is it a constant dec?
+            if self.peek_next_token() == "Static":
+                self.match("Static")  # consume Static
+                # Parse: is it a Sun global variable declaration or a subfunction prototype?
+                if self.peek_next_token() == "Sun":
+                    self.match("Sun")  # consume Sun
+                    #  check if there is an identifier after the datatype
+                    if re.match(r'Identifier\d*$', self.peek_next_token()):
+                        self.parse_variable_declaration_func()
+                    #  error: no identifier after datatype
+                    else:
+                        self.errors.append(
+                            f"Syntax error: Expected 'Identifier' after {self.peek_previous_token()}")
+                # Parse: is it a Luhman global variable declaration or a subfunction prototype?
+                elif self.peek_next_token() == "Luhman":
+                    self.match("Luhman")  # consume Luhman
+                    #  check if there is an identifier after the datatype
+                    if re.match(r'Identifier\d*$', self.peek_next_token()):
+                        self.parse_variable_declaration_func()
+                    #  error: no identifier after datatype
+                    else:
+                        self.errors.append(
+                            f"Syntax error: Expected 'Identifier' after {self.peek_previous_token()}")
+                # Parse: is it a Starsys global variable declaration or a subfunction prototype?
+                elif self.peek_next_token() == "Starsys":
+                    self.match("Starsys")  # consume Starsys
+                    #  check if there is an identifier after the datatype
+                    if re.match(r'Identifier\d*$', self.peek_next_token()):
+                        self.parse_variable_declaration_func()
+                    else:
+                        #  error: no identifier after datatype
+                        self.errors.append(
+                            f"Syntax error: Expected 'Identifier' after {self.peek_previous_token()}")
+                # Parse: is it a Boolean global variable declaration or a subfunction prototype?
+                elif self.peek_next_token() == "Boolean":
+                    self.match("Boolean")  # consume Bool
+                    #  check if there is an identifier after the datatype
+                    if re.match(r'Identifier\d*$', self.peek_next_token()):
+                        self.parse_boolean_func()
+                    #  error: no identifier after datatype
+                    else:
+                        self.errors.append(
+                            f"Syntax error: Expected 'Identifier' after {self.peek_previous_token()}")
+                #  no data type is next to Static
+                else:
+                    self.errors.append(
+                        f"Syntax Error: Expected 'Sun', 'Luhman', 'Starsys', 'Boolean', after {self.peek_previous_token()}")
+            # Parse: is it a Sun global variable declaration or a subfunction prototype?
+            elif self.peek_next_token() == "Sun":
+                self.match("Sun")  # consume Sun
+                #  check if there is an identifier after the datatype
+                if re.match(r'Identifier\d*$', self.peek_next_token()):
+                    self.parse_variable_declaration_func()
+                #  error: no identifier after datatype
+                else:
+                    self.errors.append(
+                        f"Syntax error: Expected 'Identifier' after {self.peek_previous_token()}")
+            # Parse: is it a Luhman global variable declaration or a subfunction prototype?
+            elif self.peek_next_token() == "Luhman":
+                self.match("Luhman")  # consume Luhman
+                #  check if there is an identifier after the datatype
+                if re.match(r'Identifier\d*$', self.peek_next_token()):
+                    self.parse_variable_declaration_func()
+                #  error: no identifier after datatype
+                else:
+                    self.errors.append(
+                        f"Syntax error: Expected 'Identifier' after {self.peek_previous_token()}")
+            # Parse: is it a Starsys global variable declaration or a subfunction prototype?
+            elif self.peek_next_token() == "Starsys":
+                self.match("Starsys")  # consume Starsys
+                #  check if there is an identifier after the datatype
+                if re.match(r'Identifier\d*$', self.peek_next_token()):
+                    self.parse_variable_declaration_func()
+                else:
+                    #  error: no identifier after datatype
+                    self.errors.append(
+                        f"Syntax error: Expected 'Identifier' after {self.peek_previous_token()}")
+            # Parse: is it a Boolean global variable declaration or a subfunction prototype?
+            elif self.peek_next_token() == "Boolean":
+                self.match("Boolean")  # consume Bool
+                #  check if there is an identifier after the datatype
+                if re.match(r'Identifier\d*$', self.peek_next_token()):
+                    self.parse_boolean_func()
+                #  error: no identifier after datatype
+                else:
+                    self.errors.append(
+                        f"Syntax error: Expected 'Identifier' after {self.peek_previous_token()}")
+            # Parse: is it an Autom global variable declaration?
+            elif self.peek_next_token() == "Autom":
+                self.match("Autom")  # consume Autom
+                #  check if there is an identifier after the datatype
+                if re.match(r'Identifier\d*$', self.peek_next_token()):
+                    self.parse_auto_dec()
+                #  error: no identifier after datatype
+                else:
+                    self.errors.append(
+                        f"Syntax error: Expected 'Identifier' after {self.peek_previous_token()}")
+            #  Parse: is it an output statement? (Disp)
+            elif self.peek_next_token() == "Disp":
+                self.match("Disp")
+                #  check if there is a '<<' after the Disp keyword
+                if self.peek_next_token() == "<<":
+                    self.parse_disp_stmnt()
+                #  error: not followed by "<<"
+                else:
+                    self.errors.append(
+                        f"Syntax error: Expected '<<' after {self.peek_previous_token()}")
+            #  Parse: is it an input statement? (Capt)
+            elif self.peek_next_token() == "Capt":
+                self.match("Capt")
+                #  check if there is a '<<' after the Disp keyword
+                if self.peek_next_token() == ">>":
+                    self.parse_capt_stmnt()
+                #  error: not followed by "<<"
+                else:
+                    self.errors.append(
+                        f"Syntax error: Expected '>>' after {self.peek_previous_token()}")
+            #  Parse: is an If condition statement?
+            elif self.peek_next_token() == "If":
+                self.match("If")
+                #  check if there is a '(' after the If keyword
+                if self.peek_next_token() == "(":
+                    self.parse_if_stmnt()
+                #  error: not followed by "("
+                else:
+                    self.errors.append(
+                        f"Syntax error: Expected '(' after {self.peek_previous_token()}")
+            #  Parse: is it a Switch condition statement (Divert)?
+            elif self.peek_next_token() == "Divert":
+                self.match("Divert")
+                #  check if there is a '(' after the Divert keyword
+                if self.peek_next_token() == "(":
+                    self.parse_switch_stmnt()
+                #  error: not followed by "("
+                else:
+                    self.errors.append(
+                        f"Syntax error: Expected '(' after {self.peek_previous_token()}")
+            #  Parse: is it a for loop statement (Fore)?
+            elif self.peek_next_token() == "Fore":
+                self.match("Fore")  # consume Fore
+                #  check if there is a '(' after the Divert keyword
+                if self.peek_next_token() == "(":
+                    self.parse_for_loop()
+                #  error: not followed by "("
+                else:
+                    self.errors.append(
+                        f"Syntax error: Expected '(' after {self.peek_previous_token()}")
+            #  Parse: is it a while loop statement (Span)?
+            elif self.peek_next_token() == "Span":
+                self.parse_while_loop()
+            #  Parse: is it a do-while loop statement (Span)?
+            elif self.peek_next_token() == "Perform":
+                self.parse_dowhile_loop()
+            #  Parse: is it a Void function?
+            elif self.peek_next_token() == "Void":
+                self.match_voidfunc_statement("Void")
+            #  Parse: is it a Try-Catch?
+            elif self.peek_next_token() == "Test":
+                self.parse_trycatch()
+            #  Parse: is it a Struct?
+            elif self.peek_next_token() == "ISS":
+                self.match_struct("ISS")
+            #  Parse: is it a globally declared Class?
+            elif self.peek_next_token() == "Class":
+                self.match_class_stmnt("Class")
+            #  is it am assignment, constructor, or function call, or module access? (a = a#
+            #  : a(Sun a)[  ] : a(value)# : mod.mod1.mod2#/s.func()#)
+            elif re.match(r'Identifier\d*$', self.peek_next_token()):
+                self.match_assignment("Identifier")
             else:
                 break
 
@@ -4027,7 +5379,7 @@ class SyntaxAnalyzer:
                 self.errors.append(f"Syntax Error: Expected '[' after {self.peek_previous_token()}")
         else:
             self.errors.append(f"Syntax Error: Expected 'Test' ")
-
+    #  method for launch
     def match_launch(self, expected_token):
         self.get_next_token()
         while self.current_token == "Space":
@@ -4069,7 +5421,7 @@ class SyntaxAnalyzer:
             #  error: not followed by an identifier
             else:
                 self.errors.append(f"Syntax Error: Expected 'Identifier' after {self.peek_previous_token()}")
-
+    #  method for catch
     def parse_catch(self):
         if self.peek_next_token() == "Latch":
             self.match("Latch")  # consume Latch
@@ -5227,7 +6579,7 @@ class SyntaxAnalyzer:
             self.parse_import_statement()
 
             # Parse: is it a Sun global variable declaration or a subfunction prototype?
-            while self.peek_next_token() in ["Static","Sun","Luhman","Starsys","Boolean","Autom","Void"]:
+            while self.peek_next_token() in ["Static","Sun","Luhman","Starsys","Boolean","Autom","Void", "ISS", "Class"]:
                 #  Parse: is it a constant dec?
                 if self.peek_next_token() == "Static":
                     self.match("Static")  # consume Static
@@ -5338,6 +6690,12 @@ class SyntaxAnalyzer:
                     else:
                         self.errors.append(
                             f"Syntax error: Expected 'Identifier' after {self.peek_previous_token()}")
+                #  Parse: is it a globally declared Struct?
+                elif self.peek_next_token() == "ISS":
+                    self.match_struct("ISS")
+                #  Parse: is it a globally declared Class?
+                elif self.peek_next_token() == "Class":
+                    self.match_class_stmnt("Class")
                 else:
                     break
         else:
