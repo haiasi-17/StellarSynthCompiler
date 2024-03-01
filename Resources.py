@@ -113,7 +113,7 @@ WordSymbolDelims =      {
                         "Nominal":      delim25,
                         "Other":        delim6,
                         "Perform":      delim6,
-                        "Private":      delim3,
+                        "Private":      delim25,
                         "Proceed":      delim2,
                         "Protected":    delim25,
                         "Public":       delim25,
