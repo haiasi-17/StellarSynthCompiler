@@ -65,12 +65,12 @@ delim9 =                Space + Newline
 delim10 =               Space + LParenth + LSqrBrkt + Terminator
 delim11 =               Space + ComAlpha
 delim12 =               Space + LParenth + ComAlpha + AssignOp
-delim13 =               Space + LParenth + AlphaNum + RParenth + ExclaMark + Minus
+delim13 =               Space + LParenth + AlphaNum + RParenth + ExclaMark + Minus + RegDblQtMark + RegSglQtMark
 delim14 =               Space + Terminator + MathOp + LSqrBrkt + Ampersand + VerticalBar + LessThan + GreaterThan + AssignOp + Newline + Comma + RParenth + G
 delim15 =               Space + Newline + RegSglQtMark + RegDblQtMark + AlphaNum + LSqrBrkt + RSqrBrkt
 delim16 =               Space + Newline + Terminator + ComAlpha + RSqrBrkt + Comma
 delim17 =               Space + AlphaNum + RegSglQtMark + RegDblQtMark + LSqrBrkt
-delim18 =               PrintableChar + Newline
+delim18 =               PrintableChar + Newline + RParenth
 delim19 =               Space + AlphaNum + RCurBrace
 delim20 =               Space + Terminator + AssignOp + LCurBrace + GreaterThan + LessThan + MathOp + RParenth
 delim21 =               [x for x in PrintableChar if x not in RegQtMarks and x != 'n'] + Newline
