@@ -70,10 +70,10 @@ delim14 =               Space + Tab + Terminator + MathOp + LSqrBrkt + Ampersand
 delim15 =               Space + Tab + Newline + RegSglQtMark + RegDblQtMark + AlphaNum + LSqrBrkt + RSqrBrkt
 delim16 =               Space + Tab + Newline + Terminator + ComAlpha + RSqrBrkt + Comma
 delim17 =               Space + Tab + AlphaNum + RegSglQtMark + RegDblQtMark + LSqrBrkt
-delim18 =               PrintableChar + Tab + Newline + RParenth
+delim18 =               PrintableChar + Tab + Newline + RParenth # Was used for \' and \" delims
 delim19 =               Space + Tab + AlphaNum + RCurBrace
 delim20 =               Space + Tab + Terminator + AssignOp + LCurBrace + GreaterThan + LessThan + MathOp + RParenth
-delim21 =               [x for x in PrintableChar if x not in RegQtMarks and x != 'n'] + Newline + Tab
+delim21 =               [x for x in PrintableChar if x not in RegQtMarks and x != 'n'] + Newline + Tab # Formerly used for chars  that come after in string \ except n, ', "
 delim22 =               Space + Tab + Newline + UpperAlpha
 delim23 =               Space + Tab + RParenth
 delim24 =               Space + Tab + AlphaNum + LParenth + RegSglQtMark + RegDblQtMark
@@ -155,9 +155,6 @@ WordSymbolDelims =      {
                         "{":            delim19,
                         "}":            delim20,
                         "#":            delim26,
-                        "\"":           delim18,
-                        "\'":           delim18,
-                        "\\":           delim21,
                         ".":            AlphaNum,
                         ":":            delim22,
                         "::":           ComAlpha,
