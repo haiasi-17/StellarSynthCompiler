@@ -13,7 +13,8 @@ RelOp =                 ['==','!=','<','>','>=','<=']
 MathOp =                ['+','-','*','/','%']
 LogOp =                 ['&&', '||', '!']
 InpOutOp =              [">>", "<<"]
-Operators =             AssignOp + RelOp + MathOp + LogOp + InpOutOp
+ExpoOp =                ["**"]
+Operators =             AssignOp + RelOp + MathOp + LogOp + InpOutOp + ExpoOp
 Minus =                 ['-']
 LParenth =              ['(']
 RParenth =              [')']
