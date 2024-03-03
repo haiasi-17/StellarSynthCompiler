@@ -81,7 +81,8 @@ class Lexer:
             self.current_char = None
 
     def retreat(self):
-        self.pos -= 1
+        if self.pos >= 0:
+            self.pos -= 1
         self.column_num -= 1
         if self.pos < 0:
             self.current_char = None
@@ -89,6 +90,7 @@ class Lexer:
             self.current_char = self.line[self.pos]
 
     def letter_not_match(self):
+        self.retreat()
         self.not_keyword_flag = True
         return False
 
@@ -1253,14 +1255,10 @@ class Lexer:
         if self.not_keyword_flag is True:
             if self.letter_count > 0:
                 for i in range(self.letter_count):
+                    print(self.letter_count, self.current_lexeme, self.pos, self.line[self.pos])
                     self.retreat()
-                    print(self.pos, self.line[self.pos])
             self.current_lexeme = ""
             self.letter_count = 0
-            if self.pos == -1:
-                pass
-            else:
-                self.retreat()
             return
 
         self.advance()
