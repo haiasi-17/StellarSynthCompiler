@@ -1255,7 +1255,6 @@ class Lexer:
         if self.not_keyword_flag is True:
             if self.letter_count > 0:
                 for i in range(self.letter_count):
-                    print(self.letter_count, self.current_lexeme, self.pos, self.line[self.pos])
                     self.retreat()
             self.current_lexeme = ""
             self.letter_count = 0
