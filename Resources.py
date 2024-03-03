@@ -49,7 +49,6 @@ PrintableChar =         AlphaNum + Space + Comma + Period + ['!', '\"', '#', '$'
                                                              ')', '*', '+', '-', '/', ':', ';', '<', '=', '>',
                                                              '?', '@', '[', '\\', ']', '^', '_', '`', '{',
                                                              '|', '}', '~']
-G = ["G"] # for delim 14, Rparenth uses this: subfunc()Gotolerate
 
 # Delimiters
 sdelim =                Space + Tab
@@ -66,7 +65,7 @@ delim10 =               Space + Tab + LParenth + LSqrBrkt + Terminator
 delim11 =               Space + Tab + ComAlpha
 delim12 =               Space + Tab + LParenth + ComAlpha + AssignOp
 delim13 =               Space + Tab + LParenth + AlphaNum + RParenth + ExclaMark + Minus + RegDblQtMark + RegSglQtMark
-delim14 =               Space + Tab + Terminator + MathOp + LSqrBrkt + Ampersand + VerticalBar + LessThan + GreaterThan + AssignOp + Newline + Comma + RParenth + G
+delim14 =               Space + Tab + Terminator + MathOp + LSqrBrkt + Ampersand + VerticalBar + LessThan + GreaterThan + AssignOp + Newline + Comma + RParenth + ["G"]
 delim15 =               Space + Tab + Newline + RegSglQtMark + RegDblQtMark + AlphaNum + LSqrBrkt + RSqrBrkt
 delim16 =               Space + Tab + Newline + Terminator + ComAlpha + RSqrBrkt + Comma
 delim17 =               Space + Tab + AlphaNum + RegSglQtMark + RegDblQtMark + LSqrBrkt
