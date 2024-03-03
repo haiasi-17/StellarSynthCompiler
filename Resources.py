@@ -52,7 +52,7 @@ PrintableChar =         AlphaNum + Space + Comma + Period + ['!', '\"', '#', '$'
 
 # Delimiters
 sdelim =                Space + Tab
-delim1 =                Space + Tab + LParenth + RParenth
+delim1 =                Space + Tab + LParenth
 delim2 =                Space + Tab + Terminator
 delim3 =                []
 delim4 =                Space + Tab + GreaterThan
@@ -65,7 +65,7 @@ delim10 =               Space + Tab + LParenth + LSqrBrkt + Terminator
 delim11 =               Space + Tab + ComAlpha
 delim12 =               Space + Tab + LParenth + ComAlpha + AssignOp
 delim13 =               Space + Tab + LParenth + AlphaNum + RParenth + ExclaMark + Minus + RegDblQtMark + RegSglQtMark
-delim14 =               Space + Tab + Terminator + MathOp + LSqrBrkt + Ampersand + VerticalBar + LessThan + GreaterThan + AssignOp + Newline + Comma + RParenth + ["G"]
+delim14 =               Space + Tab + Terminator + MathOp + LSqrBrkt + Ampersand + VerticalBar + LessThan + GreaterThan + AssignOp + Newline + RParenth + Comma + ["G"]
 delim15 =               Space + Tab + Newline + RegSglQtMark + RegDblQtMark + AlphaNum + LSqrBrkt + RSqrBrkt
 delim16 =               Space + Tab + Newline + Terminator + ComAlpha + RSqrBrkt + Comma
 delim17 =               Space + Tab + AlphaNum + RegSglQtMark + RegDblQtMark + LSqrBrkt
@@ -84,7 +84,7 @@ Sun_delim =             (Space + RParenth + RCurBrace + RSqrBrkt + Terminator + 
                         Ampersand + VerticalBar + ExclaMark + MathOp + AssignOp + GreaterThan + LessThan + Tab)
 Luhman_delim =          (Space + RParenth + RSqrBrkt + Terminator + Comma + Ampersand + VerticalBar
                         + ExclaMark + MathOp + AssignOp + GreaterThan + LessThan + Tab)
-Starsys_delim =         Space + RParenth + Comma + Terminator + LessThan + Tab
+Starsys_delim =         Space + RParenth + Comma + Terminator + LessThan + RSqrBrkt + Tab
 Boolean_delim =         Space + Terminator + RParenth + Ampersand + VerticalBar + ExclaMark + Comma + RSqrBrkt + Tab
 Identifier_delim =      (Space + Terminator + LParenth + RParenth + LCurBrace + RSqrBrkt + MathOp
                         + Ampersand + VerticalBar + ExclaMark + AssignOp + GreaterThan + LessThan + Comma + Period + Colon + Tilde + LSqrBrkt + Newline + RCurBrace + Tab)
