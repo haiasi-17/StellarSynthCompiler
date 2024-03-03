@@ -1578,8 +1578,8 @@ class Lexer:
                 self.current_lexeme += "\""
             self.starsys_flag = True
             return
-        elif self.starsys_flag is True:
-            while self.current_char in Resources.PrintableChar or self.current_char == "\t" or self.current_char == "\n" and (self.current_char is not None):
+        elif self.starsys_flag is True and self.current_char is not None:
+            while self.current_char in Resources.PrintableChar or self.current_char == "\t" or self.current_char == "\n":
                 if (self.current_lexeme[0] == "\"" and self.current_char == "\"") or (self.current_lexeme[0] == "\'" and self.current_char == "\'"):
                     self.current_lexeme += self.current_char
                     self.advance()
@@ -1591,8 +1591,9 @@ class Lexer:
                         return
                     else:
                         self.Errors.append(
-                            f"(Line {self.line_num}, Column {self.column_num}) | Lexical Error: {repr(self.current_lexeme)}.")
+                            f"(Line {self.line_num}, Column {self.column_num}) | Lexical Error: {repr(self.current_lexeme)} has invalid delimiter {repr(self.current_char)}.")
                         self.current_lexeme = ""
+                        self.starsys_flag = False
                         return
 
                 elif self.current_char in Resources.PrintableChar or (self.current_char == "\t" or self.current_char == "\n"):
@@ -1605,6 +1606,15 @@ class Lexer:
                     else:
                         self.current_lexeme += self.current_char
                 self.advance()
+
+        elif self.starsys_flag is True and (self.line_num == len(self.lines) and self.current_char is None):
+            self.Errors.append(
+                f"(Line {self.line_num}, Column {self.column_num}) | Lexical Error: {repr(self.current_lexeme)} has invalid delimiter {repr(self.current_char)}.")
+            self.current_lexeme = ""
+            self.starsys_flag = False
+            return
+
+
             
 def read_text(file):
     contents = open(file, "r").read()
