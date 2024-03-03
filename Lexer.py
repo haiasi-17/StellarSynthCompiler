@@ -1339,7 +1339,7 @@ class Lexer:
             if self.current_char == "&":
                 self.current_lexeme += self.current_char
             else:
-                self.Errors.append(f"(Line {self.line_num}, Column {self.column_num}) | Lexical Error: {repr(self.current_lexeme)} Expected another \'&\', instead got {repr(self.current_char)}.")
+                self.Errors.append(f"(Line {self.line_num}, Column {self.column_num}) | Lexical Error: {repr(self.current_lexeme)} is not a recognized character.")
                 self.current_lexeme = ""
                 self.retreat()
                 return False
@@ -1349,7 +1349,7 @@ class Lexer:
             if self.current_char == "|":
                 self.current_lexeme += self.current_char
             else:
-                self.Errors.append(f"(Line {self.line_num}, Column {self.column_num}) | Lexical Error: {repr(self.current_lexeme)}. Expected another \'|\', instead got {repr(self.current_char)}.")
+                self.Errors.append(f"(Line {self.line_num}, Column {self.column_num}) | Lexical Error: {repr(self.current_lexeme)} is not a recognized character.")
                 self.current_lexeme = ""
                 self.retreat()
                 return False

@@ -54,7 +54,7 @@ PrintableChar =         AlphaNum + Space + Comma + Period + ['!', '\"', '#', '$'
 sdelim =                Space + Tab
 delim1 =                Space + Tab + LParenth
 delim2 =                Space + Tab + Terminator
-delim3 =                []
+delim3 =                [] # Not in use
 delim4 =                Space + Tab + GreaterThan
 delim5 =                Space + Tab + LessThan
 delim6 =                Space + Tab + LSqrBrkt
@@ -78,7 +78,7 @@ delim23 =               Space + Tab + RParenth
 delim24 =               Space + Tab + AlphaNum + LParenth + RegSglQtMark + RegDblQtMark
 delim25 =               Space + Tab + Colon
 delim26 =               Space + Tab + ComAlpha + Newline + RSqrBrkt + RParenth
-delim27 =               PrintableChar + Newline + Tab
+delim27 =               PrintableChar + Newline + Tab # Not in use
 
 Sun_delim =             (Space + RParenth + RCurBrace + RSqrBrkt + Terminator + Comma +
                         Ampersand + VerticalBar + ExclaMark + MathOp + AssignOp + GreaterThan + LessThan + Tab)
@@ -145,8 +145,6 @@ WordSymbolDelims =      {
                         "&&":           delim7,
                         "||":           delim7,
                         "!":            delim12,
-                        "\n":           delim27,
-                        "\t":           delim27,
                         "(":            delim13,
                         ")":            delim14,
                         "[":            delim15,
@@ -167,7 +165,6 @@ WordSymbolDelims =      {
                         "SunLiteral":   Sun_delim,
                         "LuhmanLiteral": Luhman_delim,
                         "StarsysLiteral": Starsys_delim,
-                        "Space":        delim27
                     }
 
 Datatype = ["Sun", "Luhman", "Starsys"]
