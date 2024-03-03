@@ -2,6 +2,9 @@ import tkinter as tk
 from tkinter import filedialog, ttk
 import subprocess
 
+from Syntax import SyntaxAnalyzer
+
+
 class MainWindow:
     def __init__(self, master):
         self.opened_file_flag = False
@@ -22,7 +25,7 @@ class MainWindow:
         self.lexer_button = tk.Button(self.main_frame, text="Lexer", bg="#dbdbff", bd=1, relief="solid", width=10, command=self.run_lexical)
         self.lexer_button.place(x=15, y=40)
 
-        self.syntax_button = tk.Button(self.main_frame, text="Syntax", bg="#dbdbff", bd=1, relief="solid", width=10)
+        self.syntax_button = tk.Button(self.main_frame, text="Syntax", bg="#dbdbff", bd=1, relief="solid", width=10, command=self.run_syntax)
         self.syntax_button.place(x=105, y=40)
 
         self.semantic_button = tk.Button(self.main_frame, text="Semantic", bg="#dbdbff", bd=1, relief="solid", width=10)
