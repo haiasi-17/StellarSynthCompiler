@@ -2,7 +2,6 @@ import tkinter as tk
 from tkinter import filedialog, ttk
 import subprocess
 
-
 class MainWindow:
     def __init__(self, master):
         self.opened_file_flag = False
@@ -53,11 +52,13 @@ class MainWindow:
         self.errors_result = tk.Listbox(self.main_frame, bg="black", fg="white",font=("Courier New", 10))
         self.errors_result.place(x=14, y=460, width=802, height=200)
 
-        self.Lexeme_Token_Table = ttk.Treeview(self.main_frame, columns=("Lexeme", "Token"), show="headings")
+        self.Lexeme_Token_Table = ttk.Treeview(self.main_frame, columns=("Number","Lexeme", "Token"), show="headings")
+        self.Lexeme_Token_Table.heading("Number", text="Num.")
         self.Lexeme_Token_Table.heading("Lexeme", text="Lexeme")
         self.Lexeme_Token_Table.heading("Token", text="Token")
-        self.Lexeme_Token_Table.column("Lexeme", width=200)
-        self.Lexeme_Token_Table.column("Token", width=200)
+        self.Lexeme_Token_Table.column("Number", width=50)
+        self.Lexeme_Token_Table.column("Lexeme", width=165)
+        self.Lexeme_Token_Table.column("Token", width=165)
         self.Lexeme_Token_Table_scrollbar = tk.Scrollbar(self.main_frame, orient="vertical", command=self.Lexeme_Token_Table.yview)
         self.Lexeme_Token_Table.configure(yscrollcommand=self.Lexeme_Token_Table_scrollbar.set)
         self.Lexeme_Token_Table.place(x=820, y=80, width=380, height=580)
@@ -65,6 +66,12 @@ class MainWindow:
 
         self.master.after(self.UpdateDelay, self.update)
 
+    def tag_rows(self, tree):
+        for i, item in enumerate(tree.get_children()):
+            tag = 'even' if i % 2 == 0 else 'odd'
+            tree.tag_configure(tag, background='#E8E8E8' if tag == 'even' else '#FFFFFF')
+            for col in tree['columns']:
+                tree.item(item, tags=(tag,))
     def grid_configure(self, widget):
         for i in range(3):
             widget.rowconfigure(i, weight=1)
@@ -127,25 +134,29 @@ class MainWindow:
                 for error in errors:
                     self.errors_result.insert(tk.END, f" StellarSynth -> {error}")
 
-
             self.Lexeme_Token_Table.delete(*self.Lexeme_Token_Table.get_children())
             if not tokens:
                 self.errors_result.insert(tk.END, " StellarSynth -> Tokens list is empty.")
             else:
+                tok_count = 0
                 for lexeme, token in tokens:
                     if token == "\n" or token == "\t":
                         tempval1 = repr(lexeme)
                         tempval1 = tempval1[1:-1]
                         tempval2 = repr(token)
                         tempval2 = tempval2[1:-1]
-                        self.Lexeme_Token_Table.insert("", tk.END, values=(tempval1, tempval2))
+                        tok_count += 1
+                        self.Lexeme_Token_Table.insert("", tk.END, values=(tok_count, tempval1, tempval2))
                     elif token == "StarsysLiteral":
                         tempval1 = repr(lexeme)
                         tempval1 = tempval1[1:-1]
-                        self.Lexeme_Token_Table.insert("", tk.END, values=(tempval1, token))
+                        tok_count += 1
+                        self.Lexeme_Token_Table.insert("", tk.END, values=(tok_count,tempval1, token))
                     else:
-                        self.Lexeme_Token_Table.insert("", tk.END, values=(lexeme, token))
+                        tok_count += 1
+                        self.Lexeme_Token_Table.insert("", tk.END, values=(tok_count,lexeme, token))
 
+            self.tag_rows(self.Lexeme_Token_Table)
             self.errors_result.insert(tk.END, "")
             self.errors_result.insert(tk.END, " StellarSynth -> Tokenization Complete.")
 
@@ -175,16 +186,25 @@ class MainWindow:
             if not tokens:
                 self.errors_result.insert(tk.END, "StellarSynth -> Tokens list is empty.")
             else:
+                tok_count = 0
                 for lexeme, token in tokens:
-                    if token == "\n":
+                    if token == "\n" or token == "\t":
                         tempval1 = repr(lexeme)
                         tempval1 = tempval1[1:-1]
                         tempval2 = repr(token)
                         tempval2 = tempval2[1:-1]
-                        self.Lexeme_Token_Table.insert("", tk.END, values=(tempval1, tempval2))
+                        tok_count += 1
+                        self.Lexeme_Token_Table.insert("", tk.END, values=(tok_count, tempval1, tempval2))
+                    elif token == "StarsysLiteral":
+                        tempval1 = repr(lexeme)
+                        tempval1 = tempval1[1:-1]
+                        tok_count += 1
+                        self.Lexeme_Token_Table.insert("", tk.END, values=(tok_count, tempval1, token))
                     else:
-                        self.Lexeme_Token_Table.insert("", tk.END, values=(lexeme, token))
+                        tok_count += 1
+                        self.Lexeme_Token_Table.insert("", tk.END, values=(tok_count, lexeme, token))
 
+                self.tag_rows(self.Lexeme_Token_Table)
                 self.errors_result.insert(tk.END, "")
                 self.errors_result.insert(tk.END, "StellarSynth -> Tokenization Complete.")
 
