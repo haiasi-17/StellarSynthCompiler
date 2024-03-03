@@ -1538,15 +1538,17 @@ class Lexer:
 
         while (self.sl_com_flag is True and self.current_char is not None) and self.current_char != "\n":
             if self.current_char in Resources.PrintableChar or self.current_char == "\t":
+                self.current_lexeme += self.current_char
                 self.advance()
-            else:
-                self.Errors.append(
-                    f"(Line {self.line_num}, Column {self.column_num}) | Lexical Error: {repr(self.current_lexeme)} has invalid delimiter {repr(self.current_char)}.")
-                self.current_lexeme = ""
-                self.sl_com_flag = False
-                return
 
-        if self.current_char is None or self.current_char == "\n":
+        if self.current_char is None:
+            self.Errors.append(
+                f"(Line {self.line_num}, Column {self.column_num}) | Lexical Error: {repr(self.current_lexeme)} has invalid delimiter {repr(self.current_char)}.")
+            self.current_lexeme = ""
+            self.sl_com_flag = False
+            return
+        elif self.current_char == "\n":
+            self.current_lexeme = ""
             self.sl_com_flag = False
             self.retreat()
             return
