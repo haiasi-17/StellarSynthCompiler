@@ -1254,9 +1254,13 @@ class Lexer:
             if self.letter_count > 0:
                 for i in range(self.letter_count):
                     self.retreat()
+                    print(self.pos, self.line[self.pos])
             self.current_lexeme = ""
             self.letter_count = 0
-            self.retreat()
+            if self.pos == -1:
+                pass
+            else:
+                self.retreat()
             return
 
         self.advance()
