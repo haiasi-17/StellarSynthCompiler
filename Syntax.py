@@ -9,7 +9,7 @@ class SyntaxAnalyzer:
         self.current_lexeme = None
         self.current_token = None
         self.function_is_defined = False
-        self.global_is_defined = False
+        self.disintegrate_exist = False
 
     #  method that peeks at the next token after the current_token
     def peek_next_token(self):
@@ -70,7 +70,6 @@ class SyntaxAnalyzer:
                 self.errors.append(f"Syntax error: Expected '{expected_token}' but found '{self.current_token}'")
                 return False
         else:
-            self.errors.append("Syntax error: Unexpected end of input")
             return False
 
     #  method that handles multiple identifiers separated with comma
@@ -87,8 +86,10 @@ class SyntaxAnalyzer:
                     self.matchID_mult("Identifier")
                 # else: if it is not followed by an id, it shows the error
                 else:
-                    self.errors.append(f"Syntax error: Expected 'Identifier', '#', '=' "
+                    self.errors.append(f"Syntax error: Expected 'Identifier' "
                                        f"after '{self.peek_previous_token()}'")
+            elif self.peek_next_token() == "~":
+                self.errors.append(f"Syntax error: Expected ',' but found '{self.peek_next_token()}'")
             else:
                 return True  # else: last identifier has no following identifiers (comma)
         else:
@@ -102,8 +103,9 @@ class SyntaxAnalyzer:
             self.get_next_token()
 
         if expected_token == "<<":
-            if (re.match(r'Identifier\d*$', self.peek_next_token()) or "SunLiteral" or "LuhmanLiteral"
-                  or "StarsysLiteral" or "True" or "False"):
+            if (re.match(r'Identifier\d*$', self.peek_next_token()) or self.peek_next_token() == "SunLiteral"
+                    or self.peek_next_token() == "LuhmanLiteral" or self.peek_next_token() == "StarsysLiteral"
+                    or self.peek_next_token() == "True" or self.peek_next_token() == "False"):
                 self.match(Resources.Value1)  # consume
                 #  if the next is a '<<' proceed to check if it is followed by any of the given values
                 if self.peek_next_token() == "<<":
@@ -169,12 +171,425 @@ class SyntaxAnalyzer:
                         self.match_output("<<")
                     else:
                         self.errors.append(f"Syntax error: Expected '<<', '#' after '{self.peek_previous_token()}'")
+                #  display array index path: <<arr{1}<<arr{1}{1}
+                elif self.peek_next_token() == "{" and re.match(r'Identifier\d*$', self.peek_previous_token()):
+                    self.match_arrID_output("{")
+                    #  terminate it?
+                    if self.peek_next_token() == "#":
+                        return True
+                    #  another disp?
+                    elif self.peek_next_token() == "<<":
+                        self.match_output("<<")
                 else:
                     return True  # else: last identifier has no following '<<' to display
+            #  global scope resolution path
+            elif self.peek_next_token() == "::":
+                self.match("::")
+                # must be followed by an identifier
+                if re.match(r'Identifier\d*$', self.peek_next_token()):
+                    self.match("Identifier")
+                    #  terminate it?
+                    if self.peek_next_token() == "#":
+                        return True
+                    #  another disp?
+                    elif self.peek_next_token() == "<<":
+                        self.match_output("<<")
+                #  error: not followed by an identifier
+                else:
+                    self.errors.append(f"Syntax error: Expected 'Identifier' after '{self.peek_previous_token()}'")
             else:
                 self.errors.append(f"Syntax error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral',"
-                                   f" 'StarsysLiteral', 'True', 'False' but found '{self.peek_next_token()}'")
+                                   f" 'StarsysLiteral', 'True', 'False', '::' after '{self.peek_previous_token()}'")
                 return False
+
+    #  outputting array indexes
+    def match_arrID_output(self, expected_token):
+        self.get_next_token()
+        while self.current_token == "Space":
+            self.get_next_token()
+
+        if expected_token == "{":
+            if (re.match(r'Identifier\d*$', self.peek_next_token())
+                    or self.peek_next_token() == "SunLiteral"):
+                self.match(Resources.Value3)  # consume the values
+                if (self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                        or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                    self.match_mathop3(Resources.mathop1)  # size is a math expr
+                    #  close it with "}" if size is fulfilled
+                    if self.peek_next_token() == "}":
+                        self.match("}")
+                        # Terminate it
+                        if self.peek_next_token() == "#":
+                            return True
+                        # add another size to become 2D array
+                        if self.peek_next_token() == "{":
+                            self.match_arrID2D_output("{")
+                            # Terminate it
+                            if self.peek_next_token() == "#":
+                                return True
+                            #  more display
+                            elif self.peek_next_token() == "<<":
+                                return True
+                            #  not terminated or followed
+                            else:
+                                return False
+                        #  more display
+                        elif self.peek_next_token() == "<<":
+                            return True
+                        #  not terminated or followed
+                        else:
+                            return False
+                    #  not closed with '}'
+                    else:
+                        self.errors.append(
+                            f"Syntax Error: Expected 'Rcurlbrace' after {self.peek_previous_token()}")
+                #  size is single value
+                elif self.peek_next_token() == "}":
+                    self.match("}")
+                    #  terminate it
+                    if self.peek_next_token() == "#":
+                        return True
+                    # add another size to become 2D array
+                    if self.peek_next_token() == "{":
+                        self.match_arrID2D_output("{")
+                        # Terminate it
+                        if self.peek_next_token() == "#":
+                            return True
+                        #  more display
+                        elif self.peek_next_token() == "<<":
+                            return True
+                        #  not terminated or followed
+                        else:
+                            return False
+                    #  more display
+                    elif self.peek_next_token() == "<<":
+                        return True
+                    #  not terminated or followed
+                    else:
+                        return False
+                #  size value is not followed by any of the following (# and Rcurl)
+                else:
+                    self.errors.append(
+                        f"Syntax Error: Expected 'Rcurlbraces', '+', '-', '*', '/', '%' after {self.peek_previous_token()}")
+            #  empty size, proceed to close it with '}'
+            elif self.peek_next_token() == "}":
+                self.match("}")
+                # add another size to become 2D array
+                if self.peek_next_token() == "{":
+                    self.match_arrID2D_output("{")
+                    # Terminate it
+                    if self.peek_next_token() == "#":
+                        return True
+                    #  more display
+                    elif self.peek_next_token() == "<<":
+                        return True
+                    #  not terminated or followed
+                    else:
+                        return False
+                #  more display
+                elif self.peek_next_token() == "<<":
+                    return True
+                #  terminate it
+                elif self.peek_next_token() == "#":
+                    return True
+                #  not terminated or followed
+                else:
+                    return False
+            else:
+                self.errors.append(
+                    f"Expected 'Identifier', 'SunLiteral', 'Rcurlybrace' but found {self.peek_next_token()}")
+        else:
+            self.errors.append(f"Expected {expected_token} but found {self.current_token}")
+
+    #  2D index output
+    def match_arrID2D_output(self, expected_token):
+        self.get_next_token()
+        while self.current_token == "Space":
+            self.get_next_token()
+
+        if expected_token == "{":
+            if (re.match(r'Identifier\d*$', self.peek_next_token())
+                    or self.peek_next_token() == "SunLiteral"):
+                self.match(Resources.Value3)  # consume the values
+                if (self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                        or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                    self.match_mathop3(Resources.mathop1)  # size is a math expr
+                    #  close it with "}" if size is fulfilled
+                    if self.peek_next_token() == "}":
+                        self.match("}")
+                        # Terminate it
+                        if self.peek_next_token() == "#":
+                            return True
+                        #  more display
+                        elif self.peek_next_token() == "<<":
+                            return True
+                        #  not terminated or followed
+                        else:
+                            return False
+                    #  not closed with '}'
+                    else:
+                        self.errors.append(
+                            f"Syntax Error: Expected 'Rcurlbrace' after {self.peek_previous_token()}")
+                #  size is single value
+                elif self.peek_next_token() == "}":
+                    self.match("}")
+                    #  terminate it
+                    if self.peek_next_token() == "#":
+                        return True
+                    #  more display
+                    elif self.peek_next_token() == "<<":
+                        return True
+                    #  not terminated or followed
+                    else:
+                        return False
+                #  size value is not followed by any of the following (# and Rcurl)
+                else:
+                    self.errors.append(
+                        f"Syntax Error: Expected 'Rcurlbraces', '+', '-', '*', '/', '%' after {self.peek_previous_token()}")
+            #  empty size, proceed to close it with '}'
+            elif self.peek_next_token() == "}":
+                self.match("}")
+                #  more display
+                if self.peek_next_token() == "<<":
+                    return True
+                #  terminate it
+                elif self.peek_next_token() == "#":
+                    return True
+                #  not terminated or followed
+                else:
+                    return False
+            else:
+                self.errors.append(
+                    f"Expected 'Identifier', 'SunLiteral', 'Rcurlybrace' but found {self.peek_next_token()}")
+        else:
+            self.errors.append(f"Expected {expected_token} but found {self.current_token}")
+
+
+    #  2D index assign
+    def match_arrID2D_assign(self, expected_token):
+        self.get_next_token()
+        while self.current_token == "Space":
+            self.get_next_token()
+
+        if expected_token == "{":
+            if (re.match(r'Identifier\d*$', self.peek_next_token())
+                    or self.peek_next_token() == "SunLiteral"):
+                self.match(Resources.Value3)  # consume the values
+                if (self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                        or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                    self.match_mathop3(Resources.mathop1)  # size is a math expr
+                    #  close it with "}" if size is fulfilled
+                    if self.peek_next_token() == "}":
+                        self.match("}")
+                        # Terminate it
+                        if self.peek_next_token() == "#":
+                            return True
+                        #  add it
+                        elif self.peek_next_token() == "+":
+                            return True
+                        #  subtract it
+                        elif self.peek_next_token() == "-":
+                            return True
+                        #  multiply it
+                        elif self.peek_next_token() == "*":
+                            return True
+                        #  divide it
+                        elif self.peek_next_token() == "/":
+                            return True
+                        #  modulo it
+                        elif self.peek_next_token() == "%":
+                            return True
+                        #  exponentiate it
+                        elif self.peek_next_token() == "**":
+                            return True
+                        #  not terminated or followed
+                        else:
+                            return False
+                    #  not closed with '}'
+                    else:
+                        self.errors.append(
+                            f"Syntax Error: Expected 'Rcurlbrace' after {self.peek_previous_token()}")
+                #  size is single value
+                elif self.peek_next_token() == "}":
+                    self.match("}")
+                    #  terminate it
+                    if self.peek_next_token() == "#":
+                        return True
+                    #  add it
+                    elif self.peek_next_token() == "+":
+                        return True
+                    #  subtract it
+                    elif self.peek_next_token() == "-":
+                        return True
+                    #  multiply it
+                    elif self.peek_next_token() == "*":
+                        return True
+                    #  divide it
+                    elif self.peek_next_token() == "/":
+                        return True
+                    #  modulo it
+                    elif self.peek_next_token() == "%":
+                        return True
+                    #  exponentiate it
+                    elif self.peek_next_token() == "**":
+                        return True
+                    #  not terminated or followed
+                    else:
+                        return False
+                #  size value is not followed by any of the following (# and Rcurl)
+                else:
+                    self.errors.append(
+                        f"Syntax Error: Expected 'Rcurlbraces', '+', '-', '*', '/', '%' after {self.peek_previous_token()}")
+            #  empty size, proceed to close it with '}'
+            elif self.peek_next_token() == "}":
+                self.match("}")
+                #  terminate it
+                if self.peek_next_token() == "#":
+                    return True
+                #  add it
+                elif self.peek_next_token() == "+":
+                    return True
+                #  subtract it
+                elif self.peek_next_token() == "-":
+                    return True
+                #  multiply it
+                elif self.peek_next_token() == "*":
+                    return True
+                #  divide it
+                elif self.peek_next_token() == "/":
+                    return True
+                #  modulo it
+                elif self.peek_next_token() == "%":
+                    return True
+                #  exponentiate it
+                elif self.peek_next_token() == "**":
+                    return True
+                #  not terminated or followed
+                else:
+                    return False
+            else:
+                self.errors.append(
+                    f"Expected 'Identifier', 'SunLiteral', 'Rcurlybrace' but found {self.peek_next_token()}")
+        else:
+            self.errors.append(f"Expected {expected_token} but found {self.current_token}")
+
+    # 2D index assign value: arr{1}{2} = 12#
+    def match_arrID2D_index_assign(self, expected_token):
+        self.get_next_token()
+        while self.current_token == "Space":
+            self.get_next_token()
+
+        if expected_token == "{":
+            if (re.match(r'Identifier\d*$', self.peek_next_token())
+                    or self.peek_next_token() == "SunLiteral"):
+                self.match(Resources.Value3)  # consume the values
+                if (self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                        or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                    self.match_mathop3(Resources.mathop1)  # size is a math expr
+                    #  close it with "}" if size is fulfilled
+                    if self.peek_next_token() == "}":
+                        self.match("}")
+                        # equal it
+                        if self.peek_next_token() == "=":
+                            return True
+                        #  not followed by an equal
+                        else:
+                            return False
+                    #  not closed with '}'
+                    else:
+                        self.errors.append(
+                            f"Syntax Error: Expected 'Rcurlbrace' after {self.peek_previous_token()}")
+                #  size is single value
+                elif self.peek_next_token() == "}":
+                    self.match("}")
+                    # equal it
+                    if self.peek_next_token() == "=":
+                        return True
+                    #  not followed by an equal
+                    else:
+                        return False
+                #  size value is not followed by any of the following (# and Rcurl)
+                else:
+                    self.errors.append(
+                        f"Syntax Error: Expected 'Rcurlbraces', '+', '-', '*', '/', '%' after {self.peek_previous_token()}")
+            #  empty size, proceed to close it with '}'
+            elif self.peek_next_token() == "}":
+                self.match("}")
+                # equal it
+                if self.peek_next_token() == "=":
+                    return True
+                #  not followed by an equal
+                else:
+                    return False
+            else:
+                self.errors.append(
+                    f"Expected 'Identifier', 'SunLiteral', 'Rcurlybrace' but found {self.peek_next_token()}")
+        else:
+            self.errors.append(f"Expected {expected_token} but found {self.current_token}")
+
+    # 2D index assign value: arr{1}{2} = 12#
+    def match_arrID2D_index_parameter(self, expected_token):
+        self.get_next_token()
+        while self.current_token == "Space":
+            self.get_next_token()
+
+        if expected_token == "{":
+            if (re.match(r'Identifier\d*$', self.peek_next_token())
+                    or self.peek_next_token() == "SunLiteral"):
+                self.match(Resources.Value3)  # consume the values
+                if (self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                        or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                    self.match_mathop3(Resources.mathop1)  # size is a math expr
+                    #  close it with "}" if size is fulfilled
+                    if self.peek_next_token() == "}":
+                        self.match("}")
+                        # close it
+                        if self.peek_next_token() == ")":
+                            return True
+                        #  add another parameter(,)
+                        elif self.peek_next_token() == ",":
+                            return True
+                        #  not followed by an equal
+                        else:
+                            return False
+                    #  not closed with '}'
+                    else:
+                        self.errors.append(
+                            f"Syntax Error: Expected 'Rcurlbrace' after {self.peek_previous_token()}")
+                #  size is single value
+                elif self.peek_next_token() == "}":
+                    self.match("}")
+                    # close it
+                    if self.peek_next_token() == ")":
+                        return True
+                    #  add another parameter(,)
+                    elif self.peek_next_token() == ",":
+                        return True
+                    #  not followed by an equal
+                    else:
+                        return False
+                #  size value is not followed by any of the following (# and Rcurl)
+                else:
+                    self.errors.append(
+                        f"Syntax Error: Expected 'Rcurlbraces', '+', '-', '*', '/', '%' after {self.peek_previous_token()}")
+            #  empty size, proceed to close it with '}'
+            elif self.peek_next_token() == "}":
+                self.match("}")
+                # close it
+                if self.peek_next_token() == ")":
+                    return True
+                #  add another parameter(,)
+                elif self.peek_next_token() == ",":
+                    return True
+                #  not followed by an equal
+                else:
+                    return False
+            else:
+                self.errors.append(
+                    f"Expected 'Identifier', 'SunLiteral', 'Rcurlybrace' but found {self.peek_next_token()}")
+        else:
+            self.errors.append(f"Expected {expected_token} but found {self.current_token}")
+
 
     #  method that handles input statement
     def match_input(self, expected_token):
@@ -209,7 +624,7 @@ class SyntaxAnalyzer:
                         or self.peek_next_token() == ">" or self.peek_next_token() == "<=" or self.peek_next_token() == ">="
                         or self.peek_next_token() == "||" or self.peek_next_token() == "&&" or self.peek_next_token() == "!"
                         or self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
-                        or self.peek_next_token() == "/"):
+                        or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
                     self.match(Resources.condop)
                     if (re.match(r'Identifier\d*$', self.peek_next_token()) or "SunLiteral" or "LuhmanLiteral"
                             or "StarsysLiteral" or "True" or "False"):
@@ -221,7 +636,7 @@ class SyntaxAnalyzer:
                                 or self.peek_next_token() == ">" or self.peek_next_token() == "<=" or self.peek_next_token() == ">="
                                 or self.peek_next_token() == "||" or self.peek_next_token() == "&&" or self.peek_next_token() == "!"
                                 or self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
-                                or self.peek_next_token() == "/"):
+                                or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
                             self.match(Resources.condop)
                             #  must be followed by these values
                             if (re.match(r'Identifier\d*$', self.peek_next_token()) or "SunLiteral" or "LuhmanLiteral"
@@ -232,7 +647,7 @@ class SyntaxAnalyzer:
                                 #  not closed with ')' or followed by a conditional operator
                                 else:
                                     self.errors.append(f"Syntax error: Expected ')', '==', '!=', '<', '>', "
-                                                       f"'<=', '>=', '&&', '||', '!', '+', '-', '*', '/' but found '{self.peek_next_token()}'")
+                                                       f"'<=', '>=', '&&', '||', '!', '+', '-', '*', '/', '%' but found '{self.peek_next_token()}'")
                             #  not followed by any of the values expected after a condition operator
                             else:
                                 self.errors.append(f"Syntax error: Expected 'Identifier', 'SunLiteral', "
@@ -243,7 +658,7 @@ class SyntaxAnalyzer:
                         #  not closed with ')' or followed by a conditional operator
                         else:
                             self.errors.append(f"Syntax error: Expected ')', '==', '!=', '<', '>', "
-                                           f"'<=', '>=', '&&', '||', '!', '+', '-', '*', '/' but found '{self.peek_next_token()}'")
+                                           f"'<=', '>=', '&&', '||', '!', '+', '-', '*', '/', '%' but found '{self.peek_next_token()}'")
                     #  not followed by any of the values expected after a condition operator
                     else:
                         self.errors.append(f"Syntax error: Expected 'Identifier', 'SunLiteral', "
@@ -254,7 +669,7 @@ class SyntaxAnalyzer:
                 #  not closed with ')' or followed by a conditional operator
                 else:
                     self.errors.append(f"Syntax error: Expected ')', '==', '!=', '<', '>', "
-                                       f"'<=', '>=', '&&', '||', '!', '+', '-', '*', '/' but found '{self.peek_next_token()}'")
+                                       f"'<=', '>=', '&&', '||', '!', '+', '-', '*', '/', '%' but found '{self.peek_next_token()}'")
             # empty condition error
             else:
                 self.errors.append(f"Syntax error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral'"
@@ -276,7 +691,7 @@ class SyntaxAnalyzer:
                         or self.peek_next_token() == ">" or self.peek_next_token() == "<=" or self.peek_next_token() == ">="
                         or self.peek_next_token() == "||" or self.peek_next_token() == "&&" or self.peek_next_token() == "!"
                         or self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
-                        or self.peek_next_token() == "/"):
+                        or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
                     self.match(Resources.condop)
                     if (re.match(r'Identifier\d*$', self.peek_next_token()) or "SunLiteral" or "LuhmanLiteral"
                             or "StarsysLiteral" or "True" or "False"):
@@ -288,7 +703,7 @@ class SyntaxAnalyzer:
                                 or self.peek_next_token() == ">" or self.peek_next_token() == "<=" or self.peek_next_token() == ">="
                                 or self.peek_next_token() == "||" or self.peek_next_token() == "&&" or self.peek_next_token() == "!"
                                 or self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
-                                or self.peek_next_token() == "/"):
+                                or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
                             self.match(Resources.condop)
                             #  must be followed by these values
                             if (re.match(r'Identifier\d*$', self.peek_next_token()) or "SunLiteral" or "LuhmanLiteral"
@@ -299,7 +714,7 @@ class SyntaxAnalyzer:
                                 #  not closed with '#' or followed by a conditional operator
                                 else:
                                     self.errors.append(f"Syntax error: Expected '#', '==', '!=', '<', '>', "
-                                                       f"'<=', '>=', '&&', '||', '!', '+', '-', '*', '/' but found '{self.peek_next_token()}'")
+                                                       f"'<=', '>=', '&&', '||', '!', '+', '-', '*', '/', '%' but found '{self.peek_next_token()}'")
                             #  not followed by any of the values expected after a condition operator
                             else:
                                 self.errors.append(f"Syntax error: Expected 'Identifier', 'SunLiteral', "
@@ -310,7 +725,7 @@ class SyntaxAnalyzer:
                         #  not closed with '#' or followed by a conditional operator
                         else:
                             self.errors.append(f"Syntax error: Expected '#', '==', '!=', '<', '>', "
-                                               f"'<=', '>=', '&&', '||', '!', '+', '-', '*', '/' but found '{self.peek_next_token()}'")
+                                               f"'<=', '>=', '&&', '||', '!', '+', '-', '*', '/', '%' but found '{self.peek_next_token()}'")
                     #  not followed by any of the values expected after a condition operator
                     else:
                         self.errors.append(f"Syntax error: Expected 'Identifier', 'SunLiteral', "
@@ -321,7 +736,7 @@ class SyntaxAnalyzer:
                 #  not closed with ')' or followed by a conditional operator
                 else:
                     self.errors.append(f"Syntax error: Expected '#', '==', '!=', '<', '>', "
-                                       f"'<=', '>=', '&&', '||', '!', '+', '-', '*', '/' but found '{self.peek_next_token()}'")
+                                       f"'<=', '>=', '&&', '||', '!', '+', '-', '*', '/', '%' but found '{self.peek_next_token()}'")
             # empty condition error
             else:
                 self.errors.append(f"Syntax error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral'"
@@ -341,7 +756,9 @@ class SyntaxAnalyzer:
                 if (
                         self.peek_next_token() == "==" or self.peek_next_token() == "!=" or self.peek_next_token() == "<"
                         or self.peek_next_token() == ">" or self.peek_next_token() == "<=" or self.peek_next_token() == ">="
-                        or self.peek_next_token() == "||" or self.peek_next_token() == "&&" or self.peek_next_token() == "!"):
+                        or self.peek_next_token() == "||" or self.peek_next_token() == "&&" or self.peek_next_token() == "!"
+                        or self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                        or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
                     self.match(Resources.condop)
                     #  another conditional value
                     if (re.match(r'Identifier\d*$', self.peek_next_token()) or "SunLiteral" or "LuhmanLiteral"
@@ -372,7 +789,497 @@ class SyntaxAnalyzer:
                     self.match(Resources.Datatype2)
                     if re.match(r'Identifier\d*$', self.peek_next_token()):
                         self.match("Identifier")
-                        if self.peek_next_token() == ",":
+                        #  parameter is an array index path (static)
+                        if self.peek_next_token() == "{":
+                            self.match("{")  # consume
+                            #  array index assign path
+                            if (re.match(r'Identifier\d*$', self.peek_next_token())
+                                    or self.peek_next_token() == "SunLiteral"):
+                                self.match(Resources.Value3)  # consume the values
+                                #  size expression
+                                if (
+                                        self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                                        or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                                    self.match_mathop3(Resources.mathop1)  # size is a math expr
+                                    #  close it with "}" if size is fulfilled
+                                    if self.peek_next_token() == "}":
+                                        self.match("}")
+                                        #  check: if closed, single 1D array
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")
+                                            #  followed it with '['
+                                            if self.peek_next_token() == "[":
+                                                self.parse_sub_function_definition_statement()  # body
+                                                #  close it
+                                                if self.peek_next_token() == "]":
+                                                    self.match("]")
+                                                #  error: not closed
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                            #  has gotolerate
+                                            elif self.peek_next_token() == "Gotolerate":
+                                                self.match("Gotolerate")
+                                                #  must be followed by '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_sub_function_definition_statement()  # body
+                                                    #  close it
+                                                    if self.peek_next_token() == "]":
+                                                        self.match("]")
+                                                    #  error: not closed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                #  error: not followed by '['
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                            #  error: not followed by '['
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                        #  single id is followed by a comma, (Static Sun a{1},.....)
+                                        elif self.peek_next_token() == ",":
+                                            self.match_param_assign_mult(",")
+                                            #  close with ')' after assigning value/s
+                                            if self.peek_next_token() == ")":
+                                                self.match(")")
+                                                #  followed by '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_sub_function_definition_statement() # body
+                                                    #  close it
+                                                    if self.peek_next_token() == "]":
+                                                        self.match("]")
+                                                    #  error: not closed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                #  has gotolerate
+                                                elif self.peek_next_token() == "Gotolerate":
+                                                    self.match("Gotolerate")
+                                                    #  must be followed by '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_sub_function_definition_statement()  # body
+                                                        #  close it
+                                                        if self.peek_next_token() == "]":
+                                                            self.match("]")
+                                                        #  error: not closed
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                    #  error: not followed by '['
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                #  error: not followed by '['
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                        # or add another size to become 2D array
+                                        elif self.peek_next_token() == "{":
+                                            self.match_arrID2D_index_parameter("{")
+                                            #  check: if closed, single 2D array
+                                            if self.peek_next_token() == ")":
+                                                self.match(")")
+                                                #  followed it with '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_sub_function_definition_statement()  # body
+                                                    #  close it
+                                                    if self.peek_next_token() == "]":
+                                                        self.match("]")
+                                                    #  error: not closed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                #  has gotolerate
+                                                elif self.peek_next_token() == "Gotolerate":
+                                                    self.match("Gotolerate")
+                                                    #  must be followed by '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_sub_function_definition_statement()  # body
+                                                        #  close it
+                                                        if self.peek_next_token() == "]":
+                                                            self.match("]")
+                                                        #  error: not closed
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                    #  error: not followed by '['
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                #  error: not followed by '['
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                            #  single id is followed by a comma, (Static Sun a{1},.....)
+                                            elif self.peek_next_token() == ",":
+                                                self.match_param_assign_mult(",")
+                                                #  close with ')' after assigning value/s
+                                                if self.peek_next_token() == ")":
+                                                    self.match(")")
+                                                    #  followed by '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_sub_function_definition_statement()  # body
+                                                        #  close it
+                                                        if self.peek_next_token() == "]":
+                                                            self.match("]")
+                                                        #  error: not closed
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                    #  has gotolerate
+                                                    elif self.peek_next_token() == "Gotolerate":
+                                                        self.match("Gotolerate")
+                                                        #  must be followed by '['
+                                                        if self.peek_next_token() == "[":
+                                                            self.parse_sub_function_definition_statement()  # body
+                                                            #  close it
+                                                            if self.peek_next_token() == "]":
+                                                                self.match("]")
+                                                            #  error: not closed
+                                                            else:
+                                                                self.errors.append(
+                                                                    f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                        #  error: not followed by '['
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                    #  error: not followed by '['
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                            #  error: not followed by
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected ',', ')' after '{self.peek_previous_token()}'")
+                                        #  error: not followed by
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected ',', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                                    #  not closed with '}'
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax Error: Expected 'Rcurlbrace' after {self.peek_previous_token()}")
+                                #  size is single value
+                                elif self.peek_next_token() == "}":
+                                    self.match("}")
+                                    #  check: if closed, single 1D array (size is single value)
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")
+                                        #  followed it with '['
+                                        if self.peek_next_token() == "[":
+                                            self.parse_sub_function_definition_statement()  # body
+                                            #  close it
+                                            if self.peek_next_token() == "]":
+                                                self.match("]")
+                                            #  error: not closed
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                        #  has gotolerate
+                                        elif self.peek_next_token() == "Gotolerate":
+                                            self.match("Gotolerate")
+                                            #  must be followed by '['
+                                            if self.peek_next_token() == "[":
+                                                self.parse_sub_function_definition_statement()  # body
+                                                #  close it
+                                                if self.peek_next_token() == "]":
+                                                    self.match("]")
+                                                #  error: not closed
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                            #  error: not followed by '['
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                        #  error: not followed by '['
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                    #  single id is followed by a comma, (Static Sun a{1},.....)
+                                    elif self.peek_next_token() == ",":
+                                        self.match_param_assign_mult(",")
+                                        #  close with ')' after assigning value/s
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")
+                                            #  followed by '['
+                                            if self.peek_next_token() == "[":
+                                                self.parse_sub_function_definition_statement()  # body
+                                                #  close it
+                                                if self.peek_next_token() == "]":
+                                                    self.match("]")
+                                                #  error: not closed
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                            #  has gotolerate
+                                            elif self.peek_next_token() == "Gotolerate":
+                                                self.match("Gotolerate")
+                                                #  must be followed by '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_sub_function_definition_statement()  # body
+                                                    #  close it
+                                                    if self.peek_next_token() == "]":
+                                                        self.match("]")
+                                                    #  error: not closed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                #  error: not followed by '['
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                            #  error: not followed by '['
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                    # or add another size to become 2D array
+                                    elif self.peek_next_token() == "{":
+                                        self.match_arrID2D_index_parameter("{")
+                                        #  check: if closed, single 1D array (size is single value)
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")
+                                            #  followed it with '['
+                                            if self.peek_next_token() == "[":
+                                                self.parse_sub_function_definition_statement()  # body
+                                                #  close it
+                                                if self.peek_next_token() == "]":
+                                                    self.match("]")
+                                                #  error: not closed
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                            #  has gotolerate
+                                            elif self.peek_next_token() == "Gotolerate":
+                                                self.match("Gotolerate")
+                                                #  must be followed by '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_sub_function_definition_statement()  # body
+                                                    #  close it
+                                                    if self.peek_next_token() == "]":
+                                                        self.match("]")
+                                                    #  error: not closed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                #  error: not followed by '['
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                            #  error: not followed by '['
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                        #  single id is followed by a comma, (Static Sun a{1},.....)
+                                        elif self.peek_next_token() == ",":
+                                            self.match_param_assign_mult(",")
+                                            #  close with ')' after assigning value/s
+                                            if self.peek_next_token() == ")":
+                                                self.match(")")
+                                                #  followed by '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_sub_function_definition_statement()  # body
+                                                    #  close it
+                                                    if self.peek_next_token() == "]":
+                                                        self.match("]")
+                                                    #  error: not closed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                #  has gotolerate
+                                                elif self.peek_next_token() == "Gotolerate":
+                                                    self.match("Gotolerate")
+                                                    #  must be followed by '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_sub_function_definition_statement()  # body
+                                                        #  close it
+                                                        if self.peek_next_token() == "]":
+                                                            self.match("]")
+                                                        #  error: not closed
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                    #  error: not followed by '['
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                #  error: not followed by '['
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                        #  error: not followed by an equal
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected ',', ')' after '{self.peek_previous_token()}'")
+                                    #  error: not followed by an equal
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected ',', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                                #  size value is not followed by any of the following (# and Rcurl)
+                                else:
+                                    self.errors.append(
+                                        f"Syntax Error: Expected 'Rcurlbraces', '+', '-', '*', '/', '%' after {self.peek_previous_token()}")
+                            #  empty size, proceed to close it with '}'
+                            elif self.peek_next_token() == "}":
+                                self.match("}")
+                                #  check: if closed, single 1D array (size is empty)
+                                if self.peek_next_token() == ")":
+                                    self.match(")")
+                                    #  followed it with '['
+                                    if self.peek_next_token() == "[":
+                                        self.parse_sub_function_definition_statement()  # body
+                                        #  close it
+                                        if self.peek_next_token() == "]":
+                                            self.match("]")
+                                        #  error: not closed
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                    #  has gotolerate
+                                    elif self.peek_next_token() == "Gotolerate":
+                                        self.match("Gotolerate")
+                                        #  must be followed by '['
+                                        if self.peek_next_token() == "[":
+                                            self.parse_sub_function_definition_statement()  # body
+                                            #  close it
+                                            if self.peek_next_token() == "]":
+                                                self.match("]")
+                                            #  error: not closed
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                        #  error: not followed by '['
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                    #  error: not followed by '['
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                #  single id is followed by a comma, (Static Sun a{1},.....)
+                                elif self.peek_next_token() == ",":
+                                    self.match_param_assign_mult(",")
+                                    #  close with ')' after assigning value/s
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")
+                                        #  followed by '['
+                                        if self.peek_next_token() == "[":
+                                            self.parse_sub_function_definition_statement()  # body
+                                            #  close it
+                                            if self.peek_next_token() == "]":
+                                                self.match("]")
+                                            #  error: not closed
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                        #  has gotolerate
+                                        elif self.peek_next_token() == "Gotolerate":
+                                            self.match("Gotolerate")
+                                            #  must be followed by '['
+                                            if self.peek_next_token() == "[":
+                                                self.parse_sub_function_definition_statement()  # body
+                                                #  close it
+                                                if self.peek_next_token() == "]":
+                                                    self.match("]")
+                                                #  error: not closed
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                            #  error: not followed by '['
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                        #  error: not followed by '['
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                # or add another size to become 2D array
+                                elif self.peek_next_token() == "{":
+                                    self.match_arrID2D_index_parameter("{")
+                                    #  check: if closed, single 2D array
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")
+                                        #  followed it with '['
+                                        if self.peek_next_token() == "[":
+                                            self.parse_sub_function_definition_statement()  # body
+                                            #  close it
+                                            if self.peek_next_token() == "]":
+                                                self.match("]")
+                                            #  error: not closed
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                        #  has gotolerate
+                                        elif self.peek_next_token() == "Gotolerate":
+                                            self.match("Gotolerate")
+                                            #  must be followed by '['
+                                            if self.peek_next_token() == "[":
+                                                self.parse_sub_function_definition_statement()  # body
+                                                #  close it
+                                                if self.peek_next_token() == "]":
+                                                    self.match("]")
+                                                #  error: not closed
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                            #  error: not followed by '['
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                        #  error: not followed by '['
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                    #  single id is followed by a comma, (Static Sun a{1},.....)
+                                    elif self.peek_next_token() == ",":
+                                        self.match_param_assign_mult(",")
+                                        #  close with ')' after assigning value/s
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")
+                                            #  followed by '['
+                                            if self.peek_next_token() == "[":
+                                                self.parse_sub_function_definition_statement()  # body
+                                                #  close it
+                                                if self.peek_next_token() == "]":
+                                                    self.match("]")
+                                                #  error: not closed
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                            #  has gotolerate
+                                            elif self.peek_next_token() == "Gotolerate":
+                                                self.match("Gotolerate")
+                                                #  must be followed by '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_sub_function_definition_statement()  # body
+                                                    #  close it
+                                                    if self.peek_next_token() == "]":
+                                                        self.match("]")
+                                                    #  error: not closed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                #  error: not followed by '['
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                            #  error: not followed by '['
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                    #  error: not followed by an equal
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected ',', ')' after '{self.peek_previous_token()}'")
+                                #  error: not followed by an equal
+                                else:
+                                    self.errors.append(
+                                        f"Syntax error: Expected ',', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                            else:
+                                return True  # else: last identifier has no following identifiers (comma)
+                        elif self.peek_next_token() == ",":
                             self.match_param_assign_mult(",")
                         elif self.peek_next_token() == "=":
                             self.match_param_assign("=")
@@ -397,7 +1304,497 @@ class SyntaxAnalyzer:
                 self.match(Resources.Datatype2)
                 if re.match(r'Identifier\d*$', self.peek_next_token()):
                     self.match("Identifier")
-                    if self.peek_next_token() == ",":
+                    #  parameter is an array index path
+                    if self.peek_next_token() == "{":
+                        self.match("{")  # consume
+                        #  array index assign path
+                        if (re.match(r'Identifier\d*$', self.peek_next_token())
+                                or self.peek_next_token() == "SunLiteral"):
+                            self.match(Resources.Value3)  # consume the values
+                            #  size expression
+                            if (
+                                    self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                                    or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                                self.match_mathop3(Resources.mathop1)  # size is a math expr
+                                #  close it with "}" if size is fulfilled
+                                if self.peek_next_token() == "}":
+                                    self.match("}")
+                                    #  check: if closed, single 1D array
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")
+                                        #  followed it with '['
+                                        if self.peek_next_token() == "[":
+                                            self.parse_sub_function_definition_statement()  # body
+                                            #  close it
+                                            if self.peek_next_token() == "]":
+                                                self.match("]")
+                                            #  error: not closed
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                        #  has gotolerate
+                                        elif self.peek_next_token() == "Gotolerate":
+                                            self.match("Gotolerate")
+                                            #  must be followed by '['
+                                            if self.peek_next_token() == "[":
+                                                self.parse_sub_function_definition_statement()  # body
+                                                #  close it
+                                                if self.peek_next_token() == "]":
+                                                    self.match("]")
+                                                #  error: not closed
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                            #  error: not followed by '['
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                        #  error: not followed by '['
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                    #  single id is followed by a comma, (Static Sun a{1},.....)
+                                    elif self.peek_next_token() == ",":
+                                        self.match_param_assign_mult(",")
+                                        #  close with ')' after assigning value/s
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")
+                                            #  followed by '['
+                                            if self.peek_next_token() == "[":
+                                                self.parse_sub_function_definition_statement()  # body
+                                                #  close it
+                                                if self.peek_next_token() == "]":
+                                                    self.match("]")
+                                                #  error: not closed
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                            #  has gotolerate
+                                            elif self.peek_next_token() == "Gotolerate":
+                                                self.match("Gotolerate")
+                                                #  must be followed by '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_sub_function_definition_statement()  # body
+                                                    #  close it
+                                                    if self.peek_next_token() == "]":
+                                                        self.match("]")
+                                                    #  error: not closed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                #  error: not followed by '['
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                            #  error: not followed by '['
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                    # or add another size to become 2D array
+                                    elif self.peek_next_token() == "{":
+                                        self.match_arrID2D_index_parameter("{")
+                                        #  check: if closed, single 2D array
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")
+                                            #  followed it with '['
+                                            if self.peek_next_token() == "[":
+                                                self.parse_sub_function_definition_statement()  # body
+                                                #  close it
+                                                if self.peek_next_token() == "]":
+                                                    self.match("]")
+                                                #  error: not closed
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                            #  has gotolerate
+                                            elif self.peek_next_token() == "Gotolerate":
+                                                self.match("Gotolerate")
+                                                #  must be followed by '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_sub_function_definition_statement()  # body
+                                                    #  close it
+                                                    if self.peek_next_token() == "]":
+                                                        self.match("]")
+                                                    #  error: not closed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                #  error: not followed by '['
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                            #  error: not followed by '['
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                        #  single id is followed by a comma, (Static Sun a{1},.....)
+                                        elif self.peek_next_token() == ",":
+                                            self.match_param_assign_mult(",")
+                                            #  close with ')' after assigning value/s
+                                            if self.peek_next_token() == ")":
+                                                self.match(")")
+                                                #  followed by '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_sub_function_definition_statement()  # body
+                                                    #  close it
+                                                    if self.peek_next_token() == "]":
+                                                        self.match("]")
+                                                    #  error: not closed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                #  has gotolerate
+                                                elif self.peek_next_token() == "Gotolerate":
+                                                    self.match("Gotolerate")
+                                                    #  must be followed by '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_sub_function_definition_statement()  # body
+                                                        #  close it
+                                                        if self.peek_next_token() == "]":
+                                                            self.match("]")
+                                                        #  error: not closed
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                    #  error: not followed by '['
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                #  error: not followed by '['
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                        #  error: not followed by
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected ',', ')' after '{self.peek_previous_token()}'")
+                                    #  error: not followed by
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected ',', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                                #  not closed with '}'
+                                else:
+                                    self.errors.append(
+                                        f"Syntax Error: Expected 'Rcurlbrace' after {self.peek_previous_token()}")
+                            #  size is single value
+                            elif self.peek_next_token() == "}":
+                                self.match("}")
+                                #  check: if closed, single 1D array (size is single value)
+                                if self.peek_next_token() == ")":
+                                    self.match(")")
+                                    #  followed it with '['
+                                    if self.peek_next_token() == "[":
+                                        self.parse_sub_function_definition_statement()  # body
+                                        #  close it
+                                        if self.peek_next_token() == "]":
+                                            self.match("]")
+                                        #  error: not closed
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                    #  has gotolerate
+                                    elif self.peek_next_token() == "Gotolerate":
+                                        self.match("Gotolerate")
+                                        #  must be followed by '['
+                                        if self.peek_next_token() == "[":
+                                            self.parse_sub_function_definition_statement()  # body
+                                            #  close it
+                                            if self.peek_next_token() == "]":
+                                                self.match("]")
+                                            #  error: not closed
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                        #  error: not followed by '['
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                    #  error: not followed by '['
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                #  single id is followed by a comma, (Static Sun a{1},.....)
+                                elif self.peek_next_token() == ",":
+                                    self.match_param_assign_mult(",")
+                                    #  close with ')' after assigning value/s
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")
+                                        #  followed by '['
+                                        if self.peek_next_token() == "[":
+                                            self.parse_sub_function_definition_statement()  # body
+                                            #  close it
+                                            if self.peek_next_token() == "]":
+                                                self.match("]")
+                                            #  error: not closed
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                        #  has gotolerate
+                                        elif self.peek_next_token() == "Gotolerate":
+                                            self.match("Gotolerate")
+                                            #  must be followed by '['
+                                            if self.peek_next_token() == "[":
+                                                self.parse_sub_function_definition_statement()  # body
+                                                #  close it
+                                                if self.peek_next_token() == "]":
+                                                    self.match("]")
+                                                #  error: not closed
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                            #  error: not followed by '['
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                        #  error: not followed by '['
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                # or add another size to become 2D array
+                                elif self.peek_next_token() == "{":
+                                    self.match_arrID2D_index_parameter("{")
+                                    #  check: if closed, single 1D array (size is single value)
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")
+                                        #  followed it with '['
+                                        if self.peek_next_token() == "[":
+                                            self.parse_sub_function_definition_statement()  # body
+                                            #  close it
+                                            if self.peek_next_token() == "]":
+                                                self.match("]")
+                                            #  error: not closed
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                        #  has gotolerate
+                                        elif self.peek_next_token() == "Gotolerate":
+                                            self.match("Gotolerate")
+                                            #  must be followed by '['
+                                            if self.peek_next_token() == "[":
+                                                self.parse_sub_function_definition_statement()  # body
+                                                #  close it
+                                                if self.peek_next_token() == "]":
+                                                    self.match("]")
+                                                #  error: not closed
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                            #  error: not followed by '['
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                        #  error: not followed by '['
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                    #  single id is followed by a comma, (Static Sun a{1},.....)
+                                    elif self.peek_next_token() == ",":
+                                        self.match_param_assign_mult(",")
+                                        #  close with ')' after assigning value/s
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")
+                                            #  followed by '['
+                                            if self.peek_next_token() == "[":
+                                                self.parse_sub_function_definition_statement()  # body
+                                                #  close it
+                                                if self.peek_next_token() == "]":
+                                                    self.match("]")
+                                                #  error: not closed
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                            #  has gotolerate
+                                            elif self.peek_next_token() == "Gotolerate":
+                                                self.match("Gotolerate")
+                                                #  must be followed by '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_sub_function_definition_statement()  # body
+                                                    #  close it
+                                                    if self.peek_next_token() == "]":
+                                                        self.match("]")
+                                                    #  error: not closed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                #  error: not followed by '['
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                            #  error: not followed by '['
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                    #  error: not followed by an equal
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected ',', ')' after '{self.peek_previous_token()}'")
+                                #  error: not followed by an equal
+                                else:
+                                    self.errors.append(
+                                        f"Syntax error: Expected ',', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                            #  size value is not followed by any of the following (# and Rcurl)
+                            else:
+                                self.errors.append(
+                                    f"Syntax Error: Expected 'Rcurlbraces', '+', '-', '*', '/', '%' after {self.peek_previous_token()}")
+                        #  empty size, proceed to close it with '}'
+                        elif self.peek_next_token() == "}":
+                            self.match("}")
+                            #  check: if closed, single 1D array (size is empty)
+                            if self.peek_next_token() == ")":
+                                self.match(")")
+                                #  followed it with '['
+                                if self.peek_next_token() == "[":
+                                    self.parse_sub_function_definition_statement()  # body
+                                    #  close it
+                                    if self.peek_next_token() == "]":
+                                        self.match("]")
+                                    #  error: not closed
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                #  has gotolerate
+                                elif self.peek_next_token() == "Gotolerate":
+                                    self.match("Gotolerate")
+                                    #  must be followed by '['
+                                    if self.peek_next_token() == "[":
+                                        self.parse_sub_function_definition_statement()  # body
+                                        #  close it
+                                        if self.peek_next_token() == "]":
+                                            self.match("]")
+                                        #  error: not closed
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                    #  error: not followed by '['
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                #  error: not followed by '['
+                                else:
+                                    self.errors.append(
+                                        f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                            #  single id is followed by a comma, (Static Sun a{1},.....)
+                            elif self.peek_next_token() == ",":
+                                self.match_param_assign_mult(",")
+                                #  close with ')' after assigning value/s
+                                if self.peek_next_token() == ")":
+                                    self.match(")")
+                                    #  followed by '['
+                                    if self.peek_next_token() == "[":
+                                        self.parse_sub_function_definition_statement()  # body
+                                        #  close it
+                                        if self.peek_next_token() == "]":
+                                            self.match("]")
+                                        #  error: not closed
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                    #  has gotolerate
+                                    elif self.peek_next_token() == "Gotolerate":
+                                        self.match("Gotolerate")
+                                        #  must be followed by '['
+                                        if self.peek_next_token() == "[":
+                                            self.parse_sub_function_definition_statement()  # body
+                                            #  close it
+                                            if self.peek_next_token() == "]":
+                                                self.match("]")
+                                            #  error: not closed
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                        #  error: not followed by '['
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                    #  error: not followed by '['
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                            # or add another size to become 2D array
+                            elif self.peek_next_token() == "{":
+                                self.match_arrID2D_index_parameter("{")
+                                #  check: if closed, single 2D array
+                                if self.peek_next_token() == ")":
+                                    self.match(")")
+                                    #  followed it with '['
+                                    if self.peek_next_token() == "[":
+                                        self.parse_sub_function_definition_statement()  # body
+                                        #  close it
+                                        if self.peek_next_token() == "]":
+                                            self.match("]")
+                                        #  error: not closed
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                    #  has gotolerate
+                                    elif self.peek_next_token() == "Gotolerate":
+                                        self.match("Gotolerate")
+                                        #  must be followed by '['
+                                        if self.peek_next_token() == "[":
+                                            self.parse_sub_function_definition_statement()  # body
+                                            #  close it
+                                            if self.peek_next_token() == "]":
+                                                self.match("]")
+                                            #  error: not closed
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                        #  error: not followed by '['
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                    #  error: not followed by '['
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                #  single id is followed by a comma, (Static Sun a{1},.....)
+                                elif self.peek_next_token() == ",":
+                                    self.match_param_assign_mult(",")
+                                    #  close with ')' after assigning value/s
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")
+                                        #  followed by '['
+                                        if self.peek_next_token() == "[":
+                                            self.parse_sub_function_definition_statement()  # body
+                                            #  close it
+                                            if self.peek_next_token() == "]":
+                                                self.match("]")
+                                            #  error: not closed
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                        #  has gotolerate
+                                        elif self.peek_next_token() == "Gotolerate":
+                                            self.match("Gotolerate")
+                                            #  must be followed by '['
+                                            if self.peek_next_token() == "[":
+                                                self.parse_sub_function_definition_statement()  # body
+                                                #  close it
+                                                if self.peek_next_token() == "]":
+                                                    self.match("]")
+                                                #  error: not closed
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                            #  error: not followed by '['
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                        #  error: not followed by '['
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                #  error: not followed by an equal
+                                else:
+                                    self.errors.append(
+                                        f"Syntax error: Expected ',', ')' after '{self.peek_previous_token()}'")
+                            #  error: not followed by an equal
+                            else:
+                                self.errors.append(
+                                    f"Syntax error: Expected ',', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                        else:
+                            return True  # else: last identifier has no following identifiers (comma)
+                    elif self.peek_next_token() == ",":
                         self.match_param_assign_mult(",")
                     elif self.peek_next_token() == "=":
                         self.match_param_assign("=")
@@ -672,8 +2069,261 @@ class SyntaxAnalyzer:
                 #  modulo is next
                 elif self.peek_next_token() == "%":
                     self.match_mathop("%")
-                else:
-                    return True  # else: last identifier has no following identifiers (comma)
+                #  array index assign path
+                elif self.peek_next_token() == "{":
+                    self.match("{")
+                    #  array index assign path
+                    if (re.match(r'Identifier\d*$', self.peek_next_token())
+                            or self.peek_next_token() == "SunLiteral"):
+                        self.match(Resources.Value3)  # consume the values
+                        #  size expression
+                        if (self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                                or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                            self.match_mathop3(Resources.mathop1)  # size is a math expr
+                            #  close it with "}" if size is fulfilled
+                            if self.peek_next_token() == "}":
+                                self.match("}")
+                                # Terminate it
+                                if self.peek_next_token() == "#":
+                                    return
+                                #  add is next
+                                elif self.peek_next_token() == "+":
+                                    self.match_mathop("+")
+                                #  exponentiation is next
+                                elif self.peek_next_token() == "**":
+                                    self.match_exponent("**")
+                                #  subtract is next
+                                elif self.peek_next_token() == "-":
+                                    self.match_mathop("-")
+                                #  multiply is next
+                                elif self.peek_next_token() == "*":
+                                    self.match_mathop("*")
+                                #  divide is next
+                                elif self.peek_next_token() == "/":
+                                    self.match_mathop("/")
+                                #  modulo is next
+                                elif self.peek_next_token() == "%":
+                                    self.match_mathop("%")
+                                #  assign value?
+                                elif self.peek_next_token() == ",":
+                                    self.match(",")
+                                    if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                        self.matchID_mult("Identifier")
+                                        if self.peek_next_token() == "=":
+                                            self.match_mult_assign("=")
+                                        else:
+                                            return True  # else: last identifier has no assigned value (=)
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected '{expected_token}' after '{self.peek_previous_token()}'")
+                                # add another size to become 2D array
+                                elif self.peek_next_token() == "{":
+                                    self.match_arrID2D_assign("{")
+                                    # Terminate it
+                                    if self.peek_next_token() == "#":
+                                        return
+                                    #  add is next
+                                    elif self.peek_next_token() == "+":
+                                        self.match_mathop("+")
+                                    #  exponentiation is next
+                                    elif self.peek_next_token() == "**":
+                                        self.match_exponent("**")
+                                    #  subtract is next
+                                    elif self.peek_next_token() == "-":
+                                        self.match_mathop("-")
+                                    #  multiply is next
+                                    elif self.peek_next_token() == "*":
+                                        self.match_mathop("*")
+                                    #  divide is next
+                                    elif self.peek_next_token() == "/":
+                                        self.match_mathop("/")
+                                    #  modulo is next
+                                    elif self.peek_next_token() == "%":
+                                        self.match_mathop("%")
+                                    #  assign value?
+                                    elif self.peek_next_token() == ",":
+                                        self.match(",")
+                                        if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                            self.matchID_mult("Identifier")
+                                            if self.peek_next_token() == "=":
+                                                self.match_mult_assign("=")
+                                            else:
+                                                return True  # else: last identifier has no assigned value (=)
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '{expected_token}' after '{self.peek_previous_token()}'")
+                                    #  not terminated or followed
+                                    else:
+                                        return False
+                                #  not terminated or followed
+                                else:
+                                    return False
+                            #  not closed with '}'
+                            else:
+                                self.errors.append(
+                                    f"Syntax Error: Expected 'Rcurlbrace' after {self.peek_previous_token()}")
+                        #  size is single value
+                        elif self.peek_next_token() == "}":
+                            self.match("}")
+                            # Terminate it
+                            if self.peek_next_token() == "#":
+                                return
+                            #  add is next
+                            elif self.peek_next_token() == "+":
+                                self.match_mathop("+")
+                            #  exponentiation is next
+                            elif self.peek_next_token() == "**":
+                                self.match_exponent("**")
+                            #  subtract is next
+                            elif self.peek_next_token() == "-":
+                                self.match_mathop("-")
+                            #  multiply is next
+                            elif self.peek_next_token() == "*":
+                                self.match_mathop("*")
+                            #  divide is next
+                            elif self.peek_next_token() == "/":
+                                self.match_mathop("/")
+                            #  modulo is next
+                            elif self.peek_next_token() == "%":
+                                self.match_mathop("%")
+                            #  assign value?
+                            elif self.peek_next_token() == ",":
+                                self.match(",")
+                                if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                    self.matchID_mult("Identifier")
+                                    if self.peek_next_token() == "=":
+                                        self.match_mult_assign("=")
+                                    else:
+                                        return True  # else: last identifier has no assigned value (=)
+                                else:
+                                    self.errors.append(
+                                        f"Syntax error: Expected '{expected_token}' after '{self.peek_previous_token()}'")
+                            # add another size to become 2D array
+                            elif self.peek_next_token() == "{":
+                                self.match_arrID2D_assign("{")
+                                # Terminate it
+                                if self.peek_next_token() == "#":
+                                    return
+                                #  add is next
+                                elif self.peek_next_token() == "+":
+                                    self.match_mathop("+")
+                                #  exponentiation is next
+                                elif self.peek_next_token() == "**":
+                                    self.match_exponent("**")
+                                #  subtract is next
+                                elif self.peek_next_token() == "-":
+                                    self.match_mathop("-")
+                                #  multiply is next
+                                elif self.peek_next_token() == "*":
+                                    self.match_mathop("*")
+                                #  divide is next
+                                elif self.peek_next_token() == "/":
+                                    self.match_mathop("/")
+                                #  modulo is next
+                                elif self.peek_next_token() == "%":
+                                    self.match_mathop("%")
+                                #  assign value?
+                                elif self.peek_next_token() == ",":
+                                    self.match(",")
+                                    if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                        self.matchID_mult("Identifier")
+                                        if self.peek_next_token() == "=":
+                                            self.match_mult_assign("=")
+                                        else:
+                                            return True  # else: last identifier has no assigned value (=)
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected '{expected_token}' after '{self.peek_previous_token()}'")
+                                #  not terminated or followed
+                                else:
+                                    return False
+                            #  not terminated or followed
+                            else:
+                                return False
+                        #  size value is not followed by any of the following (# and Rcurl)
+                        else:
+                            self.errors.append(
+                                f"Syntax Error: Expected 'Rcurlbraces', '+', '-', '*', '/', '%' after {self.peek_previous_token()}")
+                    #  empty size, proceed to close it with '}'
+                    elif self.peek_next_token() == "}":
+                        self.match("}")
+                        # add another size to become 2D array
+                        if self.peek_next_token() == "{":
+                            self.match_arrID2D_assign("{")
+                            # Terminate it
+                            if self.peek_next_token() == "#":
+                                return True
+                            #  add is next
+                            elif self.peek_next_token() == "+":
+                                self.match_mathop("+")
+                            #  exponentiation is next
+                            elif self.peek_next_token() == "**":
+                                self.match_exponent("**")
+                            #  subtract is next
+                            elif self.peek_next_token() == "-":
+                                self.match_mathop("-")
+                            #  multiply is next
+                            elif self.peek_next_token() == "*":
+                                self.match_mathop("*")
+                            #  divide is next
+                            elif self.peek_next_token() == "/":
+                                self.match_mathop("/")
+                            #  modulo is next
+                            elif self.peek_next_token() == "%":
+                                self.match_mathop("%")
+                            #  assign value?
+                            elif self.peek_next_token() == ",":
+                                self.match(",")
+                                if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                    self.matchID_mult("Identifier")
+                                    if self.peek_next_token() == "=":
+                                        self.match_mult_assign("=")
+                                    else:
+                                        return True  # else: last identifier has no assigned value (=)
+                                else:
+                                    self.errors.append(
+                                        f"Syntax error: Expected '{expected_token}' after '{self.peek_previous_token()}'")
+                            #  not terminated or followed
+                            else:
+                                return False
+                        #  terminate it
+                        elif self.peek_next_token() == "#":
+                            self.match("#")
+                        #  add is next
+                        elif self.peek_next_token() == "+":
+                            self.match_mathop("+")
+                        #  exponentiation is next
+                        elif self.peek_next_token() == "**":
+                            self.match_exponent("**")
+                        #  subtract is next
+                        elif self.peek_next_token() == "-":
+                            self.match_mathop("-")
+                        #  multiply is next
+                        elif self.peek_next_token() == "*":
+                            self.match_mathop("*")
+                        #  divide is next
+                        elif self.peek_next_token() == "/":
+                            self.match_mathop("/")
+                        #  modulo is next
+                        elif self.peek_next_token() == "%":
+                            self.match_mathop("%")
+                        #  assign value?
+                        elif self.peek_next_token() == ",":
+                            self.match(",")
+                            if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                self.matchID_mult("Identifier")
+                                if self.peek_next_token() == "=":
+                                    self.match_mult_assign("=")
+                                else:
+                                    return True  # else: last identifier has no assigned value (=)
+                            else:
+                                self.errors.append(
+                                    f"Syntax error: Expected '{expected_token}' after '{self.peek_previous_token()}'")
+                        #  not terminated or followed
+                        else:
+                            return False
+                    else:
+                        return True  # else: last identifier has no following identifiers (comma)
             #  type conversion path
             elif self.peek_next_token() == "Sun":
                 self.match("Sun")
@@ -805,6 +2455,262 @@ class SyntaxAnalyzer:
                 #  modulo is next
                 elif self.peek_next_token() == "%":
                     self.match_mathop("%")
+                #  array index assign path
+                elif self.peek_next_token() == "{" and (re.match(r'Identifier\d*$', self.peek_previous_token())):
+                    self.match("{")
+                    #  array index assign path
+                    if (re.match(r'Identifier\d*$', self.peek_next_token())
+                            or self.peek_next_token() == "SunLiteral"):
+                        self.match(Resources.Value3)  # consume the values
+                        #  size expression
+                        if (self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                                or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                            self.match_mathop3(Resources.mathop1)  # size is a math expr
+                            #  close it with "}" if size is fulfilled
+                            if self.peek_next_token() == "}":
+                                self.match("}")
+                                # Terminate it
+                                if self.peek_next_token() == "#":
+                                    return
+                                #  add is next
+                                elif self.peek_next_token() == "+":
+                                    self.match_mathop("+")
+                                #  exponentiation is next
+                                elif self.peek_next_token() == "**":
+                                    self.match_exponent("**")
+                                #  subtract is next
+                                elif self.peek_next_token() == "-":
+                                    self.match_mathop("-")
+                                #  multiply is next
+                                elif self.peek_next_token() == "*":
+                                    self.match_mathop("*")
+                                #  divide is next
+                                elif self.peek_next_token() == "/":
+                                    self.match_mathop("/")
+                                #  modulo is next
+                                elif self.peek_next_token() == "%":
+                                    self.match_mathop("%")
+                                #  assign value?
+                                elif self.peek_next_token() == ",":
+                                    self.match(",")
+                                    if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                        self.matchID_mult("Identifier")
+                                        if self.peek_next_token() == "=":
+                                            self.match_mult_assign("=")
+                                        else:
+                                            return True  # else: last identifier has no assigned value (=)
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected '{expected_token}' after '{self.peek_previous_token()}'")
+                                # add another size to become 2D array
+                                elif self.peek_next_token() == "{":
+                                    self.match_arrID2D_assign("{")
+                                    # Terminate it
+                                    if self.peek_next_token() == "#":
+                                        return
+                                    #  add is next
+                                    elif self.peek_next_token() == "+":
+                                        self.match_mathop("+")
+                                    #  exponentiation is next
+                                    elif self.peek_next_token() == "**":
+                                        self.match_exponent("**")
+                                    #  subtract is next
+                                    elif self.peek_next_token() == "-":
+                                        self.match_mathop("-")
+                                    #  multiply is next
+                                    elif self.peek_next_token() == "*":
+                                        self.match_mathop("*")
+                                    #  divide is next
+                                    elif self.peek_next_token() == "/":
+                                        self.match_mathop("/")
+                                    #  modulo is next
+                                    elif self.peek_next_token() == "%":
+                                        self.match_mathop("%")
+                                    #  assign value?
+                                    elif self.peek_next_token() == ",":
+                                        self.match(",")
+                                        if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                            self.matchID_mult("Identifier")
+                                            if self.peek_next_token() == "=":
+                                                self.match_mult_assign("=")
+                                            else:
+                                                return True  # else: last identifier has no assigned value (=)
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '{expected_token}' after '{self.peek_previous_token()}'")
+                                    #  not terminated or followed
+                                    else:
+                                        return False
+                                #  not terminated or followed
+                                else:
+                                    return False
+                            #  not closed with '}'
+                            else:
+                                self.errors.append(
+                                    f"Syntax Error: Expected 'Rcurlbrace' after {self.peek_previous_token()}")
+                        #  size is single value
+                        elif self.peek_next_token() == "}":
+                            self.match("}")
+                            # Terminate it
+                            if self.peek_next_token() == "#":
+                                return
+                            #  add is next
+                            elif self.peek_next_token() == "+":
+                                self.match_mathop("+")
+                            #  exponentiation is next
+                            elif self.peek_next_token() == "**":
+                                self.match_exponent("**")
+                            #  subtract is next
+                            elif self.peek_next_token() == "-":
+                                self.match_mathop("-")
+                            #  multiply is next
+                            elif self.peek_next_token() == "*":
+                                self.match_mathop("*")
+                            #  divide is next
+                            elif self.peek_next_token() == "/":
+                                self.match_mathop("/")
+                            #  modulo is next
+                            elif self.peek_next_token() == "%":
+                                self.match_mathop("%")
+                            #  assign value?
+                            elif self.peek_next_token() == ",":
+                                self.match(",")
+                                if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                    self.matchID_mult("Identifier")
+                                    if self.peek_next_token() == "=":
+                                        self.match_mult_assign("=")
+                                    else:
+                                        return True  # else: last identifier has no assigned value (=)
+                                else:
+                                    self.errors.append(
+                                        f"Syntax error: Expected '{expected_token}' after '{self.peek_previous_token()}'")
+                            # add another size to become 2D array
+                            elif self.peek_next_token() == "{":
+                                self.match_arrID2D_assign("{")
+                                # Terminate it
+                                if self.peek_next_token() == "#":
+                                    return
+                                #  add is next
+                                elif self.peek_next_token() == "+":
+                                    self.match_mathop("+")
+                                #  exponentiation is next
+                                elif self.peek_next_token() == "**":
+                                    self.match_exponent("**")
+                                #  subtract is next
+                                elif self.peek_next_token() == "-":
+                                    self.match_mathop("-")
+                                #  multiply is next
+                                elif self.peek_next_token() == "*":
+                                    self.match_mathop("*")
+                                #  divide is next
+                                elif self.peek_next_token() == "/":
+                                    self.match_mathop("/")
+                                #  modulo is next
+                                elif self.peek_next_token() == "%":
+                                    self.match_mathop("%")
+                                #  assign value?
+                                elif self.peek_next_token() == ",":
+                                    self.match(",")
+                                    if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                        self.matchID_mult("Identifier")
+                                        if self.peek_next_token() == "=":
+                                            self.match_mult_assign("=")
+                                        else:
+                                            return True  # else: last identifier has no assigned value (=)
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected '{expected_token}' after '{self.peek_previous_token()}'")
+                                #  not terminated or followed
+                                else:
+                                    return False
+                            #  not terminated or followed
+                            else:
+                                return False
+                        #  size value is not followed by any of the following (# and Rcurl)
+                        else:
+                            self.errors.append(
+                                f"Syntax Error: Expected 'Rcurlbraces', '+', '-', '*', '/', '%' after {self.peek_previous_token()}")
+                    #  empty size, proceed to close it with '}'
+                    elif self.peek_next_token() == "}":
+                        self.match("}")
+                        # add another size to become 2D array
+                        if self.peek_next_token() == "{":
+                            self.match_arrID2D_assign("{")
+                            # Terminate it
+                            if self.peek_next_token() == "#":
+                                return True
+                            #  add is next
+                            elif self.peek_next_token() == "+":
+                                self.match_mathop("+")
+                            #  exponentiation is next
+                            elif self.peek_next_token() == "**":
+                                self.match_exponent("**")
+                            #  subtract is next
+                            elif self.peek_next_token() == "-":
+                                self.match_mathop("-")
+                            #  multiply is next
+                            elif self.peek_next_token() == "*":
+                                self.match_mathop("*")
+                            #  divide is next
+                            elif self.peek_next_token() == "/":
+                                self.match_mathop("/")
+                            #  modulo is next
+                            elif self.peek_next_token() == "%":
+                                self.match_mathop("%")
+                            #  assign value?
+                            elif self.peek_next_token() == ",":
+                                self.match(",")
+                                if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                    self.matchID_mult("Identifier")
+                                    if self.peek_next_token() == "=":
+                                        self.match_mult_assign("=")
+                                    else:
+                                        return True  # else: last identifier has no assigned value (=)
+                                else:
+                                    self.errors.append(
+                                        f"Syntax error: Expected '{expected_token}' after '{self.peek_previous_token()}'")
+                            #  not terminated or followed
+                            else:
+                                return False
+                        #  terminate it
+                        elif self.peek_next_token() == "#":
+                            self.match("#")
+                        #  add is next
+                        elif self.peek_next_token() == "+":
+                            self.match_mathop("+")
+                        #  exponentiation is next
+                        elif self.peek_next_token() == "**":
+                            self.match_exponent("**")
+                        #  subtract is next
+                        elif self.peek_next_token() == "-":
+                            self.match_mathop("-")
+                        #  multiply is next
+                        elif self.peek_next_token() == "*":
+                            self.match_mathop("*")
+                        #  divide is next
+                        elif self.peek_next_token() == "/":
+                            self.match_mathop("/")
+                        #  modulo is next
+                        elif self.peek_next_token() == "%":
+                            self.match_mathop("%")
+                        #  assign value?
+                        elif self.peek_next_token() == ",":
+                            self.match(",")
+                            if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                self.matchID_mult("Identifier")
+                                if self.peek_next_token() == "=":
+                                    self.match_mult_assign("=")
+                                else:
+                                    return True  # else: last identifier has no assigned value (=)
+                            else:
+                                self.errors.append(
+                                    f"Syntax error: Expected '{expected_token}' after '{self.peek_previous_token()}'")
+                        #  not terminated or followed
+                        else:
+                            return False
+                    else:
+                        return True  # else: last identifier has no following identifiers (comma)
+
                 else:
                     return True  # else: last identifier has no following identifiers (comma)
             #  else: if it is not followed by any of the value it shows the error
@@ -820,7 +2726,7 @@ class SyntaxAnalyzer:
     # method for parsing multiple variable assignments with expression
     def match_mathop(self, expected_token):
         if (self.peek_previous_token() != "SunLiteral" and self.peek_previous_token() != "LuhmanLiteral"
-                and self.peek_previous_token() != ")" and not re.match(r'Identifier\d*$', self.peek_previous_token())):
+                and self.peek_previous_token() != ")" and self.peek_previous_token() != "}" and not re.match(r'Identifier\d*$', self.peek_previous_token())):
             self.errors.append(f"Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral' before {self.peek_next_token()}")
 
         self.get_next_token()
@@ -839,8 +2745,264 @@ class SyntaxAnalyzer:
                     or self.peek_next_token() == "SunLiteral"
                     or self.peek_next_token() == "LuhmanLiteral"):
                 self.match(Resources.Value2)  # consume
+                #  is it an array index?
+                if self.peek_next_token() == "{" and (re.match(r'Identifier\d*$', self.peek_previous_token())):
+                    self.match("{")
+                    #  array index assign path
+                    if (re.match(r'Identifier\d*$', self.peek_next_token())
+                            or self.peek_next_token() == "SunLiteral"):
+                        self.match(Resources.Value3)  # consume the values
+                        #  size expression
+                        if (
+                                self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                                or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                            self.match_mathop3(Resources.mathop1)  # size is a math expr
+                            #  close it with "}" if size is fulfilled
+                            if self.peek_next_token() == "}":
+                                self.match("}")
+                                # Terminate it
+                                if self.peek_next_token() == "#":
+                                    return
+                                #  add is next
+                                elif self.peek_next_token() == "+":
+                                    self.match_mathop("+")
+                                #  exponentiation is next
+                                elif self.peek_next_token() == "**":
+                                    self.match_exponent("**")
+                                #  subtract is next
+                                elif self.peek_next_token() == "-":
+                                    self.match_mathop("-")
+                                #  multiply is next
+                                elif self.peek_next_token() == "*":
+                                    self.match_mathop("*")
+                                #  divide is next
+                                elif self.peek_next_token() == "/":
+                                    self.match_mathop("/")
+                                #  modulo is next
+                                elif self.peek_next_token() == "%":
+                                    self.match_mathop("%")
+                                #  assign value?
+                                elif self.peek_next_token() == ",":
+                                    self.match(",")
+                                    if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                        self.matchID_mult("Identifier")
+                                        if self.peek_next_token() == "=":
+                                            self.match_mult_assign("=")
+                                        else:
+                                            return True  # else: last identifier has no assigned value (=)
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected '{expected_token}' after '{self.peek_previous_token()}'")
+                                # add another size to become 2D array
+                                elif self.peek_next_token() == "{":
+                                    self.match_arrID2D_assign("{")
+                                    # Terminate it
+                                    if self.peek_next_token() == "#":
+                                        return
+                                    #  add is next
+                                    elif self.peek_next_token() == "+":
+                                        self.match_mathop("+")
+                                    #  exponentiation is next
+                                    elif self.peek_next_token() == "**":
+                                        self.match_exponent("**")
+                                    #  subtract is next
+                                    elif self.peek_next_token() == "-":
+                                        self.match_mathop("-")
+                                    #  multiply is next
+                                    elif self.peek_next_token() == "*":
+                                        self.match_mathop("*")
+                                    #  divide is next
+                                    elif self.peek_next_token() == "/":
+                                        self.match_mathop("/")
+                                    #  modulo is next
+                                    elif self.peek_next_token() == "%":
+                                        self.match_mathop("%")
+                                    #  assign value?
+                                    elif self.peek_next_token() == ",":
+                                        self.match(",")
+                                        if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                            self.matchID_mult("Identifier")
+                                            if self.peek_next_token() == "=":
+                                                self.match_mult_assign("=")
+                                            else:
+                                                return True  # else: last identifier has no assigned value (=)
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '{expected_token}' after '{self.peek_previous_token()}'")
+                                    #  not terminated or followed
+                                    else:
+                                        return False
+                                #  not terminated or followed
+                                else:
+                                    return False
+                            #  not closed with '}'
+                            else:
+                                self.errors.append(
+                                    f"Syntax Error: Expected 'Rcurlbrace' after {self.peek_previous_token()}")
+                        #  size is single value
+                        elif self.peek_next_token() == "}":
+                            self.match("}")
+                            # Terminate it
+                            if self.peek_next_token() == "#":
+                                return
+                            #  add is next
+                            elif self.peek_next_token() == "+":
+                                self.match_mathop("+")
+                            #  exponentiation is next
+                            elif self.peek_next_token() == "**":
+                                self.match_exponent("**")
+                            #  subtract is next
+                            elif self.peek_next_token() == "-":
+                                self.match_mathop("-")
+                            #  multiply is next
+                            elif self.peek_next_token() == "*":
+                                self.match_mathop("*")
+                            #  divide is next
+                            elif self.peek_next_token() == "/":
+                                self.match_mathop("/")
+                            #  modulo is next
+                            elif self.peek_next_token() == "%":
+                                self.match_mathop("%")
+                            #  assign value?
+                            elif self.peek_next_token() == ",":
+                                self.match(",")
+                                if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                    self.matchID_mult("Identifier")
+                                    if self.peek_next_token() == "=":
+                                        self.match_mult_assign("=")
+                                    else:
+                                        return True  # else: last identifier has no assigned value (=)
+                                else:
+                                    self.errors.append(
+                                        f"Syntax error: Expected '{expected_token}' after '{self.peek_previous_token()}'")
+                            # add another size to become 2D array
+                            elif self.peek_next_token() == "{":
+                                self.match_arrID2D_assign("{")
+                                # Terminate it
+                                if self.peek_next_token() == "#":
+                                    return
+                                #  add is next
+                                elif self.peek_next_token() == "+":
+                                    self.match_mathop("+")
+                                #  exponentiation is next
+                                elif self.peek_next_token() == "**":
+                                    self.match_exponent("**")
+                                #  subtract is next
+                                elif self.peek_next_token() == "-":
+                                    self.match_mathop("-")
+                                #  multiply is next
+                                elif self.peek_next_token() == "*":
+                                    self.match_mathop("*")
+                                #  divide is next
+                                elif self.peek_next_token() == "/":
+                                    self.match_mathop("/")
+                                #  modulo is next
+                                elif self.peek_next_token() == "%":
+                                    self.match_mathop("%")
+                                #  assign value?
+                                elif self.peek_next_token() == ",":
+                                    self.match(",")
+                                    if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                        self.matchID_mult("Identifier")
+                                        if self.peek_next_token() == "=":
+                                            self.match_mult_assign("=")
+                                        else:
+                                            return True  # else: last identifier has no assigned value (=)
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected '{expected_token}' after '{self.peek_previous_token()}'")
+                                #  not terminated or followed
+                                else:
+                                    return False
+                            #  not terminated or followed
+                            else:
+                                return False
+                        #  size value is not followed by any of the following (# and Rcurl)
+                        else:
+                            self.errors.append(
+                                f"Syntax Error: Expected 'Rcurlbraces', '+', '-', '*', '/', '%' after {self.peek_previous_token()}")
+                    #  empty size, proceed to close it with '}'
+                    elif self.peek_next_token() == "}":
+                        self.match("}")
+                        # add another size to become 2D array
+                        if self.peek_next_token() == "{":
+                            self.match_arrID2D_assign("{")
+                            # Terminate it
+                            if self.peek_next_token() == "#":
+                                return True
+                            #  add is next
+                            elif self.peek_next_token() == "+":
+                                self.match_mathop("+")
+                            #  exponentiation is next
+                            elif self.peek_next_token() == "**":
+                                self.match_exponent("**")
+                            #  subtract is next
+                            elif self.peek_next_token() == "-":
+                                self.match_mathop("-")
+                            #  multiply is next
+                            elif self.peek_next_token() == "*":
+                                self.match_mathop("*")
+                            #  divide is next
+                            elif self.peek_next_token() == "/":
+                                self.match_mathop("/")
+                            #  modulo is next
+                            elif self.peek_next_token() == "%":
+                                self.match_mathop("%")
+                            #  assign value?
+                            elif self.peek_next_token() == ",":
+                                self.match(",")
+                                if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                    self.matchID_mult("Identifier")
+                                    if self.peek_next_token() == "=":
+                                        self.match_mult_assign("=")
+                                    else:
+                                        return True  # else: last identifier has no assigned value (=)
+                                else:
+                                    self.errors.append(
+                                        f"Syntax error: Expected '{expected_token}' after '{self.peek_previous_token()}'")
+                            #  not terminated or followed
+                            else:
+                                return False
+                        #  terminate it
+                        elif self.peek_next_token() == "#":
+                            self.match("#")
+                        #  add is next
+                        elif self.peek_next_token() == "+":
+                            self.match_mathop("+")
+                        #  exponentiation is next
+                        elif self.peek_next_token() == "**":
+                            self.match_exponent("**")
+                        #  subtract is next
+                        elif self.peek_next_token() == "-":
+                            self.match_mathop("-")
+                        #  multiply is next
+                        elif self.peek_next_token() == "*":
+                            self.match_mathop("*")
+                        #  divide is next
+                        elif self.peek_next_token() == "/":
+                            self.match_mathop("/")
+                        #  modulo is next
+                        elif self.peek_next_token() == "%":
+                            self.match_mathop("%")
+                        #  assign value?
+                        elif self.peek_next_token() == ",":
+                            self.match(",")
+                            if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                self.matchID_mult("Identifier")
+                                if self.peek_next_token() == "=":
+                                    self.match_mult_assign("=")
+                                else:
+                                    return True  # else: last identifier has no assigned value (=)
+                            else:
+                                self.errors.append(
+                                    f"Syntax error: Expected '{expected_token}' after '{self.peek_previous_token()}'")
+                        #  not terminated or followed
+                        else:
+                            return False
+                    else:
+                        return True  # else: last identifier has no following identifiers (comma)
                 #  add
-                if self.peek_next_token() == "+":
+                elif self.peek_next_token() == "+":
                     self.match_mathop("+")
                 #  exponent
                 elif self.peek_next_token() == "**":
@@ -878,7 +3040,7 @@ class SyntaxAnalyzer:
     #  method for handling expression inside a parentheses
     def match_mathop2(self, expected_token):
         if (self.peek_previous_token() != "SunLiteral" and self.peek_previous_token() != "LuhmanLiteral"
-                and not re.match(r'Identifier\d*$', self.peek_previous_token())):
+                and not re.match(r'Identifier\d*$', self.peek_previous_token()) and self.peek_previous_token() != "}"):
             self.errors.append(f"Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral' before {self.peek_next_token()}")
 
         self.get_next_token()
@@ -895,7 +3057,191 @@ class SyntaxAnalyzer:
             if (re.match(r'Identifier\d*$', self.peek_next_token())
                     or "SunLiteral" or "LuhmanLiteral"):
                 self.match(Resources.Value2)  # consume
-                if self.peek_next_token() == "+":
+                #  is it an array index?
+                if self.peek_next_token() == "{" and (re.match(r'Identifier\d*$', self.peek_previous_token())):
+                    self.match("{")
+                    #  array index assign path
+                    if (re.match(r'Identifier\d*$', self.peek_next_token())
+                            or self.peek_next_token() == "SunLiteral"):
+                        self.match(Resources.Value3)  # consume the values
+                        #  size expression
+                        if (
+                                self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                                or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                            self.match_mathop3(Resources.mathop1)  # size is a math expr
+                            #  close it with "}" if size is fulfilled
+                            if self.peek_next_token() == "}":
+                                self.match("}")
+                                # Terminate it
+                                if self.peek_next_token() == "#":
+                                    return
+                                #  add is next
+                                elif self.peek_next_token() == "+":
+                                    self.match_mathop2("+")
+                                #  exponentiation is next
+                                elif self.peek_next_token() == "**":
+                                    self.match_exponent2("**")
+                                #  subtract is next
+                                elif self.peek_next_token() == "-":
+                                    self.match_mathop2("-")
+                                #  multiply is next
+                                elif self.peek_next_token() == "*":
+                                    self.match_mathop2("*")
+                                #  divide is next
+                                elif self.peek_next_token() == "/":
+                                    self.match_mathop2("/")
+                                #  modulo is next
+                                elif self.peek_next_token() == "%":
+                                    self.match_mathop2("%")
+                                # add another size to become 2D array
+                                elif self.peek_next_token() == "{":
+                                    self.match_arrID2D_assign("{")
+                                    # Terminate it
+                                    if self.peek_next_token() == "#":
+                                        return
+                                    #  add is next
+                                    elif self.peek_next_token() == "+":
+                                        self.match_mathop2("+")
+                                    #  exponentiation is next
+                                    elif self.peek_next_token() == "**":
+                                        self.match_exponent2("**")
+                                    #  subtract is next
+                                    elif self.peek_next_token() == "-":
+                                        self.match_mathop2("-")
+                                    #  multiply is next
+                                    elif self.peek_next_token() == "*":
+                                        self.match_mathop2("*")
+                                    #  divide is next
+                                    elif self.peek_next_token() == "/":
+                                        self.match_mathop2("/")
+                                    #  modulo is next
+                                    elif self.peek_next_token() == "%":
+                                        self.match_mathop2("%")
+                                    #  not terminated or followed
+                                    else:
+                                        return False
+                                #  not terminated or followed
+                                else:
+                                    return False
+                            #  not closed with '}'
+                            else:
+                                self.errors.append(
+                                    f"Syntax Error: Expected 'Rcurlbrace' after {self.peek_previous_token()}")
+                        #  size is single value
+                        elif self.peek_next_token() == "}":
+                            self.match("}")
+                            # Terminate it
+                            if self.peek_next_token() == "#":
+                                return
+                            #  add is next
+                            elif self.peek_next_token() == "+":
+                                self.match_mathop2("+")
+                            #  exponentiation is next
+                            elif self.peek_next_token() == "**":
+                                self.match_exponent2("**")
+                            #  subtract is next
+                            elif self.peek_next_token() == "-":
+                                self.match_mathop2("-")
+                            #  multiply is next
+                            elif self.peek_next_token() == "*":
+                                self.match_mathop2("*")
+                            #  divide is next
+                            elif self.peek_next_token() == "/":
+                                self.match_mathop2("/")
+                            #  modulo is next
+                            elif self.peek_next_token() == "%":
+                                self.match_mathop2("%")
+                            # add another size to become 2D array
+                            elif self.peek_next_token() == "{":
+                                self.match_arrID2D_assign("{")
+                                # Terminate it
+                                if self.peek_next_token() == "#":
+                                    return
+                                #  add is next
+                                elif self.peek_next_token() == "+":
+                                    self.match_mathop2("+")
+                                #  exponentiation is next
+                                elif self.peek_next_token() == "**":
+                                    self.match_exponent2("**")
+                                #  subtract is next
+                                elif self.peek_next_token() == "-":
+                                    self.match_mathop2("-")
+                                #  multiply is next
+                                elif self.peek_next_token() == "*":
+                                    self.match_mathop2("*")
+                                #  divide is next
+                                elif self.peek_next_token() == "/":
+                                    self.match_mathop2("/")
+                                #  modulo is next
+                                elif self.peek_next_token() == "%":
+                                    self.match_mathop2("%")
+                                #  not terminated or followed
+                                else:
+                                    return False
+                            #  not terminated or followed
+                            else:
+                                return False
+                        #  size value is not followed by any of the following (# and Rcurl)
+                        else:
+                            self.errors.append(
+                                f"Syntax Error: Expected 'Rcurlbraces', '+', '-', '*', '/', '%' after {self.peek_previous_token()}")
+                    #  empty size, proceed to close it with '}'
+                    elif self.peek_next_token() == "}":
+                        self.match("}")
+                        # add another size to become 2D array
+                        if self.peek_next_token() == "{":
+                            self.match_arrID2D_assign("{")
+                            # Terminate it
+                            if self.peek_next_token() == "#":
+                                return True
+                            #  add is next
+                            elif self.peek_next_token() == "+":
+                                self.match_mathop2("+")
+                            #  exponentiation is next
+                            elif self.peek_next_token() == "**":
+                                self.match_exponent2("**")
+                            #  subtract is next
+                            elif self.peek_next_token() == "-":
+                                self.match_mathop2("-")
+                            #  multiply is next
+                            elif self.peek_next_token() == "*":
+                                self.match_mathop2("*")
+                            #  divide is next
+                            elif self.peek_next_token() == "/":
+                                self.match_mathop2("/")
+                            #  modulo is next
+                            elif self.peek_next_token() == "%":
+                                self.match_mathop2("%")
+                            #  not terminated or followed
+                            else:
+                                return False
+                        #  terminate it
+                        elif self.peek_next_token() == "#":
+                            self.match("#")
+                        #  add is next
+                        elif self.peek_next_token() == "+":
+                            self.match_mathop2("+")
+                        #  exponentiation is next
+                        elif self.peek_next_token() == "**":
+                            self.match_exponent2("**")
+                        #  subtract is next
+                        elif self.peek_next_token() == "-":
+                            self.match_mathop2("-")
+                        #  multiply is next
+                        elif self.peek_next_token() == "*":
+                            self.match_mathop2("*")
+                        #  divide is next
+                        elif self.peek_next_token() == "/":
+                            self.match_mathop2("/")
+                        #  modulo is next
+                        elif self.peek_next_token() == "%":
+                            self.match_mathop2("%")
+                        #  not terminated or followed
+                        else:
+                            return False
+                    else:
+                        return True  # else: last identifier has no following identifiers (comma)
+                elif self.peek_next_token() == "+":
                     self.match_mathop2("+")  # consume
                 elif self.peek_next_token() == "**":
                     self.match_exponent2("**")
@@ -927,37 +3273,39 @@ class SyntaxAnalyzer:
         while self.current_token == "Space":
             self.get_next_token()
 
-        if expected_token == "+" or "-" or "*" or "/" or "%":
-            if self.peek_next_token() == "(":
-                self.match_parenth("(")
-                if self.peek_previous_token() == ")":
-                    return True
+        if isinstance(expected_token, list):
+            if (self.current_token == "+" or self.current_token == "-" or self.current_token == "*"
+                    or self.current_token == "/" or self.current_token == "%"):
+                if self.peek_next_token() == "(":
+                    self.match_parenth("(")
+                    if self.peek_previous_token() == ")":
+                        return True
+                    else:
+                        self.errors.append(f"Syntax Error: Expected ')'")
+                if (re.match(r'Identifier\d*$', self.peek_next_token())
+                        or "SunLiteral"):
+                    self.match(Resources.Value3)  # consume
+                    if self.peek_next_token() == "+":
+                        self.match_mathop3("+")  # consume
+                    elif self.peek_next_token() == "**":
+                        self.match_exponent("**")
+                    #  subtract is next
+                    elif self.peek_next_token() == "-":
+                        self.match_mathop3("-")
+                    #  multiply is next
+                    elif self.peek_next_token() == "*":
+                        self.match_mathop3("*")
+                    #  divide is next
+                    elif self.peek_next_token() == "/":
+                        self.match_mathop3("/")
+                    #  modulo is next
+                    elif self.peek_next_token() == "%":
+                        self.match_mathop3("%")
+                    else:
+                        return True
                 else:
-                    self.errors.append(f"Syntax Error: Expected ')'")
-            if (re.match(r'Identifier\d*$', self.peek_next_token())
-                    or "SunLiteral"):
-                self.match(Resources.Value3)  # consume
-                if self.peek_next_token() == "+":
-                    self.match_mathop3("+")  # consume
-                elif self.peek_next_token() == "**":
-                    self.match_exponent("**")
-                #  subtract is next
-                elif self.peek_next_token() == "-":
-                    self.match_mathop3("-")
-                #  multiply is next
-                elif self.peek_next_token() == "*":
-                    self.match_mathop3("*")
-                #  divide is next
-                elif self.peek_next_token() == "/":
-                    self.match_mathop3("/")
-                #  modulo is next
-                elif self.peek_next_token() == "%":
-                    self.match_mathop3("%")
-                else:
-                    return True
-            else:
-                self.errors.append(f"Syntax Error: Expected 'Identifier', 'SunLiteral', "
-                                       f" after {self.peek_previous_token()}")
+                    self.errors.append(f"Syntax Error: Expected 'Identifier', 'SunLiteral', "
+                                           f" after {self.peek_previous_token()}")
 
     #  method for values in a parentheses
     def match_parenth(self, expected_token):
@@ -1203,10 +3551,1494 @@ class SyntaxAnalyzer:
                                                f" after {self.peek_previous_token()}")
                     else:
                         return True
+                #  array index assign path
+                elif self.peek_next_token() == "{":
+                    self.match("{")
+                    #  array index assign path
+                    if (re.match(r'Identifier\d*$', self.peek_next_token())
+                            or self.peek_next_token() == "SunLiteral"):
+                        self.match(Resources.Value3)  # consume the values
+                        #  size expression
+                        if (self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                                or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                            self.match_mathop3(Resources.mathop1)  # size is a math expr
+                            #  close it with "}" if size is fulfilled
+                            if self.peek_next_token() == "}":
+                                self.match("}")
+                                # Terminate it
+                                if self.peek_next_token() == "#":
+                                    return
+                                # add it
+                                elif self.peek_next_token() == "+":
+                                    self.match_mathop2("+")
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")  # consume
+                                        #  add is next
+                                        if self.peek_next_token() == "+":
+                                            self.match_mathop("+")
+                                        #  subtract is next
+                                        elif self.peek_next_token() == "-":
+                                            self.match_mathop("-")
+                                        #  multiply is next
+                                        elif self.peek_next_token() == "*":
+                                            self.match_mathop("*")
+                                        #  divide is next
+                                        elif self.peek_next_token() == "/":
+                                            self.match_mathop("/")
+                                        #  modulo is next
+                                        elif self.peek_next_token() == "%":
+                                            self.match_mathop("%")
+                                        #  next value asisgn
+                                        elif self.peek_next_token() == ",":
+                                            self.match(",")  # consume ','
+                                            if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                                self.match("Identifier")
+                                                if self.peek_next_token() == "=":
+                                                    self.match_mult_assign("=")
+                                                else:
+                                                    return True
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
+                                                    f" after {self.peek_previous_token()}")
+                                        else:
+                                            return True
+                                    else:
+                                        self.errors.append(f"Syntax Error: Expected '+', '-', '*', '/', '%' "
+                                                           f" after {self.peek_previous_token()}")
+                                #  exponentiate
+                                elif self.peek_next_token() == "**":
+                                    self.match_exponent("**")
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")  # consume
+                                        if self.peek_next_token() == "+":
+                                            self.match_mathop("+")
+                                            #  next value asisgn
+                                        elif self.peek_next_token() == ",":
+                                            self.match(",")  # consume ','
+                                            if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                                self.match("Identifier")
+                                                if self.peek_next_token() == "=":
+                                                    self.match_mult_assign("=")
+                                                else:
+                                                    return True
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
+                                                    f" after {self.peek_previous_token()}")
+                                        else:
+                                            return True
+                                    else:
+                                        self.errors.append(f"Syntax Error: Expected '+', '-', '*', '/', '%' "
+                                                           f" after {self.peek_previous_token()}")
+                                # subtract it
+                                elif self.peek_next_token() == "-":
+                                    self.match_mathop2("-")
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")  # consume
+                                        #  add is next
+                                        if self.peek_next_token() == "+":
+                                            self.match_mathop("+")
+                                        #  subtract is next
+                                        elif self.peek_next_token() == "-":
+                                            self.match_mathop("-")
+                                        #  multiply is next
+                                        elif self.peek_next_token() == "*":
+                                            self.match_mathop("*")
+                                        #  divide is next
+                                        elif self.peek_next_token() == "/":
+                                            self.match_mathop("/")
+                                        #  modulo is next
+                                        elif self.peek_next_token() == "%":
+                                            self.match_mathop("%")
+                                        #  next value asisgn
+                                        elif self.peek_next_token() == ",":
+                                            self.match(",")  # consume ','
+                                            if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                                self.match("Identifier")
+                                                if self.peek_next_token() == "=":
+                                                    self.match_mult_assign("=")
+                                                else:
+                                                    return True
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
+                                                    f" after {self.peek_previous_token()}")
+                                        else:
+                                            return True
+                                    else:
+                                        self.errors.append(f"Syntax Error: Expected '+', '-', '*', '/', '%' "
+                                                           f" after {self.peek_previous_token()}")
+                                # multiply it
+                                elif self.peek_next_token() == "*":
+                                    self.match_mathop2("*")
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")  # consume
+                                        #  add is next
+                                        if self.peek_next_token() == "+":
+                                            self.match_mathop("+")
+                                        #  subtract is next
+                                        elif self.peek_next_token() == "-":
+                                            self.match_mathop("-")
+                                        #  multiply is next
+                                        elif self.peek_next_token() == "*":
+                                            self.match_mathop("*")
+                                        #  divide is next
+                                        elif self.peek_next_token() == "/":
+                                            self.match_mathop("/")
+                                        #  modulo is next
+                                        elif self.peek_next_token() == "%":
+                                            self.match_mathop("%")
+                                        #  next value asisgn
+                                        elif self.peek_next_token() == ",":
+                                            self.match(",")  # consume ','
+                                            if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                                self.match("Identifier")
+                                                if self.peek_next_token() == "=":
+                                                    self.match_mult_assign("=")
+                                                else:
+                                                    return True
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
+                                                    f" after {self.peek_previous_token()}")
+                                        else:
+                                            return True
+                                    else:
+                                        self.errors.append(f"Syntax Error: Expected '+', '-', '*', '/', '%' "
+                                                           f" after {self.peek_previous_token()}")
+                                # divide it
+                                elif self.peek_next_token() == "/":
+                                    self.match_mathop2("/")
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")  # consume
+                                        #  add is next
+                                        if self.peek_next_token() == "+":
+                                            self.match_mathop("+")
+                                        #  subtract is next
+                                        elif self.peek_next_token() == "-":
+                                            self.match_mathop("-")
+                                        #  multiply is next
+                                        elif self.peek_next_token() == "*":
+                                            self.match_mathop("*")
+                                        #  divide is next
+                                        elif self.peek_next_token() == "/":
+                                            self.match_mathop("/")
+                                        #  modulo is next
+                                        elif self.peek_next_token() == "%":
+                                            self.match_mathop("%")
+                                        #  next value asisgn
+                                        elif self.peek_next_token() == ",":
+                                            self.match(",")  # consume ','
+                                            if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                                self.match("Identifier")
+                                                if self.peek_next_token() == "=":
+                                                    self.match_mult_assign("=")
+                                                else:
+                                                    return True
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
+                                                    f" after {self.peek_previous_token()}")
+                                        else:
+                                            return True
+                                    else:
+                                        self.errors.append(f"Syntax Error: Expected '+', '-', '*', '/', '%' "
+                                                           f" after {self.peek_previous_token()}")
+                                # modulo
+                                elif self.peek_next_token() == "%":
+                                    self.match_mathop2("%")
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")  # consume
+                                        #  add is next
+                                        if self.peek_next_token() == "+":
+                                            self.match_mathop("+")
+                                        #  subtract is next
+                                        elif self.peek_next_token() == "-":
+                                            self.match_mathop("-")
+                                        #  multiply is next
+                                        elif self.peek_next_token() == "*":
+                                            self.match_mathop("*")
+                                        #  divide is next
+                                        elif self.peek_next_token() == "/":
+                                            self.match_mathop("/")
+                                        #  modulo is next
+                                        elif self.peek_next_token() == "%":
+                                            self.match_mathop("%")
+                                        #  next value asisgn
+                                        elif self.peek_next_token() == ",":
+                                            self.match(",")  # consume ','
+                                            if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                                self.match("Identifier")
+                                                if self.peek_next_token() == "=":
+                                                    self.match_mult_assign("=")
+                                                else:
+                                                    return True
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
+                                                    f" after {self.peek_previous_token()}")
+                                        else:
+                                            return True
+                                    else:
+                                        self.errors.append(f"Syntax Error: Expected '+', '-', '*', '/', '%' "
+                                                           f" after {self.peek_previous_token()}")
+                                #  close it with Rparenth
+                                elif self.peek_next_token() == ")":
+                                    self.match(")")
+                                    if self.peek_next_token() == "+":
+                                        self.match_mathop("+")
+                                    #  next value asisgn
+                                    elif self.peek_next_token() == ",":
+                                        self.match(",")  # consume ','
+                                        if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                            self.match("Identifier")
+                                            if self.peek_next_token() == "=":
+                                                self.match_mult_assign("=")
+                                            else:
+                                                return True
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
+                                                f" after {self.peek_previous_token()}")
+                                    else:
+                                        return True
+                                # add another size to become 2D array
+                                elif self.peek_next_token() == "{":
+                                    self.match_arrID2D_assign("{")
+                                    # Terminate it
+                                    if self.peek_next_token() == "#":
+                                        return
+                                    # add it
+                                    elif self.peek_next_token() == "+":
+                                        self.match_mathop2("+")
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")  # consume
+                                            #  add is next
+                                            if self.peek_next_token() == "+":
+                                                self.match_mathop("+")
+                                            #  subtract is next
+                                            elif self.peek_next_token() == "-":
+                                                self.match_mathop("-")
+                                            #  multiply is next
+                                            elif self.peek_next_token() == "*":
+                                                self.match_mathop("*")
+                                            #  divide is next
+                                            elif self.peek_next_token() == "/":
+                                                self.match_mathop("/")
+                                            #  modulo is next
+                                            elif self.peek_next_token() == "%":
+                                                self.match_mathop("%")
+                                            #  next value asisgn
+                                            elif self.peek_next_token() == ",":
+                                                self.match(",")  # consume ','
+                                                if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                                    self.match("Identifier")
+                                                    if self.peek_next_token() == "=":
+                                                        self.match_mult_assign("=")
+                                                    else:
+                                                        return True
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
+                                                        f" after {self.peek_previous_token()}")
+                                            else:
+                                                return True
+                                        else:
+                                            self.errors.append(f"Syntax Error: Expected '+', '-', '*', '/', '%' "
+                                                               f" after {self.peek_previous_token()}")
+                                    #  exponentiate
+                                    elif self.peek_next_token() == "**":
+                                        self.match_exponent("**")
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")  # consume
+                                            if self.peek_next_token() == "+":
+                                                self.match_mathop("+")
+                                                #  next value asisgn
+                                            elif self.peek_next_token() == ",":
+                                                self.match(",")  # consume ','
+                                                if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                                    self.match("Identifier")
+                                                    if self.peek_next_token() == "=":
+                                                        self.match_mult_assign("=")
+                                                    else:
+                                                        return True
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
+                                                        f" after {self.peek_previous_token()}")
+                                            else:
+                                                return True
+                                        else:
+                                            self.errors.append(f"Syntax Error: Expected '+', '-', '*', '/', '%' "
+                                                               f" after {self.peek_previous_token()}")
+                                    # subtract it
+                                    elif self.peek_next_token() == "-":
+                                        self.match_mathop2("-")
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")  # consume
+                                            #  add is next
+                                            if self.peek_next_token() == "+":
+                                                self.match_mathop("+")
+                                            #  subtract is next
+                                            elif self.peek_next_token() == "-":
+                                                self.match_mathop("-")
+                                            #  multiply is next
+                                            elif self.peek_next_token() == "*":
+                                                self.match_mathop("*")
+                                            #  divide is next
+                                            elif self.peek_next_token() == "/":
+                                                self.match_mathop("/")
+                                            #  modulo is next
+                                            elif self.peek_next_token() == "%":
+                                                self.match_mathop("%")
+                                            #  next value asisgn
+                                            elif self.peek_next_token() == ",":
+                                                self.match(",")  # consume ','
+                                                if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                                    self.match("Identifier")
+                                                    if self.peek_next_token() == "=":
+                                                        self.match_mult_assign("=")
+                                                    else:
+                                                        return True
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
+                                                        f" after {self.peek_previous_token()}")
+                                            else:
+                                                return True
+                                        else:
+                                            self.errors.append(f"Syntax Error: Expected '+', '-', '*', '/', '%' "
+                                                               f" after {self.peek_previous_token()}")
+                                    # multiply it
+                                    elif self.peek_next_token() == "*":
+                                        self.match_mathop2("*")
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")  # consume
+                                            #  add is next
+                                            if self.peek_next_token() == "+":
+                                                self.match_mathop("+")
+                                            #  subtract is next
+                                            elif self.peek_next_token() == "-":
+                                                self.match_mathop("-")
+                                            #  multiply is next
+                                            elif self.peek_next_token() == "*":
+                                                self.match_mathop("*")
+                                            #  divide is next
+                                            elif self.peek_next_token() == "/":
+                                                self.match_mathop("/")
+                                            #  modulo is next
+                                            elif self.peek_next_token() == "%":
+                                                self.match_mathop("%")
+                                            #  next value asisgn
+                                            elif self.peek_next_token() == ",":
+                                                self.match(",")  # consume ','
+                                                if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                                    self.match("Identifier")
+                                                    if self.peek_next_token() == "=":
+                                                        self.match_mult_assign("=")
+                                                    else:
+                                                        return True
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
+                                                        f" after {self.peek_previous_token()}")
+                                            else:
+                                                return True
+                                        else:
+                                            self.errors.append(f"Syntax Error: Expected '+', '-', '*', '/', '%' "
+                                                               f" after {self.peek_previous_token()}")
+                                    # divide it
+                                    elif self.peek_next_token() == "/":
+                                        self.match_mathop2("/")
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")  # consume
+                                            #  add is next
+                                            if self.peek_next_token() == "+":
+                                                self.match_mathop("+")
+                                            #  subtract is next
+                                            elif self.peek_next_token() == "-":
+                                                self.match_mathop("-")
+                                            #  multiply is next
+                                            elif self.peek_next_token() == "*":
+                                                self.match_mathop("*")
+                                            #  divide is next
+                                            elif self.peek_next_token() == "/":
+                                                self.match_mathop("/")
+                                            #  modulo is next
+                                            elif self.peek_next_token() == "%":
+                                                self.match_mathop("%")
+                                            #  next value asisgn
+                                            elif self.peek_next_token() == ",":
+                                                self.match(",")  # consume ','
+                                                if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                                    self.match("Identifier")
+                                                    if self.peek_next_token() == "=":
+                                                        self.match_mult_assign("=")
+                                                    else:
+                                                        return True
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
+                                                        f" after {self.peek_previous_token()}")
+                                            else:
+                                                return True
+                                        else:
+                                            self.errors.append(f"Syntax Error: Expected '+', '-', '*', '/', '%' "
+                                                               f" after {self.peek_previous_token()}")
+                                    # modulo
+                                    elif self.peek_next_token() == "%":
+                                        self.match_mathop2("%")
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")  # consume
+                                            #  add is next
+                                            if self.peek_next_token() == "+":
+                                                self.match_mathop("+")
+                                            #  subtract is next
+                                            elif self.peek_next_token() == "-":
+                                                self.match_mathop("-")
+                                            #  multiply is next
+                                            elif self.peek_next_token() == "*":
+                                                self.match_mathop("*")
+                                            #  divide is next
+                                            elif self.peek_next_token() == "/":
+                                                self.match_mathop("/")
+                                            #  modulo is next
+                                            elif self.peek_next_token() == "%":
+                                                self.match_mathop("%")
+                                            #  next value asisgn
+                                            elif self.peek_next_token() == ",":
+                                                self.match(",")  # consume ','
+                                                if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                                    self.match("Identifier")
+                                                    if self.peek_next_token() == "=":
+                                                        self.match_mult_assign("=")
+                                                    else:
+                                                        return True
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
+                                                        f" after {self.peek_previous_token()}")
+                                            else:
+                                                return True
+                                        else:
+                                            self.errors.append(f"Syntax Error: Expected '+', '-', '*', '/', '%' "
+                                                               f" after {self.peek_previous_token()}")
+                                    #  close it with Rparenth
+                                    elif self.peek_next_token() == ")":
+                                        self.match(")")
+                                        if self.peek_next_token() == "+":
+                                            self.match_mathop("+")
+                                        #  next value asisgn
+                                        elif self.peek_next_token() == ",":
+                                            self.match(",")  # consume ','
+                                            if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                                self.match("Identifier")
+                                                if self.peek_next_token() == "=":
+                                                    self.match_mult_assign("=")
+                                                else:
+                                                    return True
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
+                                                    f" after {self.peek_previous_token()}")
+                                        else:
+                                            return True
+                                    #  not terminated or followed
+                                    else:
+                                        return False
+                                #  not terminated or followed
+                                else:
+                                    return False
+                            #  not closed with '}'
+                            else:
+                                self.errors.append(
+                                    f"Syntax Error: Expected 'Rcurlbrace' after {self.peek_previous_token()}")
+                        #  size is single value
+                        elif self.peek_next_token() == "}":
+                            self.match("}")
+                            # Terminate it
+                            if self.peek_next_token() == "#":
+                                return
+                            # add it
+                            elif self.peek_next_token() == "+":
+                                self.match_mathop2("+")
+                                if self.peek_next_token() == ")":
+                                    self.match(")")  # consume
+                                    #  add is next
+                                    if self.peek_next_token() == "+":
+                                        self.match_mathop("+")
+                                    #  subtract is next
+                                    elif self.peek_next_token() == "-":
+                                        self.match_mathop("-")
+                                    #  multiply is next
+                                    elif self.peek_next_token() == "*":
+                                        self.match_mathop("*")
+                                    #  divide is next
+                                    elif self.peek_next_token() == "/":
+                                        self.match_mathop("/")
+                                    #  modulo is next
+                                    elif self.peek_next_token() == "%":
+                                        self.match_mathop("%")
+                                    #  next value asisgn
+                                    elif self.peek_next_token() == ",":
+                                        self.match(",")  # consume ','
+                                        if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                            self.match("Identifier")
+                                            if self.peek_next_token() == "=":
+                                                self.match_mult_assign("=")
+                                            else:
+                                                return True
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
+                                                f" after {self.peek_previous_token()}")
+                                    else:
+                                        return True
+                                else:
+                                    self.errors.append(f"Syntax Error: Expected '+', '-', '*', '/', '%' "
+                                                       f" after {self.peek_previous_token()}")
+                            #  exponentiate
+                            elif self.peek_next_token() == "**":
+                                self.match_exponent("**")
+                                if self.peek_next_token() == ")":
+                                    self.match(")")  # consume
+                                    if self.peek_next_token() == "+":
+                                        self.match_mathop("+")
+                                        #  next value asisgn
+                                    elif self.peek_next_token() == ",":
+                                        self.match(",")  # consume ','
+                                        if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                            self.match("Identifier")
+                                            if self.peek_next_token() == "=":
+                                                self.match_mult_assign("=")
+                                            else:
+                                                return True
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
+                                                f" after {self.peek_previous_token()}")
+                                    else:
+                                        return True
+                                else:
+                                    self.errors.append(f"Syntax Error: Expected '+', '-', '*', '/', '%' "
+                                                       f" after {self.peek_previous_token()}")
+                            # subtract it
+                            elif self.peek_next_token() == "-":
+                                self.match_mathop2("-")
+                                if self.peek_next_token() == ")":
+                                    self.match(")")  # consume
+                                    #  add is next
+                                    if self.peek_next_token() == "+":
+                                        self.match_mathop("+")
+                                    #  subtract is next
+                                    elif self.peek_next_token() == "-":
+                                        self.match_mathop("-")
+                                    #  multiply is next
+                                    elif self.peek_next_token() == "*":
+                                        self.match_mathop("*")
+                                    #  divide is next
+                                    elif self.peek_next_token() == "/":
+                                        self.match_mathop("/")
+                                    #  modulo is next
+                                    elif self.peek_next_token() == "%":
+                                        self.match_mathop("%")
+                                    #  next value asisgn
+                                    elif self.peek_next_token() == ",":
+                                        self.match(",")  # consume ','
+                                        if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                            self.match("Identifier")
+                                            if self.peek_next_token() == "=":
+                                                self.match_mult_assign("=")
+                                            else:
+                                                return True
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
+                                                f" after {self.peek_previous_token()}")
+                                    else:
+                                        return True
+                                else:
+                                    self.errors.append(f"Syntax Error: Expected '+', '-', '*', '/', '%' "
+                                                       f" after {self.peek_previous_token()}")
+                            # multiply it
+                            elif self.peek_next_token() == "*":
+                                self.match_mathop2("*")
+                                if self.peek_next_token() == ")":
+                                    self.match(")")  # consume
+                                    #  add is next
+                                    if self.peek_next_token() == "+":
+                                        self.match_mathop("+")
+                                    #  subtract is next
+                                    elif self.peek_next_token() == "-":
+                                        self.match_mathop("-")
+                                    #  multiply is next
+                                    elif self.peek_next_token() == "*":
+                                        self.match_mathop("*")
+                                    #  divide is next
+                                    elif self.peek_next_token() == "/":
+                                        self.match_mathop("/")
+                                    #  modulo is next
+                                    elif self.peek_next_token() == "%":
+                                        self.match_mathop("%")
+                                    #  next value asisgn
+                                    elif self.peek_next_token() == ",":
+                                        self.match(",")  # consume ','
+                                        if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                            self.match("Identifier")
+                                            if self.peek_next_token() == "=":
+                                                self.match_mult_assign("=")
+                                            else:
+                                                return True
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
+                                                f" after {self.peek_previous_token()}")
+                                    else:
+                                        return True
+                                else:
+                                    self.errors.append(f"Syntax Error: Expected '+', '-', '*', '/', '%' "
+                                                       f" after {self.peek_previous_token()}")
+                            # divide it
+                            elif self.peek_next_token() == "/":
+                                self.match_mathop2("/")
+                                if self.peek_next_token() == ")":
+                                    self.match(")")  # consume
+                                    #  add is next
+                                    if self.peek_next_token() == "+":
+                                        self.match_mathop("+")
+                                    #  subtract is next
+                                    elif self.peek_next_token() == "-":
+                                        self.match_mathop("-")
+                                    #  multiply is next
+                                    elif self.peek_next_token() == "*":
+                                        self.match_mathop("*")
+                                    #  divide is next
+                                    elif self.peek_next_token() == "/":
+                                        self.match_mathop("/")
+                                    #  modulo is next
+                                    elif self.peek_next_token() == "%":
+                                        self.match_mathop("%")
+                                    #  next value asisgn
+                                    elif self.peek_next_token() == ",":
+                                        self.match(",")  # consume ','
+                                        if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                            self.match("Identifier")
+                                            if self.peek_next_token() == "=":
+                                                self.match_mult_assign("=")
+                                            else:
+                                                return True
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
+                                                f" after {self.peek_previous_token()}")
+                                    else:
+                                        return True
+                                else:
+                                    self.errors.append(f"Syntax Error: Expected '+', '-', '*', '/', '%' "
+                                                       f" after {self.peek_previous_token()}")
+                            # modulo
+                            elif self.peek_next_token() == "%":
+                                self.match_mathop2("%")
+                                if self.peek_next_token() == ")":
+                                    self.match(")")  # consume
+                                    #  add is next
+                                    if self.peek_next_token() == "+":
+                                        self.match_mathop("+")
+                                    #  subtract is next
+                                    elif self.peek_next_token() == "-":
+                                        self.match_mathop("-")
+                                    #  multiply is next
+                                    elif self.peek_next_token() == "*":
+                                        self.match_mathop("*")
+                                    #  divide is next
+                                    elif self.peek_next_token() == "/":
+                                        self.match_mathop("/")
+                                    #  modulo is next
+                                    elif self.peek_next_token() == "%":
+                                        self.match_mathop("%")
+                                    #  next value asisgn
+                                    elif self.peek_next_token() == ",":
+                                        self.match(",")  # consume ','
+                                        if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                            self.match("Identifier")
+                                            if self.peek_next_token() == "=":
+                                                self.match_mult_assign("=")
+                                            else:
+                                                return True
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
+                                                f" after {self.peek_previous_token()}")
+                                    else:
+                                        return True
+                                else:
+                                    self.errors.append(f"Syntax Error: Expected '+', '-', '*', '/', '%' "
+                                                       f" after {self.peek_previous_token()}")
+                            #  close it with Rparenth
+                            elif self.peek_next_token() == ")":
+                                self.match(")")
+                                if self.peek_next_token() == "+":
+                                    self.match_mathop("+")
+                                #  next value asisgn
+                                elif self.peek_next_token() == ",":
+                                    self.match(",")  # consume ','
+                                    if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                        self.match("Identifier")
+                                        if self.peek_next_token() == "=":
+                                            self.match_mult_assign("=")
+                                        else:
+                                            return True
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
+                                            f" after {self.peek_previous_token()}")
+                                else:
+                                    return True
+                            # add another size to become 2D array
+                            elif self.peek_next_token() == "{":
+                                self.match_arrID2D_assign("{")
+                                # Terminate it
+                                if self.peek_next_token() == "#":
+                                    return
+                                # add it
+                                elif self.peek_next_token() == "+":
+                                    self.match_mathop2("+")
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")  # consume
+                                        #  add is next
+                                        if self.peek_next_token() == "+":
+                                            self.match_mathop("+")
+                                        #  subtract is next
+                                        elif self.peek_next_token() == "-":
+                                            self.match_mathop("-")
+                                        #  multiply is next
+                                        elif self.peek_next_token() == "*":
+                                            self.match_mathop("*")
+                                        #  divide is next
+                                        elif self.peek_next_token() == "/":
+                                            self.match_mathop("/")
+                                        #  modulo is next
+                                        elif self.peek_next_token() == "%":
+                                            self.match_mathop("%")
+                                        #  next value asisgn
+                                        elif self.peek_next_token() == ",":
+                                            self.match(",")  # consume ','
+                                            if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                                self.match("Identifier")
+                                                if self.peek_next_token() == "=":
+                                                    self.match_mult_assign("=")
+                                                else:
+                                                    return True
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
+                                                    f" after {self.peek_previous_token()}")
+                                        else:
+                                            return True
+                                    else:
+                                        self.errors.append(f"Syntax Error: Expected '+', '-', '*', '/', '%' "
+                                                           f" after {self.peek_previous_token()}")
+                                #  exponentiate
+                                elif self.peek_next_token() == "**":
+                                    self.match_exponent("**")
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")  # consume
+                                        if self.peek_next_token() == "+":
+                                            self.match_mathop("+")
+                                            #  next value asisgn
+                                        elif self.peek_next_token() == ",":
+                                            self.match(",")  # consume ','
+                                            if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                                self.match("Identifier")
+                                                if self.peek_next_token() == "=":
+                                                    self.match_mult_assign("=")
+                                                else:
+                                                    return True
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
+                                                    f" after {self.peek_previous_token()}")
+                                        else:
+                                            return True
+                                    else:
+                                        self.errors.append(f"Syntax Error: Expected '+', '-', '*', '/', '%' "
+                                                           f" after {self.peek_previous_token()}")
+                                # subtract it
+                                elif self.peek_next_token() == "-":
+                                    self.match_mathop2("-")
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")  # consume
+                                        #  add is next
+                                        if self.peek_next_token() == "+":
+                                            self.match_mathop("+")
+                                        #  subtract is next
+                                        elif self.peek_next_token() == "-":
+                                            self.match_mathop("-")
+                                        #  multiply is next
+                                        elif self.peek_next_token() == "*":
+                                            self.match_mathop("*")
+                                        #  divide is next
+                                        elif self.peek_next_token() == "/":
+                                            self.match_mathop("/")
+                                        #  modulo is next
+                                        elif self.peek_next_token() == "%":
+                                            self.match_mathop("%")
+                                        #  next value asisgn
+                                        elif self.peek_next_token() == ",":
+                                            self.match(",")  # consume ','
+                                            if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                                self.match("Identifier")
+                                                if self.peek_next_token() == "=":
+                                                    self.match_mult_assign("=")
+                                                else:
+                                                    return True
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
+                                                    f" after {self.peek_previous_token()}")
+                                        else:
+                                            return True
+                                    else:
+                                        self.errors.append(f"Syntax Error: Expected '+', '-', '*', '/', '%' "
+                                                           f" after {self.peek_previous_token()}")
+                                # multiply it
+                                elif self.peek_next_token() == "*":
+                                    self.match_mathop2("*")
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")  # consume
+                                        #  add is next
+                                        if self.peek_next_token() == "+":
+                                            self.match_mathop("+")
+                                        #  subtract is next
+                                        elif self.peek_next_token() == "-":
+                                            self.match_mathop("-")
+                                        #  multiply is next
+                                        elif self.peek_next_token() == "*":
+                                            self.match_mathop("*")
+                                        #  divide is next
+                                        elif self.peek_next_token() == "/":
+                                            self.match_mathop("/")
+                                        #  modulo is next
+                                        elif self.peek_next_token() == "%":
+                                            self.match_mathop("%")
+                                        #  next value asisgn
+                                        elif self.peek_next_token() == ",":
+                                            self.match(",")  # consume ','
+                                            if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                                self.match("Identifier")
+                                                if self.peek_next_token() == "=":
+                                                    self.match_mult_assign("=")
+                                                else:
+                                                    return True
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
+                                                    f" after {self.peek_previous_token()}")
+                                        else:
+                                            return True
+                                    else:
+                                        self.errors.append(f"Syntax Error: Expected '+', '-', '*', '/', '%' "
+                                                           f" after {self.peek_previous_token()}")
+                                # divide it
+                                elif self.peek_next_token() == "/":
+                                    self.match_mathop2("/")
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")  # consume
+                                        #  add is next
+                                        if self.peek_next_token() == "+":
+                                            self.match_mathop("+")
+                                        #  subtract is next
+                                        elif self.peek_next_token() == "-":
+                                            self.match_mathop("-")
+                                        #  multiply is next
+                                        elif self.peek_next_token() == "*":
+                                            self.match_mathop("*")
+                                        #  divide is next
+                                        elif self.peek_next_token() == "/":
+                                            self.match_mathop("/")
+                                        #  modulo is next
+                                        elif self.peek_next_token() == "%":
+                                            self.match_mathop("%")
+                                        #  next value asisgn
+                                        elif self.peek_next_token() == ",":
+                                            self.match(",")  # consume ','
+                                            if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                                self.match("Identifier")
+                                                if self.peek_next_token() == "=":
+                                                    self.match_mult_assign("=")
+                                                else:
+                                                    return True
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
+                                                    f" after {self.peek_previous_token()}")
+                                        else:
+                                            return True
+                                    else:
+                                        self.errors.append(f"Syntax Error: Expected '+', '-', '*', '/', '%' "
+                                                           f" after {self.peek_previous_token()}")
+                                # modulo
+                                elif self.peek_next_token() == "%":
+                                    self.match_mathop2("%")
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")  # consume
+                                        #  add is next
+                                        if self.peek_next_token() == "+":
+                                            self.match_mathop("+")
+                                        #  subtract is next
+                                        elif self.peek_next_token() == "-":
+                                            self.match_mathop("-")
+                                        #  multiply is next
+                                        elif self.peek_next_token() == "*":
+                                            self.match_mathop("*")
+                                        #  divide is next
+                                        elif self.peek_next_token() == "/":
+                                            self.match_mathop("/")
+                                        #  modulo is next
+                                        elif self.peek_next_token() == "%":
+                                            self.match_mathop("%")
+                                        #  next value asisgn
+                                        elif self.peek_next_token() == ",":
+                                            self.match(",")  # consume ','
+                                            if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                                self.match("Identifier")
+                                                if self.peek_next_token() == "=":
+                                                    self.match_mult_assign("=")
+                                                else:
+                                                    return True
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
+                                                    f" after {self.peek_previous_token()}")
+                                        else:
+                                            return True
+                                    else:
+                                        self.errors.append(f"Syntax Error: Expected '+', '-', '*', '/', '%' "
+                                                           f" after {self.peek_previous_token()}")
+                                #  close it with Rparenth
+                                elif self.peek_next_token() == ")":
+                                    self.match(")")
+                                    if self.peek_next_token() == "+":
+                                        self.match_mathop("+")
+                                    #  next value asisgn
+                                    elif self.peek_next_token() == ",":
+                                        self.match(",")  # consume ','
+                                        if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                            self.match("Identifier")
+                                            if self.peek_next_token() == "=":
+                                                self.match_mult_assign("=")
+                                            else:
+                                                return True
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
+                                                f" after {self.peek_previous_token()}")
+                                    else:
+                                        return True
+                                #  not terminated or followed
+                                else:
+                                    return False
+                            #  not terminated or followed
+                            else:
+                                return False
+                        #  size value is not followed by any of the following (# and Rcurl)
+                        else:
+                            self.errors.append(
+                                f"Syntax Error: Expected 'Rcurlbraces', '+', '-', '*', '/', '%' after {self.peek_previous_token()}")
+                    #  empty size, proceed to close it with '}'
+                    elif self.peek_next_token() == "}":
+                        self.match("}")
+                        # add another size to become 2D array
+                        if self.peek_next_token() == "{":
+                            self.match_arrID2D_assign("{")
+                            # Terminate it
+                            if self.peek_next_token() == "#":
+                                return True
+                            # add it
+                            elif self.peek_next_token() == "+":
+                                self.match_mathop2("+")
+                                if self.peek_next_token() == ")":
+                                    self.match(")")  # consume
+                                    #  add is next
+                                    if self.peek_next_token() == "+":
+                                        self.match_mathop("+")
+                                    #  subtract is next
+                                    elif self.peek_next_token() == "-":
+                                        self.match_mathop("-")
+                                    #  multiply is next
+                                    elif self.peek_next_token() == "*":
+                                        self.match_mathop("*")
+                                    #  divide is next
+                                    elif self.peek_next_token() == "/":
+                                        self.match_mathop("/")
+                                    #  modulo is next
+                                    elif self.peek_next_token() == "%":
+                                        self.match_mathop("%")
+                                    #  next value asisgn
+                                    elif self.peek_next_token() == ",":
+                                        self.match(",")  # consume ','
+                                        if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                            self.match("Identifier")
+                                            if self.peek_next_token() == "=":
+                                                self.match_mult_assign("=")
+                                            else:
+                                                return True
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
+                                                f" after {self.peek_previous_token()}")
+                                    else:
+                                        return True
+                                else:
+                                    self.errors.append(f"Syntax Error: Expected '+', '-', '*', '/', '%' "
+                                                       f" after {self.peek_previous_token()}")
+                            #  exponentiate
+                            elif self.peek_next_token() == "**":
+                                self.match_exponent("**")
+                                if self.peek_next_token() == ")":
+                                    self.match(")")  # consume
+                                    if self.peek_next_token() == "+":
+                                        self.match_mathop("+")
+                                        #  next value asisgn
+                                    elif self.peek_next_token() == ",":
+                                        self.match(",")  # consume ','
+                                        if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                            self.match("Identifier")
+                                            if self.peek_next_token() == "=":
+                                                self.match_mult_assign("=")
+                                            else:
+                                                return True
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
+                                                f" after {self.peek_previous_token()}")
+                                    else:
+                                        return True
+                                else:
+                                    self.errors.append(f"Syntax Error: Expected '+', '-', '*', '/', '%' "
+                                                       f" after {self.peek_previous_token()}")
+                            # subtract it
+                            elif self.peek_next_token() == "-":
+                                self.match_mathop2("-")
+                                if self.peek_next_token() == ")":
+                                    self.match(")")  # consume
+                                    #  add is next
+                                    if self.peek_next_token() == "+":
+                                        self.match_mathop("+")
+                                    #  subtract is next
+                                    elif self.peek_next_token() == "-":
+                                        self.match_mathop("-")
+                                    #  multiply is next
+                                    elif self.peek_next_token() == "*":
+                                        self.match_mathop("*")
+                                    #  divide is next
+                                    elif self.peek_next_token() == "/":
+                                        self.match_mathop("/")
+                                    #  modulo is next
+                                    elif self.peek_next_token() == "%":
+                                        self.match_mathop("%")
+                                    #  next value asisgn
+                                    elif self.peek_next_token() == ",":
+                                        self.match(",")  # consume ','
+                                        if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                            self.match("Identifier")
+                                            if self.peek_next_token() == "=":
+                                                self.match_mult_assign("=")
+                                            else:
+                                                return True
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
+                                                f" after {self.peek_previous_token()}")
+                                    else:
+                                        return True
+                                else:
+                                    self.errors.append(f"Syntax Error: Expected '+', '-', '*', '/', '%' "
+                                                       f" after {self.peek_previous_token()}")
+                            # multiply it
+                            elif self.peek_next_token() == "*":
+                                self.match_mathop2("*")
+                                if self.peek_next_token() == ")":
+                                    self.match(")")  # consume
+                                    #  add is next
+                                    if self.peek_next_token() == "+":
+                                        self.match_mathop("+")
+                                    #  subtract is next
+                                    elif self.peek_next_token() == "-":
+                                        self.match_mathop("-")
+                                    #  multiply is next
+                                    elif self.peek_next_token() == "*":
+                                        self.match_mathop("*")
+                                    #  divide is next
+                                    elif self.peek_next_token() == "/":
+                                        self.match_mathop("/")
+                                    #  modulo is next
+                                    elif self.peek_next_token() == "%":
+                                        self.match_mathop("%")
+                                    #  next value asisgn
+                                    elif self.peek_next_token() == ",":
+                                        self.match(",")  # consume ','
+                                        if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                            self.match("Identifier")
+                                            if self.peek_next_token() == "=":
+                                                self.match_mult_assign("=")
+                                            else:
+                                                return True
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
+                                                f" after {self.peek_previous_token()}")
+                                    else:
+                                        return True
+                                else:
+                                    self.errors.append(f"Syntax Error: Expected '+', '-', '*', '/', '%' "
+                                                       f" after {self.peek_previous_token()}")
+                            # divide it
+                            elif self.peek_next_token() == "/":
+                                self.match_mathop2("/")
+                                if self.peek_next_token() == ")":
+                                    self.match(")")  # consume
+                                    #  add is next
+                                    if self.peek_next_token() == "+":
+                                        self.match_mathop("+")
+                                    #  subtract is next
+                                    elif self.peek_next_token() == "-":
+                                        self.match_mathop("-")
+                                    #  multiply is next
+                                    elif self.peek_next_token() == "*":
+                                        self.match_mathop("*")
+                                    #  divide is next
+                                    elif self.peek_next_token() == "/":
+                                        self.match_mathop("/")
+                                    #  modulo is next
+                                    elif self.peek_next_token() == "%":
+                                        self.match_mathop("%")
+                                    #  next value asisgn
+                                    elif self.peek_next_token() == ",":
+                                        self.match(",")  # consume ','
+                                        if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                            self.match("Identifier")
+                                            if self.peek_next_token() == "=":
+                                                self.match_mult_assign("=")
+                                            else:
+                                                return True
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
+                                                f" after {self.peek_previous_token()}")
+                                    else:
+                                        return True
+                                else:
+                                    self.errors.append(f"Syntax Error: Expected '+', '-', '*', '/', '%' "
+                                                       f" after {self.peek_previous_token()}")
+                            # modulo
+                            elif self.peek_next_token() == "%":
+                                self.match_mathop2("%")
+                                if self.peek_next_token() == ")":
+                                    self.match(")")  # consume
+                                    #  add is next
+                                    if self.peek_next_token() == "+":
+                                        self.match_mathop("+")
+                                    #  subtract is next
+                                    elif self.peek_next_token() == "-":
+                                        self.match_mathop("-")
+                                    #  multiply is next
+                                    elif self.peek_next_token() == "*":
+                                        self.match_mathop("*")
+                                    #  divide is next
+                                    elif self.peek_next_token() == "/":
+                                        self.match_mathop("/")
+                                    #  modulo is next
+                                    elif self.peek_next_token() == "%":
+                                        self.match_mathop("%")
+                                    #  next value asisgn
+                                    elif self.peek_next_token() == ",":
+                                        self.match(",")  # consume ','
+                                        if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                            self.match("Identifier")
+                                            if self.peek_next_token() == "=":
+                                                self.match_mult_assign("=")
+                                            else:
+                                                return True
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
+                                                f" after {self.peek_previous_token()}")
+                                    else:
+                                        return True
+                                else:
+                                    self.errors.append(f"Syntax Error: Expected '+', '-', '*', '/', '%' "
+                                                       f" after {self.peek_previous_token()}")
+                            #  close it with Rparenth
+                            elif self.peek_next_token() == ")":
+                                self.match(")")
+                                if self.peek_next_token() == "+":
+                                    self.match_mathop("+")
+                                #  next value asisgn
+                                elif self.peek_next_token() == ",":
+                                    self.match(",")  # consume ','
+                                    if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                        self.match("Identifier")
+                                        if self.peek_next_token() == "=":
+                                            self.match_mult_assign("=")
+                                        else:
+                                            return True
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
+                                            f" after {self.peek_previous_token()}")
+                                else:
+                                    return True
+                            #  not terminated or followed
+                            else:
+                                return False
+                        #  terminate it
+                        elif self.peek_next_token() == "#":
+                            self.match("#")
+                        # add it
+                        elif self.peek_next_token() == "+":
+                            self.match_mathop2("+")
+                            if self.peek_next_token() == ")":
+                                self.match(")")  # consume
+                                #  add is next
+                                if self.peek_next_token() == "+":
+                                    self.match_mathop("+")
+                                #  subtract is next
+                                elif self.peek_next_token() == "-":
+                                    self.match_mathop("-")
+                                #  multiply is next
+                                elif self.peek_next_token() == "*":
+                                    self.match_mathop("*")
+                                #  divide is next
+                                elif self.peek_next_token() == "/":
+                                    self.match_mathop("/")
+                                #  modulo is next
+                                elif self.peek_next_token() == "%":
+                                    self.match_mathop("%")
+                                #  next value asisgn
+                                elif self.peek_next_token() == ",":
+                                    self.match(",")  # consume ','
+                                    if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                        self.match("Identifier")
+                                        if self.peek_next_token() == "=":
+                                            self.match_mult_assign("=")
+                                        else:
+                                            return True
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
+                                            f" after {self.peek_previous_token()}")
+                                else:
+                                    return True
+                            else:
+                                self.errors.append(f"Syntax Error: Expected '+', '-', '*', '/', '%' "
+                                                   f" after {self.peek_previous_token()}")
+                        #  exponentiate
+                        elif self.peek_next_token() == "**":
+                            self.match_exponent("**")
+                            if self.peek_next_token() == ")":
+                                self.match(")")  # consume
+                                if self.peek_next_token() == "+":
+                                    self.match_mathop("+")
+                                    #  next value asisgn
+                                elif self.peek_next_token() == ",":
+                                    self.match(",")  # consume ','
+                                    if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                        self.match("Identifier")
+                                        if self.peek_next_token() == "=":
+                                            self.match_mult_assign("=")
+                                        else:
+                                            return True
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
+                                            f" after {self.peek_previous_token()}")
+                                else:
+                                    return True
+                            else:
+                                self.errors.append(f"Syntax Error: Expected '+', '-', '*', '/', '%' "
+                                                   f" after {self.peek_previous_token()}")
+                        # subtract it
+                        elif self.peek_next_token() == "-":
+                            self.match_mathop2("-")
+                            if self.peek_next_token() == ")":
+                                self.match(")")  # consume
+                                #  add is next
+                                if self.peek_next_token() == "+":
+                                    self.match_mathop("+")
+                                #  subtract is next
+                                elif self.peek_next_token() == "-":
+                                    self.match_mathop("-")
+                                #  multiply is next
+                                elif self.peek_next_token() == "*":
+                                    self.match_mathop("*")
+                                #  divide is next
+                                elif self.peek_next_token() == "/":
+                                    self.match_mathop("/")
+                                #  modulo is next
+                                elif self.peek_next_token() == "%":
+                                    self.match_mathop("%")
+                                #  next value asisgn
+                                elif self.peek_next_token() == ",":
+                                    self.match(",")  # consume ','
+                                    if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                        self.match("Identifier")
+                                        if self.peek_next_token() == "=":
+                                            self.match_mult_assign("=")
+                                        else:
+                                            return True
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
+                                            f" after {self.peek_previous_token()}")
+                                else:
+                                    return True
+                            else:
+                                self.errors.append(f"Syntax Error: Expected '+', '-', '*', '/', '%' "
+                                                   f" after {self.peek_previous_token()}")
+                        # multiply it
+                        elif self.peek_next_token() == "*":
+                            self.match_mathop2("*")
+                            if self.peek_next_token() == ")":
+                                self.match(")")  # consume
+                                #  add is next
+                                if self.peek_next_token() == "+":
+                                    self.match_mathop("+")
+                                #  subtract is next
+                                elif self.peek_next_token() == "-":
+                                    self.match_mathop("-")
+                                #  multiply is next
+                                elif self.peek_next_token() == "*":
+                                    self.match_mathop("*")
+                                #  divide is next
+                                elif self.peek_next_token() == "/":
+                                    self.match_mathop("/")
+                                #  modulo is next
+                                elif self.peek_next_token() == "%":
+                                    self.match_mathop("%")
+                                #  next value asisgn
+                                elif self.peek_next_token() == ",":
+                                    self.match(",")  # consume ','
+                                    if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                        self.match("Identifier")
+                                        if self.peek_next_token() == "=":
+                                            self.match_mult_assign("=")
+                                        else:
+                                            return True
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
+                                            f" after {self.peek_previous_token()}")
+                                else:
+                                    return True
+                            else:
+                                self.errors.append(f"Syntax Error: Expected '+', '-', '*', '/', '%' "
+                                                   f" after {self.peek_previous_token()}")
+                        # divide it
+                        elif self.peek_next_token() == "/":
+                            self.match_mathop2("/")
+                            if self.peek_next_token() == ")":
+                                self.match(")")  # consume
+                                #  add is next
+                                if self.peek_next_token() == "+":
+                                    self.match_mathop("+")
+                                #  subtract is next
+                                elif self.peek_next_token() == "-":
+                                    self.match_mathop("-")
+                                #  multiply is next
+                                elif self.peek_next_token() == "*":
+                                    self.match_mathop("*")
+                                #  divide is next
+                                elif self.peek_next_token() == "/":
+                                    self.match_mathop("/")
+                                #  modulo is next
+                                elif self.peek_next_token() == "%":
+                                    self.match_mathop("%")
+                                #  next value asisgn
+                                elif self.peek_next_token() == ",":
+                                    self.match(",")  # consume ','
+                                    if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                        self.match("Identifier")
+                                        if self.peek_next_token() == "=":
+                                            self.match_mult_assign("=")
+                                        else:
+                                            return True
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
+                                            f" after {self.peek_previous_token()}")
+                                else:
+                                    return True
+                            else:
+                                self.errors.append(f"Syntax Error: Expected '+', '-', '*', '/', '%' "
+                                                   f" after {self.peek_previous_token()}")
+                        # modulo
+                        elif self.peek_next_token() == "%":
+                            self.match_mathop2("%")
+                            if self.peek_next_token() == ")":
+                                self.match(")")  # consume
+                                #  add is next
+                                if self.peek_next_token() == "+":
+                                    self.match_mathop("+")
+                                #  subtract is next
+                                elif self.peek_next_token() == "-":
+                                    self.match_mathop("-")
+                                #  multiply is next
+                                elif self.peek_next_token() == "*":
+                                    self.match_mathop("*")
+                                #  divide is next
+                                elif self.peek_next_token() == "/":
+                                    self.match_mathop("/")
+                                #  modulo is next
+                                elif self.peek_next_token() == "%":
+                                    self.match_mathop("%")
+                                #  next value asisgn
+                                elif self.peek_next_token() == ",":
+                                    self.match(",")  # consume ','
+                                    if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                        self.match("Identifier")
+                                        if self.peek_next_token() == "=":
+                                            self.match_mult_assign("=")
+                                        else:
+                                            return True
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
+                                            f" after {self.peek_previous_token()}")
+                                else:
+                                    return True
+                            else:
+                                self.errors.append(f"Syntax Error: Expected '+', '-', '*', '/', '%' "
+                                                   f" after {self.peek_previous_token()}")
+                        #  close it with Rparenth
+                        elif self.peek_next_token() == ")":
+                            self.match(")")
+                            if self.peek_next_token() == "+":
+                                self.match_mathop("+")
+                            #  next value asisgn
+                            elif self.peek_next_token() == ",":
+                                self.match(",")  # consume ','
+                                if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                    self.match("Identifier")
+                                    if self.peek_next_token() == "=":
+                                        self.match_mult_assign("=")
+                                    else:
+                                        return True
+                                else:
+                                    self.errors.append(
+                                        f"Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
+                                        f" after {self.peek_previous_token()}")
+                            else:
+                                return True
+                        #  not terminated or followed
+                        else:
+                            return False
+                    else:
+                        return True  # else: last identifier has no following identifiers (comma)
                 else:
-                    self.errors.append(f"Syntax Error: Expected '+', '-', '*', '/', "
+                    self.errors.append(f"Syntax Error: Expected '+', '-', '*', '/', 'Lcurlbraces' "
                                        f" after {self.peek_previous_token()}")
-
             else:
                 self.errors.append(f"Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
                                        f" after {self.peek_previous_token()}")
@@ -1278,10 +5110,248 @@ class SyntaxAnalyzer:
                             self.match_mult_assign("=")
                         else:
                             return True  # terminate
+                #  is it an array index?
+                elif self.peek_next_token() == "{" and (re.match(r'Identifier\d*$', self.peek_previous_token())):
+                    self.match("{")
+                    #  array index assign path
+                    if (re.match(r'Identifier\d*$', self.peek_next_token())
+                            or self.peek_next_token() == "SunLiteral"):
+                        self.match(Resources.Value3)  # consume the values
+                        #  size expression
+                        if (
+                                self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                                or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                            self.match_mathop3(Resources.mathop1)  # size is a math expr
+                            #  close it with "}" if size is fulfilled
+                            if self.peek_next_token() == "}":
+                                self.match("}")
+                                # Terminate it
+                                if self.peek_next_token() == "#":
+                                    return
+                                #  add is next
+                                elif self.peek_next_token() == "+":
+                                    self.match_mathop("+")
+                                #  subtract is next
+                                elif self.peek_next_token() == "-":
+                                    self.match_mathop("-")
+                                #  multiply is next
+                                elif self.peek_next_token() == "*":
+                                    self.match_mathop("*")
+                                #  divide is next
+                                elif self.peek_next_token() == "/":
+                                    self.match_mathop("/")
+                                #  modulo is next
+                                elif self.peek_next_token() == "%":
+                                    self.match_mathop("%")
+                                #  assign value?
+                                elif self.peek_next_token() == ",":
+                                    self.match(",")
+                                    if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                        self.matchID_mult("Identifier")
+                                        if self.peek_next_token() == "=":
+                                            self.match_mult_assign("=")
+                                        else:
+                                            return True  # else: last identifier has no assigned value (=)
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected '{expected_token}' after '{self.peek_previous_token()}'")
+                                # add another size to become 2D array
+                                elif self.peek_next_token() == "{":
+                                    self.match_arrID2D_assign("{")
+                                    # Terminate it
+                                    if self.peek_next_token() == "#":
+                                        return
+                                    #  add is next
+                                    elif self.peek_next_token() == "+":
+                                        self.match_mathop("+")
+                                    #  subtract is next
+                                    elif self.peek_next_token() == "-":
+                                        self.match_mathop("-")
+                                    #  multiply is next
+                                    elif self.peek_next_token() == "*":
+                                        self.match_mathop("*")
+                                    #  divide is next
+                                    elif self.peek_next_token() == "/":
+                                        self.match_mathop("/")
+                                    #  modulo is next
+                                    elif self.peek_next_token() == "%":
+                                        self.match_mathop("%")
+                                    #  assign value?
+                                    elif self.peek_next_token() == ",":
+                                        self.match(",")
+                                        if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                            self.matchID_mult("Identifier")
+                                            if self.peek_next_token() == "=":
+                                                self.match_mult_assign("=")
+                                            else:
+                                                return True  # else: last identifier has no assigned value (=)
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '{expected_token}' after '{self.peek_previous_token()}'")
+                                    #  not terminated or followed
+                                    else:
+                                        return False
+                                #  not terminated or followed
+                                else:
+                                    return False
+                            #  not closed with '}'
+                            else:
+                                self.errors.append(
+                                    f"Syntax Error: Expected 'Rcurlbrace' after {self.peek_previous_token()}")
+                        #  size is single value
+                        elif self.peek_next_token() == "}":
+                            self.match("}")
+                            # Terminate it
+                            if self.peek_next_token() == "#":
+                                return
+                            #  add is next
+                            elif self.peek_next_token() == "+":
+                                self.match_mathop("+")
+                            #  subtract is next
+                            elif self.peek_next_token() == "-":
+                                self.match_mathop("-")
+                            #  multiply is next
+                            elif self.peek_next_token() == "*":
+                                self.match_mathop("*")
+                            #  divide is next
+                            elif self.peek_next_token() == "/":
+                                self.match_mathop("/")
+                            #  modulo is next
+                            elif self.peek_next_token() == "%":
+                                self.match_mathop("%")
+                            #  assign value?
+                            elif self.peek_next_token() == ",":
+                                self.match(",")
+                                if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                    self.matchID_mult("Identifier")
+                                    if self.peek_next_token() == "=":
+                                        self.match_mult_assign("=")
+                                    else:
+                                        return True  # else: last identifier has no assigned value (=)
+                                else:
+                                    self.errors.append(
+                                        f"Syntax error: Expected '{expected_token}' after '{self.peek_previous_token()}'")
+                            # add another size to become 2D array
+                            elif self.peek_next_token() == "{":
+                                self.match_arrID2D_assign("{")
+                                # Terminate it
+                                if self.peek_next_token() == "#":
+                                    return
+                                #  add is next
+                                elif self.peek_next_token() == "+":
+                                    self.match_mathop("+")
+                                #  subtract is next
+                                elif self.peek_next_token() == "-":
+                                    self.match_mathop("-")
+                                #  multiply is next
+                                elif self.peek_next_token() == "*":
+                                    self.match_mathop("*")
+                                #  divide is next
+                                elif self.peek_next_token() == "/":
+                                    self.match_mathop("/")
+                                #  modulo is next
+                                elif self.peek_next_token() == "%":
+                                    self.match_mathop("%")
+                                #  assign value?
+                                elif self.peek_next_token() == ",":
+                                    self.match(",")
+                                    if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                        self.matchID_mult("Identifier")
+                                        if self.peek_next_token() == "=":
+                                            self.match_mult_assign("=")
+                                        else:
+                                            return True  # else: last identifier has no assigned value (=)
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected '{expected_token}' after '{self.peek_previous_token()}'")
+                                #  not terminated or followed
+                                else:
+                                    return False
+                            #  not terminated or followed
+                            else:
+                                return False
+                        #  size value is not followed by any of the following (# and Rcurl)
+                        else:
+                            self.errors.append(
+                                f"Syntax Error: Expected 'Rcurlbraces', '+', '-', '*', '/', '%' after {self.peek_previous_token()}")
+                    #  empty size, proceed to close it with '}'
+                    elif self.peek_next_token() == "}":
+                        self.match("}")
+                        # add another size to become 2D array
+                        if self.peek_next_token() == "{":
+                            self.match_arrID2D_assign("{")
+                            # Terminate it
+                            if self.peek_next_token() == "#":
+                                return True
+                            #  add is next
+                            elif self.peek_next_token() == "+":
+                                self.match_mathop("+")
+                            #  subtract is next
+                            elif self.peek_next_token() == "-":
+                                self.match_mathop("-")
+                            #  multiply is next
+                            elif self.peek_next_token() == "*":
+                                self.match_mathop("*")
+                            #  divide is next
+                            elif self.peek_next_token() == "/":
+                                self.match_mathop("/")
+                            #  modulo is next
+                            elif self.peek_next_token() == "%":
+                                self.match_mathop("%")
+                            #  assign value?
+                            elif self.peek_next_token() == ",":
+                                self.match(",")
+                                if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                    self.matchID_mult("Identifier")
+                                    if self.peek_next_token() == "=":
+                                        self.match_mult_assign("=")
+                                    else:
+                                        return True  # else: last identifier has no assigned value (=)
+                                else:
+                                    self.errors.append(
+                                        f"Syntax error: Expected '{expected_token}' after '{self.peek_previous_token()}'")
+                            #  not terminated or followed
+                            else:
+                                return False
+                        #  terminate it
+                        elif self.peek_next_token() == "#":
+                            self.match("#")
+                        #  add is next
+                        elif self.peek_next_token() == "+":
+                            self.match_mathop("+")
+                        #  subtract is next
+                        elif self.peek_next_token() == "-":
+                            self.match_mathop("-")
+                        #  multiply is next
+                        elif self.peek_next_token() == "*":
+                            self.match_mathop("*")
+                        #  divide is next
+                        elif self.peek_next_token() == "/":
+                            self.match_mathop("/")
+                        #  modulo is next
+                        elif self.peek_next_token() == "%":
+                            self.match_mathop("%")
+                        #  assign value?
+                        elif self.peek_next_token() == ",":
+                            self.match(",")
+                            if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                self.matchID_mult("Identifier")
+                                if self.peek_next_token() == "=":
+                                    self.match_mult_assign("=")
+                                else:
+                                    return True  # else: last identifier has no assigned value (=)
+                            else:
+                                self.errors.append(
+                                    f"Syntax error: Expected '{expected_token}' after '{self.peek_previous_token()}'")
+                        #  not terminated or followed
+                        else:
+                            return False
+                    else:
+                        return True  # else: last identifier has no following identifiers (comma)
                 else:
                     return True  # terminate
             else:
-                self.errors.append(f"Syntax Error: Expected 'Identifier' after {self.peek_previous_token()}")
+                self.errors.append(f"Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral' after {self.peek_previous_token()}")
 
     #  method if it is an exponentiation
     def match_exponent2(self, expected_token):
@@ -1308,6 +5378,173 @@ class SyntaxAnalyzer:
                 #  modulo is next
                 elif self.peek_next_token() == "%":
                     self.match_mathop2("%")
+                #  is it an array index?
+                elif self.peek_next_token() == "{" and (re.match(r'Identifier\d*$', self.peek_previous_token())):
+                    self.match("{")
+                    #  array index assign path
+                    if (re.match(r'Identifier\d*$', self.peek_next_token())
+                            or self.peek_next_token() == "SunLiteral"):
+                        self.match(Resources.Value3)  # consume the values
+                        #  size expression
+                        if (
+                                self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                                or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                            self.match_mathop3(Resources.mathop1)  # size is a math expr
+                            #  close it with "}" if size is fulfilled
+                            if self.peek_next_token() == "}":
+                                self.match("}")
+                                # Terminate it
+                                if self.peek_next_token() == "#":
+                                    return
+                                #  add is next
+                                elif self.peek_next_token() == "+":
+                                    self.match_mathop2("+")
+                                #  subtract is next
+                                elif self.peek_next_token() == "-":
+                                    self.match_mathop2("-")
+                                #  multiply is next
+                                elif self.peek_next_token() == "*":
+                                    self.match_mathop2("*")
+                                #  divide is next
+                                elif self.peek_next_token() == "/":
+                                    self.match_mathop2("/")
+                                #  modulo is next
+                                elif self.peek_next_token() == "%":
+                                    self.match_mathop2("%")
+                                # add another size to become 2D array
+                                elif self.peek_next_token() == "{":
+                                    self.match_arrID2D_assign("{")
+                                    # Terminate it
+                                    if self.peek_next_token() == "#":
+                                        return
+                                    #  add is next
+                                    elif self.peek_next_token() == "+":
+                                        self.match_mathop2("+")
+                                    #  subtract is next
+                                    elif self.peek_next_token() == "-":
+                                        self.match_mathop2("-")
+                                    #  multiply is next
+                                    elif self.peek_next_token() == "*":
+                                        self.match_mathop2("*")
+                                    #  divide is next
+                                    elif self.peek_next_token() == "/":
+                                        self.match_mathop2("/")
+                                    #  modulo is next
+                                    elif self.peek_next_token() == "%":
+                                        self.match_mathop2("%")
+                                    #  not terminated or followed
+                                    else:
+                                        return False
+                                #  not terminated or followed
+                                else:
+                                    return False
+                            #  not closed with '}'
+                            else:
+                                self.errors.append(
+                                    f"Syntax Error: Expected 'Rcurlbrace' after {self.peek_previous_token()}")
+                        #  size is single value
+                        elif self.peek_next_token() == "}":
+                            self.match("}")
+                            # Terminate it
+                            if self.peek_next_token() == "#":
+                                return
+                            #  add is next
+                            elif self.peek_next_token() == "+":
+                                self.match_mathop2("+")
+                            #  subtract is next
+                            elif self.peek_next_token() == "-":
+                                self.match_mathop2("-")
+                            #  multiply is next
+                            elif self.peek_next_token() == "*":
+                                self.match_mathop2("*")
+                            #  divide is next
+                            elif self.peek_next_token() == "/":
+                                self.match_mathop2("/")
+                            #  modulo is next
+                            elif self.peek_next_token() == "%":
+                                self.match_mathop2("%")
+                            # add another size to become 2D array
+                            elif self.peek_next_token() == "{":
+                                self.match_arrID2D_assign("{")
+                                # Terminate it
+                                if self.peek_next_token() == "#":
+                                    return
+                                #  add is next
+                                elif self.peek_next_token() == "+":
+                                    self.match_mathop2("+")
+                                #  subtract is next
+                                elif self.peek_next_token() == "-":
+                                    self.match_mathop2("-")
+                                #  multiply is next
+                                elif self.peek_next_token() == "*":
+                                    self.match_mathop2("*")
+                                #  divide is next
+                                elif self.peek_next_token() == "/":
+                                    self.match_mathop2("/")
+                                #  modulo is next
+                                elif self.peek_next_token() == "%":
+                                    self.match_mathop2("%")
+                                #  not terminated or followed
+                                else:
+                                    return False
+                            #  not terminated or followed
+                            else:
+                                return False
+                        #  size value is not followed by any of the following (# and Rcurl)
+                        else:
+                            self.errors.append(
+                                f"Syntax Error: Expected 'Rcurlbraces', '+', '-', '*', '/', '%' after {self.peek_previous_token()}")
+                    #  empty size, proceed to close it with '}'
+                    elif self.peek_next_token() == "}":
+                        self.match("}")
+                        # add another size to become 2D array
+                        if self.peek_next_token() == "{":
+                            self.match_arrID2D_assign("{")
+                            # Terminate it
+                            if self.peek_next_token() == "#":
+                                return True
+                            #  add is next
+                            elif self.peek_next_token() == "+":
+                                self.match_mathop2("+")
+                            #  subtract is next
+                            elif self.peek_next_token() == "-":
+                                self.match_mathop2("-")
+                            #  multiply is next
+                            elif self.peek_next_token() == "*":
+                                self.match_mathop2("*")
+                            #  divide is next
+                            elif self.peek_next_token() == "/":
+                                self.match_mathop2("/")
+                            #  modulo is next
+                            elif self.peek_next_token() == "%":
+                                self.match_mathop2("%")
+                            #  not terminated or followed
+                            else:
+                                return False
+                        #  terminate it
+                        elif self.peek_next_token() == "#":
+                            self.match("#")
+                        #  add is next
+                        elif self.peek_next_token() == "+":
+                            self.match_mathop2("+")
+                        #  subtract is next
+                        elif self.peek_next_token() == "-":
+                            self.match_mathop2("-")
+                        #  multiply is next
+                        elif self.peek_next_token() == "*":
+                            self.match_mathop2("*")
+                        #  divide is next
+                        elif self.peek_next_token() == "/":
+                            self.match_mathop2("/")
+                        #  modulo is next
+                        elif self.peek_next_token() == "%":
+                            self.match_mathop2("%")
+                        #  not terminated or followed
+                        else:
+                            return False
+                    else:
+                        return True  # else: last identifier has no following identifiers (comma)
+
                 else:
                     return True  # terminate
             else:
@@ -1323,8 +5560,9 @@ class SyntaxAnalyzer:
             if (re.match(r'Identifier\d*$', self.peek_next_token())
                     or self.peek_next_token() == "SunLiteral"):
                 self.match(Resources.Value3) # consume the values
-                if self.peek_next_token() == "+":
-                    self.match_mathop3("+")  # size is a math expr
+                if (self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                        or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                    self.match_mathop3(Resources.mathop1)  # size is a math expr
                     #  close it with "}" if size is fulfilled
                     if self.peek_next_token() == "}":
                         self.match("}")
@@ -1359,7 +5597,7 @@ class SyntaxAnalyzer:
                         #  not terminated with # or followed by an '=' after Rcurl
                         else:
                             self.errors.append(
-                                f"Syntax Error: Expected '#', '=', after {self.peek_previous_token()}")
+                                f"Syntax Error: Expected '#', '=', 'Lcurlbraces' after {self.peek_previous_token()}")
                     #  not closed with '}'
                     else:
                         self.errors.append(
@@ -1397,11 +5635,11 @@ class SyntaxAnalyzer:
                     #  not terminated with # or followed by an '=' after Rcurl
                     else:
                         self.errors.append(
-                            f"Syntax Error: Expected '#', '=', after {self.peek_previous_token()}")
+                            f"Syntax Error: Expected '#', '=', 'Lcurlraces' after {self.peek_previous_token()}")
                 #  size value is not followed by any of the following (# and Rcurl)
                 else:
                     self.errors.append(
-                        f"Syntax Error: Expected 'Rcurlbraces', '#', after {self.peek_previous_token()}")
+                        f"Syntax Error: Expected 'Rcurlbraces', '#', '+', '-', '*', '/', '%' after {self.peek_previous_token()}")
             #  empty size, proceed to close it with '}'
             elif self.peek_next_token() == "}":
                 self.match("}")
@@ -1433,7 +5671,7 @@ class SyntaxAnalyzer:
                 else:
                     self.errors.append(f"Syntax Error: Expected '=', 'Lcurlybrace' after {self.peek_previous_token()}")
             else:
-                self.errors.append(f"Expected 'Identifier', 'Sun', 'Rcurlybrace' but found {self.peek_next_token()}")
+                self.errors.append(f"Expected 'Identifier', 'SunLiteral', 'Rcurlybrace' after {self.peek_previous_token()}")
         else:
             self.errors.append(f"Expected {expected_token} but found {self.current_token}")
 
@@ -1446,8 +5684,9 @@ class SyntaxAnalyzer:
             if (re.match(r'Identifier\d*$', self.peek_next_token())
                     or self.peek_next_token() == "SunLiteral"):
                 self.match(Resources.Value3) # consume the values
-                if self.peek_next_token() == "+":
-                    self.match_mathop3("+")  # size is a math expr
+                if (self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                        or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                    self.match_mathop3(Resources.mathop1)  # size is a math expr
                     #  close it with "}" if size is fulfilled
                     if self.peek_next_token() == "}":
                         self.match("}")
@@ -1519,7 +5758,7 @@ class SyntaxAnalyzer:
                     self.errors.append(
                         f"Syntax Error: Expected 'Rcurlbraces', '#', after {self.peek_previous_token()}")
             else:
-                self.errors.append(f"Expected 'Identifier', 'Sun', but found {self.peek_next_token()}")
+                self.errors.append(f"Expected 'Identifier', 'SunLiteral', after {self.peek_previous_token()}")
         else:
             self.errors.append(f"Expected {expected_token} but found {self.current_token}")
 
@@ -1639,11 +5878,20 @@ class SyntaxAnalyzer:
             if self.peek_next_token() == "Import":
                 self.match("Import")
                 if re.match(r'Identifier\d*$', self.peek_next_token()):
-                    self.matchID_mult("Identifier")
+                    self.match("Identifier")
                     if self.peek_next_token() == "#":
                         self.match("#")
                     elif self.peek_next_token() == "~":  # proceed to tilde syntax
                         self.parse_import_statement1()
+                    # multiple?
+                    elif self.peek_next_token() == ",":
+                        self.match(",")
+                        # must be followed by an identifier
+                        if re.match(r'Identifier\d*$', self.peek_next_token()):
+                            self.matchID_mult("Identifier")
+                        else:
+                            self.errors.append(
+                                f"Syntax error: Expected 'Identifier' after {self.peek_previous_token()}")
                     else:
                         self.errors.append(
                             f"Syntax error: Expected '~', 'comma', '#' after {self.peek_previous_token()}")
@@ -1685,15 +5933,14 @@ class SyntaxAnalyzer:
                 if self.peek_next_token() == "#":
                     self.match("#")
                 else:
-                    self.errors.append(f"Syntax error: Unexpected end with {self.peek_previous_token()}"
-                                        f", expected '#'")
+                    self.errors.append(f"Syntax error: Expected '#' after {self.peek_previous_token()}")
             #  terminate?
             elif self.peek_next_token() == "#":
                 self.match("#")
             # error: missing any of the possibilities
             else:
                 self.errors.append(
-                    f"Syntax Error: Expected '#', '=', 'Identifier', 'SunLiteral', 'LuhmanLiteral', 'StarsysLiteral' "
+                    f"Syntax Error: Expected '#', '=', '(', 'Lcurlbraces'"
                     f"after {self.peek_previous_token()}")
         #  error: no identifier after the datatype
         else:
@@ -1717,15 +5964,42 @@ class SyntaxAnalyzer:
                 if self.peek_next_token() == "#":
                     self.match("#")
                 else:
-                    self.errors.append(f"Syntax error: Unexpected end with {self.peek_previous_token()}"
-                                        f", expected '#'")
+                    self.errors.append(f"Syntax error: Expected '#' after {self.peek_previous_token()}")
             #  terminate?
             elif self.peek_next_token() == "#":
                 self.match("#")
             # error: missing any of the possibilities
             else:
                 self.errors.append(
-                    f"Syntax Error: Expected '#', '=', 'Identifier', 'SunLiteral', 'LuhmanLiteral', 'StarsysLiteral' "
+                    f"Syntax Error: Expected '#', '=', '(', 'Lcurlbraces' "
+                    f"after {self.peek_previous_token()}")
+        #  error: no identifier after the datatype
+        else:
+            self.errors.append(
+                f"Syntax error: Expected 'Identifier' after {self.peek_previous_token()}")
+
+    # method for parsing variable declarations (local) or in functions
+    def parse_variable_declaration_main(self):
+        if re.match(r'Identifier\d*$', self.peek_next_token()):
+            self.matchID_mult("Identifier")
+
+            #  is it an array declaration?
+            if self.peek_next_token() == "{":
+                self.match_arr_dec("{")
+            #  or assign value/s?
+            elif self.peek_next_token() == "=":
+                self.match_mult_assign("=")
+                if self.peek_next_token() == "#":
+                    self.match("#")
+                else:
+                    self.errors.append(f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+            #  terminate?
+            elif self.peek_next_token() == "#":
+                self.match("#")
+            # error: missing any of the possibilities
+            else:
+                self.errors.append(
+                    f"Syntax Error: Expected '#', '=', 'Lcurlbraces' "
                     f"after {self.peek_previous_token()}")
         #  error: no identifier after the datatype
         else:
@@ -1743,15 +6017,14 @@ class SyntaxAnalyzer:
                 if self.peek_next_token() == "#":
                     self.match("#")
                 else:
-                    self.errors.append(f"Syntax error: Unexpected end with {self.peek_previous_token()}, expected '#'")
+                    self.errors.append(f"Syntax error: Expected '#' after {self.peek_previous_token()}")
             #  is it an array declaration?
             elif self.peek_next_token() == "{":
                 self.match_arr_dec("{")
             # error: missing any of the possibilities
             else:
                 self.errors.append(
-                    f"Syntax Error: Expected 'Lcurlybrace', '=', 'Identifier','SunLiteral', "
-                    f"'LuhmanLiteral', 'StarsysLiteral', 'True', 'False' "
+                    f"Syntax Error: Expected 'Lcurlybrace', '=' "
                     f"after {self.peek_previous_token()}")
         #  error: no identifier after the datatype
         else:
@@ -1775,7 +6048,7 @@ class SyntaxAnalyzer:
                 if self.peek_next_token() == "#":
                     self.match("#")
                 else:
-                    self.errors.append(f"Syntax error: Unexpected end with {self.peek_previous_token()}"
+                    self.errors.append(f"Syntax error: Expected '#' after {self.peek_previous_token()}"
                                        f", expected '#'")
             #  terminate?
             elif self.peek_next_token() == "#":
@@ -1783,15 +6056,47 @@ class SyntaxAnalyzer:
             # error: missing any of the possibilities
             else:
                 self.errors.append(
-                    f"Syntax Error: Expected '#', '=', 'Identifier', 'SunLiteral', 'LuhmanLiteral', 'StarsysLiteral' "
+                    f"Syntax Error: Expected '=', '#', 'Lcurlbraces' "
                     f"after {self.peek_previous_token()}")
         #  error: no identifier after the datatype
         else:
             self.errors.append(
                 f"Syntax error: Expected 'Identifier' after {self.peek_previous_token()}")
 
-    #  method for parsing boolean var declarations (local) or in functions
+    #  method for parsing boolean var declarations in functions
     def parse_boolean_func(self):
+        if re.match(r'Identifier\d*$', self.peek_next_token()):
+            self.matchID_mult("Identifier")
+
+            #  is it an array declaration?
+            if self.peek_next_token() == "{":
+                self.match_arr_dec("{")
+            #  is it a subfunction definition?
+            elif self.peek_next_token() == "(":
+                self.match_subfunc_statement("(")  # consume '('
+            #  or assign value/s?
+            elif self.peek_next_token() == "=":
+                self.match_auto_assign("=")
+                if self.peek_next_token() == "#":
+                    self.match("#")
+                else:
+                    self.errors.append(f"Syntax error: Expected '#' after {self.peek_previous_token()}"
+                                       f", expected '#'")
+            #  terminate?
+            elif self.peek_next_token() == "#":
+                self.match("#")
+            # error: missing any of the possibilities
+            else:
+                self.errors.append(
+                    f"Syntax Error: Expected '#', '=', '(', 'Lcurlbraces' "
+                    f"after {self.peek_previous_token()}")
+        #  error: no identifier after the datatype
+        else:
+            self.errors.append(
+                f"Syntax error: Expected 'Identifier' after {self.peek_previous_token()}")
+
+    #  method for parsing boolean var declarations in main
+    def parse_boolean_main(self):
         if re.match(r'Identifier\d*$', self.peek_next_token()):
             self.matchID_mult("Identifier")
 
@@ -1804,7 +6109,7 @@ class SyntaxAnalyzer:
                 if self.peek_next_token() == "#":
                     self.match("#")
                 else:
-                    self.errors.append(f"Syntax error: Unexpected end with {self.peek_previous_token()}"
+                    self.errors.append(f"Syntax error: Expected '#' after {self.peek_previous_token()}"
                                        f", expected '#'")
             #  terminate?
             elif self.peek_next_token() == "#":
@@ -1849,7 +6154,329 @@ class SyntaxAnalyzer:
                     self.match(Resources.Datatype2)
                     if re.match(r'Identifier\d*$', self.peek_next_token()):
                         self.match("Identifier")
-                        if self.peek_next_token() == "=":
+                        #  parameter is an array index path (static)
+                        if self.peek_next_token() == "{":
+                            self.match("{")  # consume
+                            #  array index assign path
+                            if (re.match(r'Identifier\d*$', self.peek_next_token())
+                                    or self.peek_next_token() == "SunLiteral"):
+                                self.match(Resources.Value3)  # consume the values
+                                #  size expression
+                                if (
+                                        self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                                        or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                                    self.match_mathop3(Resources.mathop1)  # size is a math expr
+                                    #  close it with "}" if size is fulfilled
+                                    if self.peek_next_token() == "}":
+                                        self.match("}")
+                                        #  check: if closed, single 1D array
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")
+                                            #  terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  has gotolerate
+                                            elif self.peek_next_token() == "Gotolerate":
+                                                self.match("Gotolerate")
+                                                #  terminate it
+                                                if self.peek_next_token() == "#":
+                                                    self.match("#")
+                                                # error: not terminated
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                                            #  error: not followed by '#'
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '#', 'Gotolerate' after {self.peek_previous_token()}")
+                                        #  single id is followed by a comma, (Static Sun a{1},.....)
+                                        elif self.peek_next_token() == ",":
+                                            self.match_param_assign_mult(",")
+                                            #  close with ')' after assigning value/s
+                                            if self.peek_next_token() == ")":
+                                                self.match(")")
+                                                #  terminate it
+                                                if self.peek_next_token() == "#":
+                                                    self.match("#")
+                                                #  has gotolerate
+                                                elif self.peek_next_token() == "Gotolerate":
+                                                    self.match("Gotolerate")
+                                                    #  terminate it
+                                                    if self.peek_next_token() == "#":
+                                                        self.match("#")
+                                                    # error: not terminated
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                                                #  error: not followed by '#'
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '#', 'Gotolerate' after {self.peek_previous_token()}")
+                                        # or add another size to become 2D array
+                                        elif self.peek_next_token() == "{":
+                                            self.match_arrID2D_index_parameter("{")
+                                            #  check: if closed, single 2D array
+                                            if self.peek_next_token() == ")":
+                                                self.match(")")
+                                                #  terminate it
+                                                if self.peek_next_token() == "#":
+                                                    self.match("#")
+                                                #  has gotolerate
+                                                elif self.peek_next_token() == "Gotolerate":
+                                                    self.match("Gotolerate")
+                                                    #  terminate it
+                                                    if self.peek_next_token() == "#":
+                                                        self.match("#")
+                                                    # error: not terminated
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                                                #  error: not followed by '#'
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '#', 'Gotolerate' after {self.peek_previous_token()}")
+                                            #  single id is followed by a comma, (Static Sun a{1},.....)
+                                            elif self.peek_next_token() == ",":
+                                                self.match_param_assign_mult(",")
+                                                #  close with ')' after assigning value/s
+                                                if self.peek_next_token() == ")":
+                                                    self.match(")")
+                                                    #  terminate it
+                                                    if self.peek_next_token() == "#":
+                                                        self.match("#")
+                                                    #  has gotolerate
+                                                    elif self.peek_next_token() == "Gotolerate":
+                                                        self.match("Gotolerate")
+                                                        #  terminate it
+                                                        if self.peek_next_token() == "#":
+                                                            self.match("#")
+                                                        # error: not terminated
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                                                    #  error: not followed by '#'
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '#', 'Gotolerate' after {self.peek_previous_token()}")
+                                            #  error: not followed by
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected ',', ')' after '{self.peek_previous_token()}'")
+                                        #  error: not followed by
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected ',', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                                    #  not closed with '}'
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax Error: Expected 'Rcurlbrace' after {self.peek_previous_token()}")
+                                #  size is single value
+                                elif self.peek_next_token() == "}":
+                                    self.match("}")
+                                    #  check: if closed, single 1D array (size is single value)
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")
+                                        #  terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        #  has gotolerate
+                                        elif self.peek_next_token() == "Gotolerate":
+                                            self.match("Gotolerate")
+                                            #  terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            # error: not terminated
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                                        #  error: not followed by '#'
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '#', 'Gotolerate' after {self.peek_previous_token()}")
+                                    #  single id is followed by a comma, (Static Sun a{1},.....)
+                                    elif self.peek_next_token() == ",":
+                                        self.match_param_assign_mult(",")
+                                        #  close with ')' after assigning value/s
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")
+                                            #  terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  has gotolerate
+                                            elif self.peek_next_token() == "Gotolerate":
+                                                self.match("Gotolerate")
+                                                #  terminate it
+                                                if self.peek_next_token() == "#":
+                                                    self.match("#")
+                                                # error: not terminated
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                                            #  error: not followed by '#'
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '#', 'Gotolerate' after {self.peek_previous_token()}")
+                                    # or add another size to become 2D array
+                                    elif self.peek_next_token() == "{":
+                                        self.match_arrID2D_index_parameter("{")
+                                        #  check: if closed, single 1D array (size is single value)
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")
+                                            #  terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  has gotolerate
+                                            elif self.peek_next_token() == "Gotolerate":
+                                                self.match("Gotolerate")
+                                                #  terminate it
+                                                if self.peek_next_token() == "#":
+                                                    self.match("#")
+                                                # error: not terminated
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                                            #  error: not followed by '#'
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '#', 'Gotolerate' after {self.peek_previous_token()}")
+                                        #  single id is followed by a comma, (Static Sun a{1},.....)
+                                        elif self.peek_next_token() == ",":
+                                            self.match_param_assign_mult(",")
+                                            #  close with ')' after assigning value/s
+                                            if self.peek_next_token() == ")":
+                                                self.match(")")
+                                                #  terminate it
+                                                if self.peek_next_token() == "#":
+                                                    self.match("#")
+                                                #  has gotolerate
+                                                elif self.peek_next_token() == "Gotolerate":
+                                                    self.match("Gotolerate")
+                                                    #  terminate it
+                                                    if self.peek_next_token() == "#":
+                                                        self.match("#")
+                                                    # error: not terminated
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                                                #  error: not followed by '#'
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '#', 'Gotolerate' after {self.peek_previous_token()}")
+                                        #  error: not followed by an equal
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected ',', ')' after '{self.peek_previous_token()}'")
+                                    #  error: not followed by an equal
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected ',', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                                #  size value is not followed by any of the following (# and Rcurl)
+                                else:
+                                    self.errors.append(
+                                        f"Syntax Error: Expected 'Rcurlbraces', '+', '-', '*', '/', '%' after {self.peek_previous_token()}")
+                            #  empty size, proceed to close it with '}'
+                            elif self.peek_next_token() == "}":
+                                self.match("}")
+                                #  check: if closed, single 1D array (size is empty)
+                                if self.peek_next_token() == ")":
+                                    self.match(")")
+                                    #  terminate it
+                                    if self.peek_next_token() == "#":
+                                        self.match("#")
+                                    #  has gotolerate
+                                    elif self.peek_next_token() == "Gotolerate":
+                                        self.match("Gotolerate")
+                                        #  terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        # error: not terminated
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                                    #  error: not followed by '#'
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected '#', 'Gotolerate' after {self.peek_previous_token()}")
+                                #  single id is followed by a comma, (Static Sun a{1},.....)
+                                elif self.peek_next_token() == ",":
+                                    self.match_param_assign_mult(",")
+                                    #  close with ')' after assigning value/s
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")
+                                        #  terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        #  has gotolerate
+                                        elif self.peek_next_token() == "Gotolerate":
+                                            self.match("Gotolerate")
+                                            #  terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            # error: not terminated
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                                        #  error: not followed by '#'
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '#', 'Gotolerate' after {self.peek_previous_token()}")
+                                # or add another size to become 2D array
+                                elif self.peek_next_token() == "{":
+                                    self.match_arrID2D_index_parameter("{")
+                                    #  check: if closed, single 2D array
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")
+                                        #  terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        #  has gotolerate
+                                        elif self.peek_next_token() == "Gotolerate":
+                                            self.match("Gotolerate")
+                                            #  terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            # error: not terminated
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                                        #  error: not followed by '#'
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '#', 'Gotolerate' after {self.peek_previous_token()}")
+                                    #  single id is followed by a comma, (Static Sun a{1},.....)
+                                    elif self.peek_next_token() == ",":
+                                        self.match_param_assign_mult(",")
+                                        #  close with ')' after assigning value/s
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")
+                                            #  terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  has gotolerate
+                                            elif self.peek_next_token() == "Gotolerate":
+                                                self.match("Gotolerate")
+                                                #  terminate it
+                                                if self.peek_next_token() == "#":
+                                                    self.match("#")
+                                                # error: not terminated
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                                            #  error: not followed by '#'
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '#', 'Gotolerate' after {self.peek_previous_token()}")
+                                    #  error: not followed by an equal
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected ',', ')' after '{self.peek_previous_token()}'")
+                                #  error: not followed by an equal
+                                else:
+                                    self.errors.append(
+                                        f"Syntax error: Expected ',', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                            else:
+                                return True  # else: last identifier has no following identifiers (comma)
+                        elif self.peek_next_token() == "=":
                             self.match_param_assign("=")
                             #  close with ')' after assigning value/s
                             if self.peek_next_token() == ")":
@@ -1906,7 +6533,329 @@ class SyntaxAnalyzer:
                 self.match(Resources.Datatype2)
                 if re.match(r'Identifier\d*$', self.peek_next_token()):
                     self.match("Identifier")
-                    if self.peek_next_token() == "=":
+                    #  parameter is an array index path
+                    if self.peek_next_token() == "{":
+                        self.match("{")  # consume
+                        #  array index assign path
+                        if (re.match(r'Identifier\d*$', self.peek_next_token())
+                                or self.peek_next_token() == "SunLiteral"):
+                            self.match(Resources.Value3)  # consume the values
+                            #  size expression
+                            if (
+                                    self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                                    or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                                self.match_mathop3(Resources.mathop1)  # size is a math expr
+                                #  close it with "}" if size is fulfilled
+                                if self.peek_next_token() == "}":
+                                    self.match("}")
+                                    #  check: if closed, single 1D array
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")
+                                        #  terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        #  has gotolerate
+                                        elif self.peek_next_token() == "Gotolerate":
+                                            self.match("Gotolerate")
+                                            #  terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            # error: not terminated
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                                        #  error: not followed by '#'
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '#', 'Gotolerate' after {self.peek_previous_token()}")
+                                    #  single id is followed by a comma, (Static Sun a{1},.....)
+                                    elif self.peek_next_token() == ",":
+                                        self.match_param_assign_mult(",")
+                                        #  close with ')' after assigning value/s
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")
+                                            #  terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  has gotolerate
+                                            elif self.peek_next_token() == "Gotolerate":
+                                                self.match("Gotolerate")
+                                                #  terminate it
+                                                if self.peek_next_token() == "#":
+                                                    self.match("#")
+                                                # error: not terminated
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                                            #  error: not followed by '#'
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '#', 'Gotolerate' after {self.peek_previous_token()}")
+                                    # or add another size to become 2D array
+                                    elif self.peek_next_token() == "{":
+                                        self.match_arrID2D_index_parameter("{")
+                                        #  check: if closed, single 2D array
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")
+                                            #  terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  has gotolerate
+                                            elif self.peek_next_token() == "Gotolerate":
+                                                self.match("Gotolerate")
+                                                #  terminate it
+                                                if self.peek_next_token() == "#":
+                                                    self.match("#")
+                                                # error: not terminated
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                                            #  error: not followed by '#'
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '#', 'Gotolerate' after {self.peek_previous_token()}")
+                                        #  single id is followed by a comma, (Static Sun a{1},.....)
+                                        elif self.peek_next_token() == ",":
+                                            self.match_param_assign_mult(",")
+                                            #  close with ')' after assigning value/s
+                                            if self.peek_next_token() == ")":
+                                                self.match(")")
+                                                #  terminate it
+                                                if self.peek_next_token() == "#":
+                                                    self.match("#")
+                                                #  has gotolerate
+                                                elif self.peek_next_token() == "Gotolerate":
+                                                    self.match("Gotolerate")
+                                                    #  terminate it
+                                                    if self.peek_next_token() == "#":
+                                                        self.match("#")
+                                                    # error: not terminated
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                                                #  error: not followed by '#'
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '#', 'Gotolerate' after {self.peek_previous_token()}")
+                                        #  error: not followed by
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected ',', ')' after '{self.peek_previous_token()}'")
+                                    #  error: not followed by
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected ',', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                                #  not closed with '}'
+                                else:
+                                    self.errors.append(
+                                        f"Syntax Error: Expected 'Rcurlbrace' after {self.peek_previous_token()}")
+                            #  size is single value
+                            elif self.peek_next_token() == "}":
+                                self.match("}")
+                                #  check: if closed, single 1D array (size is single value)
+                                if self.peek_next_token() == ")":
+                                    self.match(")")
+                                    #  terminate it
+                                    if self.peek_next_token() == "#":
+                                        self.match("#")
+                                    #  has gotolerate
+                                    elif self.peek_next_token() == "Gotolerate":
+                                        self.match("Gotolerate")
+                                        #  terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        # error: not terminated
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                                    #  error: not followed by '#'
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected '#', 'Gotolerate' after {self.peek_previous_token()}")
+                                #  single id is followed by a comma, (Static Sun a{1},.....)
+                                elif self.peek_next_token() == ",":
+                                    self.match_param_assign_mult(",")
+                                    #  close with ')' after assigning value/s
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")
+                                        #  terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        #  has gotolerate
+                                        elif self.peek_next_token() == "Gotolerate":
+                                            self.match("Gotolerate")
+                                            #  terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            # error: not terminated
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                                        #  error: not followed by '#'
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '#', 'Gotolerate' after {self.peek_previous_token()}")
+                                # or add another size to become 2D array
+                                elif self.peek_next_token() == "{":
+                                    self.match_arrID2D_index_parameter("{")
+                                    #  check: if closed, single 1D array (size is single value)
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")
+                                        #  terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        #  has gotolerate
+                                        elif self.peek_next_token() == "Gotolerate":
+                                            self.match("Gotolerate")
+                                            #  terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            # error: not terminated
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                                        #  error: not followed by '#'
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '#', 'Gotolerate' after {self.peek_previous_token()}")
+                                    #  single id is followed by a comma, (Static Sun a{1},.....)
+                                    elif self.peek_next_token() == ",":
+                                        self.match_param_assign_mult(",")
+                                        #  close with ')' after assigning value/s
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")
+                                            #  terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  has gotolerate
+                                            elif self.peek_next_token() == "Gotolerate":
+                                                self.match("Gotolerate")
+                                                #  terminate it
+                                                if self.peek_next_token() == "#":
+                                                    self.match("#")
+                                                # error: not terminated
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                                            #  error: not followed by '#'
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '#', 'Gotolerate' after {self.peek_previous_token()}")
+                                    #  error: not followed by an equal
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected ',', ')' after '{self.peek_previous_token()}'")
+                                #  error: not followed by an equal
+                                else:
+                                    self.errors.append(
+                                        f"Syntax error: Expected ',', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                            #  size value is not followed by any of the following (# and Rcurl)
+                            else:
+                                self.errors.append(
+                                    f"Syntax Error: Expected 'Rcurlbraces', '+', '-', '*', '/', '%' after {self.peek_previous_token()}")
+                        #  empty size, proceed to close it with '}'
+                        elif self.peek_next_token() == "}":
+                            self.match("}")
+                            #  check: if closed, single 1D array (size is empty)
+                            if self.peek_next_token() == ")":
+                                self.match(")")
+                                #  terminate it
+                                if self.peek_next_token() == "#":
+                                    self.match("#")
+                                #  has gotolerate
+                                elif self.peek_next_token() == "Gotolerate":
+                                    self.match("Gotolerate")
+                                    #  terminate it
+                                    if self.peek_next_token() == "#":
+                                        self.match("#")
+                                    # error: not terminated
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                                #  error: not followed by '#'
+                                else:
+                                    self.errors.append(
+                                        f"Syntax error: Expected '#', 'Gotolerate' after {self.peek_previous_token()}")
+                            #  single id is followed by a comma, (Static Sun a{1},.....)
+                            elif self.peek_next_token() == ",":
+                                self.match_param_assign_mult(",")
+                                #  close with ')' after assigning value/s
+                                if self.peek_next_token() == ")":
+                                    self.match(")")
+                                    #  terminate it
+                                    if self.peek_next_token() == "#":
+                                        self.match("#")
+                                    #  has gotolerate
+                                    elif self.peek_next_token() == "Gotolerate":
+                                        self.match("Gotolerate")
+                                        #  terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        # error: not terminated
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                                    #  error: not followed by '#'
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected '#', 'Gotolerate' after {self.peek_previous_token()}")
+                            # or add another size to become 2D array
+                            elif self.peek_next_token() == "{":
+                                self.match_arrID2D_index_parameter("{")
+                                #  check: if closed, single 2D array
+                                if self.peek_next_token() == ")":
+                                    self.match(")")
+                                    #  terminate it
+                                    if self.peek_next_token() == "#":
+                                        self.match("#")
+                                    #  has gotolerate
+                                    elif self.peek_next_token() == "Gotolerate":
+                                        self.match("Gotolerate")
+                                        #  terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        # error: not terminated
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                                    #  error: not followed by '#'
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected '#', 'Gotolerate' after {self.peek_previous_token()}")
+                                #  single id is followed by a comma, (Static Sun a{1},.....)
+                                elif self.peek_next_token() == ",":
+                                    self.match_param_assign_mult(",")
+                                    #  close with ')' after assigning value/s
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")
+                                        #  terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        #  has gotolerate
+                                        elif self.peek_next_token() == "Gotolerate":
+                                            self.match("Gotolerate")
+                                            #  terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            # error: not terminated
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                                        #  error: not followed by '#'
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '#', 'Gotolerate' after {self.peek_previous_token()}")
+                                #  error: not followed by an equal
+                                else:
+                                    self.errors.append(
+                                        f"Syntax error: Expected ',', ')' after '{self.peek_previous_token()}'")
+                            #  error: not followed by an equal
+                            else:
+                                self.errors.append(
+                                    f"Syntax error: Expected ',', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                        else:
+                            return True  # else: last identifier has no following identifiers (comma)
+                    elif self.peek_next_token() == "=":
                         self.match_param_assign("=")
                         #  close with ')' after assigning value/s
                         if self.peek_next_token() == ")":
@@ -1967,12 +6916,13 @@ class SyntaxAnalyzer:
     #  method for main function
     def parse_main_function(self):
         if self.peek_next_token() == "[":
-            self.parse_func_def()
+            self.parse_func_def() # change this
             if self.peek_next_token() == "]":
                 self.match("]")
                 self.function_is_defined = True
                 #  no subfunction definition or class definition below? proceed to Disintegrate required in syntax
                 if self.peek_next_token() == "Disintegrate":
+                    self.disintegrate_exist = True
                     self.match("Disintegrate")
                 # has subfunction/s
                 elif (self.peek_next_token() == "Sun" or self.peek_next_token() == "Luhman"
@@ -1980,6 +6930,7 @@ class SyntaxAnalyzer:
                     self.match_subfunc(Resources.Datatype2)  # consume datatypes
                     #  Disintegrate
                     if self.peek_next_token() == "Disintegrate":
+                        self.disintegrate_exist = True
                         self.match("Disintegrate")
                     #  error: no Disintegrate
                     else:
@@ -1989,6 +6940,7 @@ class SyntaxAnalyzer:
                     self.match_voidfunc("Void")  # consume datatypes
                     #  Disintegrate
                     if self.peek_next_token() == "Disintegrate":
+                        self.disintegrate_exist = True
                         self.match("Disintegrate")
                     #  error: no Disintegrate
                     else:
@@ -1998,6 +6950,7 @@ class SyntaxAnalyzer:
                     self.match_class("Class")
                     #  Disintegrate
                     if self.peek_next_token() == "Disintegrate":
+                        self.disintegrate_exist = True
                         self.match("Disintegrate")
                     #  error: no Disintegrate
                     else:
@@ -2176,6 +7129,44 @@ class SyntaxAnalyzer:
                         else:
                             self.errors.append(
                                 f"Syntax error: Expected 'Identifier' after {self.peek_previous_token()}")
+                    #  assign values to it? (constructor)
+                    elif self.peek_next_token() == "(":
+                        if self.peek_next_token() == "(":
+                            self.match("(")
+                            #  assign values
+                            if (self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral"
+                                    or self.peek_next_token() == "StarsysLiteral" or re.match(r'Identifier\d*$',
+                                                                                              self.peek_next_token())
+                                    or self.peek_next_token() == "True" or self.peek_next_token() == "False"):
+                                self.matchValue_mult(Resources.Value1)
+                                # close it
+                                if self.peek_next_token() == ")":
+                                    self.match(")")
+                                    #  terminate it
+                                    if self.peek_next_token() == "#":
+                                        self.match("#")
+                                    #  error: not terminated
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                                #  error: expected ')'
+                                else:
+                                    self.errors.append(
+                                        f"Syntax error: Expected ')' after '{self.peek_previous_token()}'")
+                            #  not followed by values (close it)
+                            elif self.peek_next_token() == ")":
+                                self.match(")")
+                                #  terminate it
+                                if self.peek_next_token() == "#":
+                                    self.match("#")
+                                #  error: not terminated
+                                else:
+                                    self.errors.append(
+                                        f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                            # error: not followed by any values
+                            else:
+                                self.errors.append(
+                                    f"Syntax error: Expected ')', 'SunLiteral', 'LuhmanLiteral', 'StarsysLiteral', 'Identifier' after '{self.peek_previous_token()}'")
                     #  error: not terminated, or no following multiple instances
                     else:
                         self.errors.append(
@@ -2290,10 +7281,48 @@ class SyntaxAnalyzer:
                         else:
                             self.errors.append(
                                 f"Syntax error: Expected 'Identifier' after {self.peek_previous_token()}")
+                    #  assign values to it? (constructor)
+                    elif self.peek_next_token() == "(":
+                        if self.peek_next_token() == "(":
+                            self.match("(")
+                            #  assign values
+                            if (self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral"
+                                    or self.peek_next_token() == "StarsysLiteral" or re.match(r'Identifier\d*$',
+                                                                                              self.peek_next_token())
+                                    or self.peek_next_token() == "True" or self.peek_next_token() == "False"):
+                                self.matchValue_mult(Resources.Value1)
+                                # close it
+                                if self.peek_next_token() == ")":
+                                    self.match(")")
+                                    #  terminate it
+                                    if self.peek_next_token() == "#":
+                                        self.match("#")
+                                    #  error: not terminated
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                                #  error: expected ')'
+                                else:
+                                    self.errors.append(
+                                        f"Syntax error: Expected ')' after '{self.peek_previous_token()}'")
+                            #  not followed by values (close it)
+                            elif self.peek_next_token() == ")":
+                                self.match(")")
+                                #  terminate it
+                                if self.peek_next_token() == "#":
+                                    self.match("#")
+                                #  error: not terminated
+                                else:
+                                    self.errors.append(
+                                        f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                            # error: not followed by any values
+                            else:
+                                self.errors.append(
+                                    f"Syntax error: Expected ')', 'SunLiteral', 'LuhmanLiteral', 'StarsysLiteral', 'Identifier' after '{self.peek_previous_token()}'")
                     #  error: not terminated, or no following multiple instances
                     else:
                         self.errors.append(
-                            f"Syntax error: Expected '#', ',' after {self.peek_previous_token()}")
+                            f"Syntax error: Expected '#', ',', '(' after {self.peek_previous_token()}")
                 #  global scope res path
                 elif self.peek_next_token() == "::":
                     self.match("::")
@@ -2345,7 +7374,292 @@ class SyntaxAnalyzer:
                         self.match(Resources.Datatype2)
                         if re.match(r'Identifier\d*$', self.peek_next_token()):
                             self.match("Identifier")
-                            if self.peek_next_token() == "=":
+                            #  parameter is an array index path (static)
+                            if self.peek_next_token() == "{":
+                                self.match("{")  # consume
+                                #  array index assign path
+                                if (re.match(r'Identifier\d*$', self.peek_next_token())
+                                        or self.peek_next_token() == "SunLiteral"):
+                                    self.match(Resources.Value3)  # consume the values
+                                    #  size expression
+                                    if (
+                                            self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                                            or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                                        self.match_mathop3(Resources.mathop1)  # size is a math expr
+                                        #  close it with "}" if size is fulfilled
+                                        if self.peek_next_token() == "}":
+                                            self.match("}")
+                                            #  check: if closed, single 1D array
+                                            if self.peek_next_token() == ")":
+                                                self.match(")")
+                                                #  followed it with '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_constructor_definition_statement()  # body
+                                                    #  close it
+                                                    if self.peek_next_token() == "]":
+                                                        self.match("]")
+                                                    #  error: not closed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                #  error: not followed by '['
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[' after {self.peek_previous_token()}")
+                                            #  single id is followed by a comma, (Static Sun a{1},.....)
+                                            elif self.peek_next_token() == ",":
+                                                self.match_param_assign_mult(",")
+                                                #  close with ')' after assigning value/s
+                                                if self.peek_next_token() == ")":
+                                                    self.match(")")
+                                                    #  followed by '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_constructor_definition_statement()  # body
+                                                        #  close it
+                                                        if self.peek_next_token() == "]":
+                                                            self.match("]")
+                                                        #  error: not closed
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                    #  error: not followed by '['
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[' after {self.peek_previous_token()}")
+                                            # or add another size to become 2D array
+                                            elif self.peek_next_token() == "{":
+                                                self.match_arrID2D_index_parameter("{")
+                                                #  check: if closed, single 2D array
+                                                if self.peek_next_token() == ")":
+                                                    self.match(")")
+                                                    #  followed it with '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_constructor_definition_statement()  # body
+                                                        #  close it
+                                                        if self.peek_next_token() == "]":
+                                                            self.match("]")
+                                                        #  error: not closed
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                    #  error: not followed by '['
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[' after {self.peek_previous_token()}")
+                                                #  single id is followed by a comma, (Static Sun a{1},.....)
+                                                elif self.peek_next_token() == ",":
+                                                    self.match_param_assign_mult(",")
+                                                    #  close with ')' after assigning value/s
+                                                    if self.peek_next_token() == ")":
+                                                        self.match(")")
+                                                        #  followed by '['
+                                                        if self.peek_next_token() == "[":
+                                                            self.parse_constructor_definition_statement()  # body
+                                                            #  close it
+                                                            if self.peek_next_token() == "]":
+                                                                self.match("]")
+                                                            #  error: not closed
+                                                            else:
+                                                                self.errors.append(
+                                                                    f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                        #  error: not followed by '['
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected '[' after {self.peek_previous_token()}")
+                                                #  error: not followed by
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected ',', ')' after '{self.peek_previous_token()}'")
+                                            #  error: not followed by
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected ',', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                                        #  not closed with '}'
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax Error: Expected 'Rcurlbrace' after {self.peek_previous_token()}")
+                                    #  size is single value
+                                    elif self.peek_next_token() == "}":
+                                        self.match("}")
+                                        #  check: if closed, single 1D array (size is single value)
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")
+                                            #  followed it with '['
+                                            if self.peek_next_token() == "[":
+                                                self.parse_constructor_definition_statement()  # body
+                                                #  close it
+                                                if self.peek_next_token() == "]":
+                                                    self.match("]")
+                                                #  error: not closed
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                            #  error: not followed by '['
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '[' after {self.peek_previous_token()}")
+                                        #  single id is followed by a comma, (Static Sun a{1},.....)
+                                        elif self.peek_next_token() == ",":
+                                            self.match_param_assign_mult(",")
+                                            #  close with ')' after assigning value/s
+                                            if self.peek_next_token() == ")":
+                                                self.match(")")
+                                                #  followed by '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_constructor_definition_statement()  # body
+                                                    #  close it
+                                                    if self.peek_next_token() == "]":
+                                                        self.match("]")
+                                                    #  error: not closed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                #  error: not followed by '['
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[' after {self.peek_previous_token()}")
+                                        # or add another size to become 2D array
+                                        elif self.peek_next_token() == "{":
+                                            self.match_arrID2D_index_parameter("{")
+                                            #  check: if closed, single 1D array (size is single value)
+                                            if self.peek_next_token() == ")":
+                                                self.match(")")
+                                                #  followed it with '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_constructor_definition_statement()  # body
+                                                    #  close it
+                                                    if self.peek_next_token() == "]":
+                                                        self.match("]")
+                                                    #  error: not closed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                #  error: not followed by '['
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[' after {self.peek_previous_token()}")
+                                            #  single id is followed by a comma, (Static Sun a{1},.....)
+                                            elif self.peek_next_token() == ",":
+                                                self.match_param_assign_mult(",")
+                                                #  close with ')' after assigning value/s
+                                                if self.peek_next_token() == ")":
+                                                    self.match(")")
+                                                    #  followed by '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_constructor_definition_statement()  # body
+                                                        #  close it
+                                                        if self.peek_next_token() == "]":
+                                                            self.match("]")
+                                                        #  error: not closed
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                    #  error: not followed by '['
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[' after {self.peek_previous_token()}")
+                                            #  error: not followed by an equal
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected ',', ')' after '{self.peek_previous_token()}'")
+                                        #  error: not followed by an equal
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected ',', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                                    #  size value is not followed by any of the following (# and Rcurl)
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax Error: Expected 'Rcurlbraces', '+', '-', '*', '/', '%' after {self.peek_previous_token()}")
+                                #  empty size, proceed to close it with '}'
+                                elif self.peek_next_token() == "}":
+                                    self.match("}")
+                                    #  check: if closed, single 1D array (size is empty)
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")
+                                        #  followed it with '['
+                                        if self.peek_next_token() == "[":
+                                            self.parse_constructor_definition_statement()  # body
+                                            #  close it
+                                            if self.peek_next_token() == "]":
+                                                self.match("]")
+                                            #  error: not closed
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                        #  error: not followed by '['
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '[' after {self.peek_previous_token()}")
+                                    #  single id is followed by a comma, (Static Sun a{1},.....)
+                                    elif self.peek_next_token() == ",":
+                                        self.match_param_assign_mult(",")
+                                        #  close with ')' after assigning value/s
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")
+                                            #  followed by '['
+                                            if self.peek_next_token() == "[":
+                                                self.parse_constructor_definition_statement()  # body
+                                                #  close it
+                                                if self.peek_next_token() == "]":
+                                                    self.match("]")
+                                                #  error: not closed
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '[' after {self.peek_previous_token()}")
+                                    # or add another size to become 2D array
+                                    elif self.peek_next_token() == "{":
+                                        self.match_arrID2D_index_parameter("{")
+                                        #  check: if closed, single 2D array
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")
+                                            #  followed it with '['
+                                            if self.peek_next_token() == "[":
+                                                self.parse_constructor_definition_statement()  # body
+                                                #  close it
+                                                if self.peek_next_token() == "]":
+                                                    self.match("]")
+                                                #  error: not closed
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                            #  error: not followed by '['
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '[' after {self.peek_previous_token()}")
+                                        #  single id is followed by a comma, (Static Sun a{1},.....)
+                                        elif self.peek_next_token() == ",":
+                                            self.match_param_assign_mult(",")
+                                            #  close with ')' after assigning value/s
+                                            if self.peek_next_token() == ")":
+                                                self.match(")")
+                                                #  followed by '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_constructor_definition_statement()  # body
+                                                    #  close it
+                                                    if self.peek_next_token() == "]":
+                                                        self.match("]")
+                                                    #  error: not closed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                #  error: not followed by '['
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[' after {self.peek_previous_token()}")
+                                        #  error: not followed by an equal
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected ',', ')' after '{self.peek_previous_token()}'")
+                                    #  error: not followed by an equal
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected ',', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                                else:
+                                    return True  # else: last identifier has no following identifiers (comma)
+                            elif self.peek_next_token() == "=":
                                 self.match_param_assign("=")
                                 #  close with ')' after assigning value/s
                                 if self.peek_next_token() == ")":
@@ -2423,7 +7737,292 @@ class SyntaxAnalyzer:
                     self.match(Resources.Datatype2)
                     if re.match(r'Identifier\d*$', self.peek_next_token()):
                         self.match("Identifier")
-                        if self.peek_next_token() == "=":
+                        #  parameter is an array index path (static)
+                        if self.peek_next_token() == "{":
+                            self.match("{")  # consume
+                            #  array index assign path
+                            if (re.match(r'Identifier\d*$', self.peek_next_token())
+                                    or self.peek_next_token() == "SunLiteral"):
+                                self.match(Resources.Value3)  # consume the values
+                                #  size expression
+                                if (
+                                        self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                                        or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                                    self.match_mathop3(Resources.mathop1)  # size is a math expr
+                                    #  close it with "}" if size is fulfilled
+                                    if self.peek_next_token() == "}":
+                                        self.match("}")
+                                        #  check: if closed, single 1D array
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")
+                                            #  followed it with '['
+                                            if self.peek_next_token() == "[":
+                                                self.parse_constructor_definition_statement()  # body
+                                                #  close it
+                                                if self.peek_next_token() == "]":
+                                                    self.match("]")
+                                                #  error: not closed
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                            #  error: not followed by '['
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '[' after {self.peek_previous_token()}")
+                                        #  single id is followed by a comma, (Static Sun a{1},.....)
+                                        elif self.peek_next_token() == ",":
+                                            self.match_param_assign_mult(",")
+                                            #  close with ')' after assigning value/s
+                                            if self.peek_next_token() == ")":
+                                                self.match(")")
+                                                #  followed by '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_constructor_definition_statement()  # body
+                                                    #  close it
+                                                    if self.peek_next_token() == "]":
+                                                        self.match("]")
+                                                    #  error: not closed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                #  error: not followed by '['
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[' after {self.peek_previous_token()}")
+                                        # or add another size to become 2D array
+                                        elif self.peek_next_token() == "{":
+                                            self.match_arrID2D_index_parameter("{")
+                                            #  check: if closed, single 2D array
+                                            if self.peek_next_token() == ")":
+                                                self.match(")")
+                                                #  followed it with '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_constructor_definition_statement()  # body
+                                                    #  close it
+                                                    if self.peek_next_token() == "]":
+                                                        self.match("]")
+                                                    #  error: not closed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                #  error: not followed by '['
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[' after {self.peek_previous_token()}")
+                                            #  single id is followed by a comma, (Static Sun a{1},.....)
+                                            elif self.peek_next_token() == ",":
+                                                self.match_param_assign_mult(",")
+                                                #  close with ')' after assigning value/s
+                                                if self.peek_next_token() == ")":
+                                                    self.match(")")
+                                                    #  followed by '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_constructor_definition_statement()  # body
+                                                        #  close it
+                                                        if self.peek_next_token() == "]":
+                                                            self.match("]")
+                                                        #  error: not closed
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                    #  error: not followed by '['
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[' after {self.peek_previous_token()}")
+                                            #  error: not followed by
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected ',', ')' after '{self.peek_previous_token()}'")
+                                        #  error: not followed by
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected ',', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                                    #  not closed with '}'
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax Error: Expected 'Rcurlbrace' after {self.peek_previous_token()}")
+                                #  size is single value
+                                elif self.peek_next_token() == "}":
+                                    self.match("}")
+                                    #  check: if closed, single 1D array (size is single value)
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")
+                                        #  followed it with '['
+                                        if self.peek_next_token() == "[":
+                                            self.parse_constructor_definition_statement()  # body
+                                            #  close it
+                                            if self.peek_next_token() == "]":
+                                                self.match("]")
+                                            #  error: not closed
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                        #  error: not followed by '['
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '[' after {self.peek_previous_token()}")
+                                    #  single id is followed by a comma, (Static Sun a{1},.....)
+                                    elif self.peek_next_token() == ",":
+                                        self.match_param_assign_mult(",")
+                                        #  close with ')' after assigning value/s
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")
+                                            #  followed by '['
+                                            if self.peek_next_token() == "[":
+                                                self.parse_constructor_definition_statement()  # body
+                                                #  close it
+                                                if self.peek_next_token() == "]":
+                                                    self.match("]")
+                                                #  error: not closed
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                            #  error: not followed by '['
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '[' after {self.peek_previous_token()}")
+                                    # or add another size to become 2D array
+                                    elif self.peek_next_token() == "{":
+                                        self.match_arrID2D_index_parameter("{")
+                                        #  check: if closed, single 1D array (size is single value)
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")
+                                            #  followed it with '['
+                                            if self.peek_next_token() == "[":
+                                                self.parse_constructor_definition_statement()  # body
+                                                #  close it
+                                                if self.peek_next_token() == "]":
+                                                    self.match("]")
+                                                #  error: not closed
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                            #  error: not followed by '['
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '[' after {self.peek_previous_token()}")
+                                        #  single id is followed by a comma, (Static Sun a{1},.....)
+                                        elif self.peek_next_token() == ",":
+                                            self.match_param_assign_mult(",")
+                                            #  close with ')' after assigning value/s
+                                            if self.peek_next_token() == ")":
+                                                self.match(")")
+                                                #  followed by '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_constructor_definition_statement()  # body
+                                                    #  close it
+                                                    if self.peek_next_token() == "]":
+                                                        self.match("]")
+                                                    #  error: not closed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                #  error: not followed by '['
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[' after {self.peek_previous_token()}")
+                                        #  error: not followed by an equal
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected ',', ')' after '{self.peek_previous_token()}'")
+                                    #  error: not followed by an equal
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected ',', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                                #  size value is not followed by any of the following (# and Rcurl)
+                                else:
+                                    self.errors.append(
+                                        f"Syntax Error: Expected 'Rcurlbraces', '+', '-', '*', '/', '%' after {self.peek_previous_token()}")
+                            #  empty size, proceed to close it with '}'
+                            elif self.peek_next_token() == "}":
+                                self.match("}")
+                                #  check: if closed, single 1D array (size is empty)
+                                if self.peek_next_token() == ")":
+                                    self.match(")")
+                                    #  followed it with '['
+                                    if self.peek_next_token() == "[":
+                                        self.parse_constructor_definition_statement()  # body
+                                        #  close it
+                                        if self.peek_next_token() == "]":
+                                            self.match("]")
+                                        #  error: not closed
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                    #  error: not followed by '['
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected '[' after {self.peek_previous_token()}")
+                                #  single id is followed by a comma, (Static Sun a{1},.....)
+                                elif self.peek_next_token() == ",":
+                                    self.match_param_assign_mult(",")
+                                    #  close with ')' after assigning value/s
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")
+                                        #  followed by '['
+                                        if self.peek_next_token() == "[":
+                                            self.parse_constructor_definition_statement()  # body
+                                            #  close it
+                                            if self.peek_next_token() == "]":
+                                                self.match("]")
+                                            #  error: not closed
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '[' after {self.peek_previous_token()}")
+                                # or add another size to become 2D array
+                                elif self.peek_next_token() == "{":
+                                    self.match_arrID2D_index_parameter("{")
+                                    #  check: if closed, single 2D array
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")
+                                        #  followed it with '['
+                                        if self.peek_next_token() == "[":
+                                            self.parse_constructor_definition_statement()  # body
+                                            #  close it
+                                            if self.peek_next_token() == "]":
+                                                self.match("]")
+                                            #  error: not closed
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                        #  error: not followed by '['
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '[' after {self.peek_previous_token()}")
+                                    #  single id is followed by a comma, (Static Sun a{1},.....)
+                                    elif self.peek_next_token() == ",":
+                                        self.match_param_assign_mult(",")
+                                        #  close with ')' after assigning value/s
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")
+                                            #  followed by '['
+                                            if self.peek_next_token() == "[":
+                                                self.parse_constructor_definition_statement()  # body
+                                                #  close it
+                                                if self.peek_next_token() == "]":
+                                                    self.match("]")
+                                                #  error: not closed
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                            #  error: not followed by '['
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '[' after {self.peek_previous_token()}")
+                                    #  error: not followed by an equal
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected ',', ')' after '{self.peek_previous_token()}'")
+                                #  error: not followed by an equal
+                                else:
+                                    self.errors.append(
+                                        f"Syntax error: Expected ',', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                            else:
+                                return True  # else: last identifier has no following identifiers (comma)
+                        elif self.peek_next_token() == "=":
                             self.match_param_assign("=")
                             #  close with ')' after assigning value/s
                             if self.peek_next_token() == ")":
@@ -2654,6 +8253,9 @@ class SyntaxAnalyzer:
             #  access module/s, function path
             elif self.peek_next_token() == ".":
                 self.instance_path(".")  # >>>>call method
+            #  assign value to an array index path
+            elif self.peek_next_token() == "{":
+                self.array_index_assign("{")
             else:
                 self.errors.append(f"Syntax Error: Expected '(', '=', '.' after {self.peek_previous_token()}")
 
@@ -2817,29 +8419,240 @@ class SyntaxAnalyzer:
             #  access module/s, function path
             elif self.peek_next_token() == ".":
                 self.instance_path(".")  #>>>>call method
+            #  assign value to an array index path
+            elif self.peek_next_token() == "{":
+                self.array_index_assign("{")
+            #  assign increment/decrement
+            elif self.peek_next_token() == "++" or self.peek_next_token() == "--":
+                self.match(Resources.loopup)
+                if self.peek_next_token() == "#":
+                    self.match("#")
             else:
                 self.errors.append(f"Syntax Error: Expected '(', '=', '.' after {self.peek_previous_token()}")
+
+    #  assign a value to an array index
+    def array_index_assign(self, expected_token):
+        self.get_next_token()
+        while self.current_token == "Space":
+            self.get_next_token()
+
+        #  array index assign path
+        if expected_token == "{":
+            #  array index assign path
+            if (re.match(r'Identifier\d*$', self.peek_next_token())
+                    or self.peek_next_token() == "SunLiteral"):
+                self.match(Resources.Value3)  # consume the values
+                #  size expression
+                if (self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                        or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                    self.match_mathop3(Resources.mathop1)  # size is a math expr
+                    #  close it with "}" if size is fulfilled
+                    if self.peek_next_token() == "}":
+                        self.match("}")
+                        #  must be followed by an '='
+                        if self.peek_next_token() == "=":
+                            self.match("=")
+                            #  must be followed by these values
+                            if (self.peek_next_token() == "StarsysLiteral" or self.peek_next_token() == "True" or self.peek_next_token() == "False"
+                                    or self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral" or self.peek_next_token() == "Identifier"):
+                                self.match(Resources.Value1)  # consume values
+                                # terminate
+                                if self.peek_next_token() == "#":
+                                    self.match("#")
+                                #  error: not terminated
+                                else:
+                                    self.errors.append(
+                                        f"Syntax error: Expected '#' after '{self.peek_previous_token()}'")
+                            #  error: not followed by the values expected
+                            else:
+                                self.errors.append(
+                                    f"Syntax error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
+                                    f"'StarsysLiteral', 'True', 'False' after '{self.peek_previous_token()}'")
+                        # or add another size to become 2D array
+                        elif self.peek_next_token() == "{":
+                            self.match_arrID2D_index_assign("{")
+                            #  must be followed by an '='
+                            if self.peek_next_token() == "=":
+                                self.match("=")
+                                #  must be followed by these values
+                                if (
+                                        self.peek_next_token() == "StarsysLiteral" or self.peek_next_token() == "True" or self.peek_next_token() == "False"
+                                        or self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral" or self.peek_next_token() == "Identifier"):
+                                    self.match(Resources.Value1)  # consume values
+                                    # terminate
+                                    if self.peek_next_token() == "#":
+                                        self.match("#")
+                                    #  error: not terminated
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected '#' after '{self.peek_previous_token()}'")
+                                #  error: not followed by the values expected
+                                else:
+                                    self.errors.append(
+                                        f"Syntax error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
+                                        f"'StarsysLiteral', 'True', 'False' after '{self.peek_previous_token()}'")
+                            #  error: not followed by an equal
+                            else:
+                                self.errors.append(
+                                    f"Syntax error: Expected '=' after '{self.peek_previous_token()}'")
+                        #  error: not followed by an equal
+                        else:
+                            self.errors.append(
+                                f"Syntax error: Expected '=', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                    #  not closed with '}'
+                    else:
+                        self.errors.append(
+                            f"Syntax Error: Expected 'Rcurlbrace' after {self.peek_previous_token()}")
+                #  size is single value
+                elif self.peek_next_token() == "}":
+                    self.match("}")
+                    #  must be followed by an '='
+                    if self.peek_next_token() == "=":
+                        self.match("=")
+                        # must be followed by these values
+                        if (
+                                self.peek_next_token() == "StarsysLiteral" or self.peek_next_token() == "True" or self.peek_next_token() == "False"
+                                or self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral" or self.peek_next_token() == "Identifier"):
+                            self.match(Resources.Value1)  # consume values
+                            # terminate
+                            if self.peek_next_token() == "#":
+                                self.match("#")
+                            #  error: not terminated
+                            else:
+                                self.errors.append(
+                                    f"Syntax error: Expected '#' after '{self.peek_previous_token()}'")
+                        #  error: not followed by the values expected
+                        else:
+                            self.errors.append(
+                                f"Syntax error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
+                                f"'StarsysLiteral', 'True', 'False' after '{self.peek_previous_token()}'")
+                    # or add another size to become 2D array
+                    elif self.peek_next_token() == "{":
+                        self.match_arrID2D_index_assign("{")
+                        #  must be followed by an '='
+                        if self.peek_next_token() == "=":
+                            self.match("=")
+                            # must be followed by these values
+                            if (self.peek_next_token() == "StarsysLiteral" or self.peek_next_token() == "True" or self.peek_next_token() == "False"
+                                    or self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral" or self.peek_next_token() == "Identifier"):
+                                self.match(Resources.Value1)  # consume values
+                                # terminate
+                                if self.peek_next_token() == "#":
+                                    self.match("#")
+                                #  error: not terminated
+                                else:
+                                    self.errors.append(
+                                        f"Syntax error: Expected '#' after '{self.peek_previous_token()}'")
+                            #  error: not followed by the values expected
+                            else:
+                                self.errors.append(
+                                    f"Syntax error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
+                                    f"'StarsysLiteral', 'True', 'False' after '{self.peek_previous_token()}'")
+                        #  error: not followed by an equal
+                        else:
+                            self.errors.append(
+                                f"Syntax error: Expected '=' after '{self.peek_previous_token()}'")
+                    #  error: not followed by an equal
+                    else:
+                        self.errors.append(
+                            f"Syntax error: Expected '=', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                #  size value is not followed by any of the following (# and Rcurl)
+                else:
+                    self.errors.append(
+                        f"Syntax Error: Expected 'Rcurlbraces', '+', '-', '*', '/', '%' after {self.peek_previous_token()}")
+            #  empty size, proceed to close it with '}'
+            elif self.peek_next_token() == "}":
+                self.match("}")
+                #  must be followed by an '='
+                if self.peek_next_token() == "=":
+                    self.match("=")
+                    # must be followed by these values
+                    if (
+                            self.peek_next_token() == "StarsysLiteral" or self.peek_next_token() == "True" or self.peek_next_token() == "False"
+                            or self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral" or self.peek_next_token() == "Identifier"):
+                        self.match(Resources.Value1)  # consume values
+                        # terminate
+                        if self.peek_next_token() == "#":
+                            self.match("#")
+                        #  error: not terminated
+                        else:
+                            self.errors.append(
+                                f"Syntax error: Expected '#' after '{self.peek_previous_token()}'")
+                    #  error: not followed by the values expected
+                    else:
+                        self.errors.append(
+                            f"Syntax error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
+                            f"'StarsysLiteral', 'True', 'False' after '{self.peek_previous_token()}'")
+                # or add another size to become 2D array
+                elif self.peek_next_token() == "{":
+                    self.match_arrID2D_index_assign("{")
+                    #  must be followed by an '='
+                    if self.peek_next_token() == "=":
+                        self.match("=")
+                        # must be followed by these values
+                        if (
+                                self.peek_next_token() == "StarsysLiteral" or self.peek_next_token() == "True" or self.peek_next_token() == "False"
+                                or self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral" or self.peek_next_token() == "Identifier"):
+                            self.match(Resources.Value1)  # consume values
+                            # terminate
+                            if self.peek_next_token() == "#":
+                                self.match("#")
+                            #  error: not terminated
+                            else:
+                                self.errors.append(
+                                    f"Syntax error: Expected '#' after '{self.peek_previous_token()}'")
+                        #  error: not followed by the values expected
+                        else:
+                            self.errors.append(
+                                f"Syntax error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
+                                f"'StarsysLiteral', 'True', 'False' after '{self.peek_previous_token()}'")
+                    #  error: not followed by an equal
+                    else:
+                        self.errors.append(
+                            f"Syntax error: Expected '=' after '{self.peek_previous_token()}'")
+                #  error: not followed by an equal
+                else:
+                    self.errors.append(
+                        f"Syntax error: Expected '=', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+            else:
+                return True  # else: last identifier has no following identifiers (comma)
 
     def instance_path(self, expected_token):
         self.get_next_token()
         while self.current_token == "Space":
             self.get_next_token()
-        if re.match(r'Identifier\d*$', self.peek_next_token()):
-            self.match("Identifier")
-            #  access the module of the module?
-            if self.peek_next_token() == ".":
-                self.instance_path(".")
-            #  call a function (id.id()#)
-            elif self.peek_next_token() == "(":
-                self.match("(")
-                #  has values inside?
-                if (self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral"
-                        or self.peek_next_token() == "StarsysLiteral"
-                        or re.match(r'Identifier\d*$', self.peek_next_token()) or self.peek_next_token() == "True"
-                        or self.peek_next_token() == "False"):
-                    self.matchValue_mult(Resources.Value1)
-                    # close it
-                    if self.peek_next_token() == ")":
+
+        if expected_token == ".":
+            if re.match(r'Identifier\d*$', self.peek_next_token()):
+                self.match("Identifier")
+                #  access the module of the module?
+                if self.peek_next_token() == ".":
+                    self.instance_path(".")
+                #  call a function (id.id()#)
+                elif self.peek_next_token() == "(":
+                    self.match("(")
+                    #  has values inside?
+                    if (self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral"
+                            or self.peek_next_token() == "StarsysLiteral"
+                            or re.match(r'Identifier\d*$', self.peek_next_token()) or self.peek_next_token() == "True"
+                            or self.peek_next_token() == "False"):
+                        self.matchValue_mult(Resources.Value1)
+                        # close it
+                        if self.peek_next_token() == ")":
+                            self.match(")")
+                            #  terminate it
+                            if self.peek_next_token() == "#":
+                                self.match("#")
+                            #  error: not terminated
+                            else:
+                                self.errors.append(
+                                    f"Syntax error: Expected '#' after '{self.peek_previous_token()}'")
+                        #  error: expected ')'
+                        else:
+                            self.errors.append(
+                                f"Syntax error: Expected ')' after '{self.peek_previous_token()}'")
+                    #  no values inside
+                    elif self.peek_next_token() == ")":
                         self.match(")")
                         #  terminate it
                         if self.peek_next_token() == "#":
@@ -2848,55 +8661,41 @@ class SyntaxAnalyzer:
                         else:
                             self.errors.append(
                                 f"Syntax error: Expected '#' after '{self.peek_previous_token()}'")
-                    #  error: expected ')'
                     else:
                         self.errors.append(
-                            f"Syntax error: Expected ')' after '{self.peek_previous_token()}'")
-                #  no values inside
-                elif self.peek_next_token() == ")":
-                    self.match(")")
-                    #  terminate it
-                    if self.peek_next_token() == "#":
-                        self.match("#")
-                    #  error: not terminated
+                            f"Syntax Error: Expected ')', 'SunLiteral', 'LuhmanLiteral', 'StarsysLiteral', 'Identifier', 'True',"
+                            f"'False' after {self.peek_previous_token()}")
+                #  assign a value to it (id.id = 5#)
+                elif self.peek_next_token() == "=":
+                    self.match("=")
+                    # assign a value
+                    if (self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral"
+                            or self.peek_next_token() == "StarsysLiteral" or re.match(r'Identifier\d*$',
+                                                                                      self.peek_next_token())
+                            or self.peek_next_token() == "True" or self.peek_next_token() == "False"):
+                        self.match(Resources.Value1)
+                        #  terminate it
+                        if self.peek_next_token() == "#":
+                            self.match("#")
+                        #  not terminated
+                        else:
+                            self.errors.append(
+                                f"Syntax Error: Expected '#' after {self.peek_previous_token()}")
+                    #  error: values are not assigned
                     else:
                         self.errors.append(
-                            f"Syntax error: Expected '#' after '{self.peek_previous_token()}'")
+                            f"Syntax Error: Expected 'SunLiteral', 'LuhmanLiteral', 'StarsysLiteral',"
+                            f" 'Identifier', 'True', 'False' after {self.peek_previous_token()}")
+                #  terminate it (no more next)
+                elif self.peek_next_token() == "#":
+                    self.match("#")
+                #  values next are not expected
                 else:
                     self.errors.append(
-                        f"Syntax Error: Expected ')', 'SunLiteral', 'LuhmanLiteral', 'StarsysLiteral', 'Identifier', 'True',"
-                        f"'False' after {self.peek_previous_token()}")
-            #  assign a value to it (id.id = 5#)
-            elif self.peek_next_token() == "=":
-                self.match("=")
-                # assign a value
-                if (self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral"
-                        or self.peek_next_token() == "StarsysLiteral" or re.match(r'Identifier\d*$',
-                                                                                  self.peek_next_token())
-                        or self.peek_next_token() == "True" or self.peek_next_token() == "False"):
-                    self.match(Resources.Value1)
-                    #  terminate it
-                    if self.peek_next_token() == "#":
-                        self.match("#")
-                    #  not terminated
-                    else:
-                        self.errors.append(
-                            f"Syntax Error: Expected '#' after {self.peek_previous_token()}")
-                #  error: values are not assigned
-                else:
-                    self.errors.append(
-                        f"Syntax Error: Expected 'SunLiteral', 'LuhmanLiteral', 'StarsysLiteral',"
-                        f" 'Identifier', 'True', 'False' after {self.peek_previous_token()}")
-            #  terminate it (no more next)
-            elif self.peek_next_token() == "#":
-                self.match("#")
-            #  values next are not expected
+                        f"Syntax Error: Expected '#', '(', '.', '=' after {self.peek_previous_token()}")
             else:
                 self.errors.append(
-                    f"Syntax Error: Expected '#', '(', '.', '=' after {self.peek_previous_token()}")
-        else:
-            self.errors.append(
-                f"Syntax Error: Expected 'Identifier' after {self.peek_previous_token()}")
+                    f"Syntax Error: Expected 'Identifier' after {self.peek_previous_token()}")
 
     def instance_path_output(self, expected_token):
         self.get_next_token()
@@ -2906,7 +8705,7 @@ class SyntaxAnalyzer:
             self.match("Identifier")
             #  access the module of the module?
             if self.peek_next_token() == ".":
-                self.instance_path(".")
+                self.instance_path_output(".")
             #  terminate it (no more next)
             elif self.peek_next_token() == "#":
                 return True
@@ -3109,7 +8908,378 @@ class SyntaxAnalyzer:
                                 self.match(Resources.Datatype2)
                                 if re.match(r'Identifier\d*$', self.peek_next_token()):
                                     self.match("Identifier")
-                                    if self.peek_next_token() == "=":
+                                    #  parameter is an array index path (static)
+                                    if self.peek_next_token() == "{":
+                                        self.match("{")  # consume
+                                        #  array index assign path
+                                        if (re.match(r'Identifier\d*$', self.peek_next_token())
+                                                or self.peek_next_token() == "SunLiteral"):
+                                            self.match(Resources.Value3)  # consume the values
+                                            #  size expression
+                                            if (
+                                                    self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                                                    or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                                                self.match_mathop3(Resources.mathop1)  # size is a math expr
+                                                #  close it with "}" if size is fulfilled
+                                                if self.peek_next_token() == "}":
+                                                    self.match("}")
+                                                    #  close with ')' after assigning value/s
+                                                    if self.peek_next_token() == ")":
+                                                        self.match(")")
+                                                        #  follow it with '['
+                                                        if self.peek_next_token() == "[":
+                                                            self.parse_sub_function_definition()  # body
+                                                            if self.peek_next_token() == "Disintegrate":
+                                                                return True
+                                                        #  has gotolerate
+                                                        elif self.peek_next_token() == "Gotolerate":
+                                                            self.match("Gotolerate")
+                                                            #  must be followed by '['
+                                                            if self.peek_next_token() == "[":
+                                                                self.parse_sub_function_definition()  # body
+                                                                if self.peek_next_token() == "Disintegrate":
+                                                                    return True
+                                                            #  error: not followed by '['
+                                                            else:
+                                                                self.errors.append(
+                                                                    f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                        #  error: not followed
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                                    #  single id is followed by a comma, (Static Sun a{1},.....)
+                                                    elif self.peek_next_token() == ",":
+                                                        self.match_param_assign_mult(",")
+                                                        #  close with ')' after assigning value/s
+                                                        if self.peek_next_token() == ")":
+                                                            self.match(")")
+                                                            #  follow it with '['
+                                                            if self.peek_next_token() == "[":
+                                                                self.parse_sub_function_definition()  # body
+                                                                if self.peek_next_token() == "Disintegrate":
+                                                                    return True
+                                                            #  has gotolerate
+                                                            elif self.peek_next_token() == "Gotolerate":
+                                                                self.match("Gotolerate")
+                                                                #  must be followed by '['
+                                                                if self.peek_next_token() == "[":
+                                                                    self.parse_sub_function_definition()  # body
+                                                                    if self.peek_next_token() == "Disintegrate":
+                                                                        return True
+                                                                #  error: not followed by '['
+                                                                else:
+                                                                    self.errors.append(
+                                                                        f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                            #  error: not followed
+                                                            else:
+                                                                self.errors.append(
+                                                                    f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                                    # or add another size to become 2D array
+                                                    elif self.peek_next_token() == "{":
+                                                        self.match_arrID2D_index_parameter("{")
+                                                        #  close with ')' after assigning value/s
+                                                        if self.peek_next_token() == ")":
+                                                            self.match(")")
+                                                            #  follow it with '['
+                                                            if self.peek_next_token() == "[":
+                                                                self.parse_sub_function_definition()  # body
+                                                                if self.peek_next_token() == "Disintegrate":
+                                                                    return True
+                                                            #  has gotolerate
+                                                            elif self.peek_next_token() == "Gotolerate":
+                                                                self.match("Gotolerate")
+                                                                #  must be followed by '['
+                                                                if self.peek_next_token() == "[":
+                                                                    self.parse_sub_function_definition()  # body
+                                                                    if self.peek_next_token() == "Disintegrate":
+                                                                        return True
+                                                                #  error: not followed by '['
+                                                                else:
+                                                                    self.errors.append(
+                                                                        f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                            #  error: not followed
+                                                            else:
+                                                                self.errors.append(
+                                                                    f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                                        #  single id is followed by a comma, (Static Sun a{1},.....)
+                                                        elif self.peek_next_token() == ",":
+                                                            self.match_param_assign_mult(",")
+                                                            #  close with ')' after assigning value/s
+                                                            if self.peek_next_token() == ")":
+                                                                self.match(")")
+                                                                #  follow it with '['
+                                                                if self.peek_next_token() == "[":
+                                                                    self.parse_sub_function_definition()  # body
+                                                                    if self.peek_next_token() == "Disintegrate":
+                                                                        return True
+                                                                #  has gotolerate
+                                                                elif self.peek_next_token() == "Gotolerate":
+                                                                    self.match("Gotolerate")
+                                                                    #  must be followed by '['
+                                                                    if self.peek_next_token() == "[":
+                                                                        self.parse_sub_function_definition()  # body
+                                                                        if self.peek_next_token() == "Disintegrate":
+                                                                            return True
+                                                                    #  error: not followed by '['
+                                                                    else:
+                                                                        self.errors.append(
+                                                                            f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                                #  error: not followed
+                                                                else:
+                                                                    self.errors.append(
+                                                                        f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                                        #  error: not followed by
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected ',', ')' after '{self.peek_previous_token()}'")
+                                                    #  error: not followed by
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected ',', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                                                #  not closed with '}'
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax Error: Expected 'Rcurlbrace' after {self.peek_previous_token()}")
+                                            #  size is single value
+                                            elif self.peek_next_token() == "}":
+                                                self.match("}")
+                                                #  close with ')' after assigning value/s
+                                                if self.peek_next_token() == ")":
+                                                    self.match(")")
+                                                    #  follow it with '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_sub_function_definition()  # body
+                                                        if self.peek_next_token() == "Disintegrate":
+                                                            return True
+                                                    #  has gotolerate
+                                                    elif self.peek_next_token() == "Gotolerate":
+                                                        self.match("Gotolerate")
+                                                        #  must be followed by '['
+                                                        if self.peek_next_token() == "[":
+                                                            self.parse_sub_function_definition()  # body
+                                                            if self.peek_next_token() == "Disintegrate":
+                                                                return True
+                                                        #  error: not followed by '['
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                    #  error: not followed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                                #  single id is followed by a comma, (Static Sun a{1},.....)
+                                                elif self.peek_next_token() == ",":
+                                                    self.match_param_assign_mult(",")
+                                                    #  close with ')' after assigning value/s
+                                                    if self.peek_next_token() == ")":
+                                                        self.match(")")
+                                                        #  follow it with '['
+                                                        if self.peek_next_token() == "[":
+                                                            self.parse_sub_function_definition()  # body
+                                                            if self.peek_next_token() == "Disintegrate":
+                                                                return True
+                                                        #  has gotolerate
+                                                        elif self.peek_next_token() == "Gotolerate":
+                                                            self.match("Gotolerate")
+                                                            #  must be followed by '['
+                                                            if self.peek_next_token() == "[":
+                                                                self.parse_sub_function_definition()  # body
+                                                                if self.peek_next_token() == "Disintegrate":
+                                                                    return True
+                                                            #  error: not followed by '['
+                                                            else:
+                                                                self.errors.append(
+                                                                    f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                        #  error: not followed
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                                # or add another size to become 2D array
+                                                elif self.peek_next_token() == "{":
+                                                    self.match_arrID2D_index_parameter("{")
+                                                    #  close with ')' after assigning value/s
+                                                    if self.peek_next_token() == ")":
+                                                        self.match(")")
+                                                        #  follow it with '['
+                                                        if self.peek_next_token() == "[":
+                                                            self.parse_sub_function_definition()  # body
+                                                            if self.peek_next_token() == "Disintegrate":
+                                                                return True
+                                                        #  has gotolerate
+                                                        elif self.peek_next_token() == "Gotolerate":
+                                                            self.match("Gotolerate")
+                                                            #  must be followed by '['
+                                                            if self.peek_next_token() == "[":
+                                                                self.parse_sub_function_definition()  # body
+                                                                if self.peek_next_token() == "Disintegrate":
+                                                                    return True
+                                                            #  error: not followed by '['
+                                                            else:
+                                                                self.errors.append(
+                                                                    f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                        #  error: not followed
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                                    #  single id is followed by a comma, (Static Sun a{1},.....)
+                                                    elif self.peek_next_token() == ",":
+                                                        self.match_param_assign_mult(",")
+                                                        #  close with ')' after assigning value/s
+                                                        if self.peek_next_token() == ")":
+                                                            self.match(")")
+                                                            #  follow it with '['
+                                                            if self.peek_next_token() == "[":
+                                                                self.parse_void_function_definition()  # body
+                                                                if self.peek_next_token() == "Disintegrate":
+                                                                    return True
+                                                            #  has gotolerate
+                                                            elif self.peek_next_token() == "Gotolerate":
+                                                                self.match("Gotolerate")
+                                                                #  must be followed by '['
+                                                                if self.peek_next_token() == "[":
+                                                                    self.parse_void_function_definition()  # body
+                                                                    if self.peek_next_token() == "Disintegrate":
+                                                                        return True
+                                                                #  error: not followed by '['
+                                                                else:
+                                                                    self.errors.append(
+                                                                        f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                            #  error: not followed
+                                                            else:
+                                                                self.errors.append(
+                                                                    f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                                    #  error: not followed by an equal
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected ',', ')' after '{self.peek_previous_token()}'")
+                                                #  error: not followed by an equal
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected ',', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                                            #  size value is not followed by any of the following (# and Rcurl)
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax Error: Expected 'Rcurlbraces', '+', '-', '*', '/', '%' after {self.peek_previous_token()}")
+                                        #  empty size, proceed to close it with '}'
+                                        elif self.peek_next_token() == "}":
+                                            self.match("}")
+                                            #  close with ')' after assigning value/s
+                                            if self.peek_next_token() == ")":
+                                                self.match(")")
+                                                #  follow it with '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_sub_function_definition()  # body
+                                                    if self.peek_next_token() == "Disintegrate":
+                                                        return True
+                                                #  has gotolerate
+                                                elif self.peek_next_token() == "Gotolerate":
+                                                    self.match("Gotolerate")
+                                                    #  must be followed by '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_sub_function_definition()  # body
+                                                        if self.peek_next_token() == "Disintegrate":
+                                                            return True
+                                                    #  error: not followed by '['
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                #  error: not followed
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                            #  single id is followed by a comma, (Static Sun a{1},.....)
+                                            elif self.peek_next_token() == ",":
+                                                self.match_param_assign_mult(",")
+                                                #  close with ')' after assigning value/s
+                                                if self.peek_next_token() == ")":
+                                                    self.match(")")
+                                                    #  follow it with '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_sub_function_definition()  # body
+                                                        if self.peek_next_token() == "Disintegrate":
+                                                            return True
+                                                    #  has gotolerate
+                                                    elif self.peek_next_token() == "Gotolerate":
+                                                        self.match("Gotolerate")
+                                                        #  must be followed by '['
+                                                        if self.peek_next_token() == "[":
+                                                            self.parse_sub_function_definition()  # body
+                                                            if self.peek_next_token() == "Disintegrate":
+                                                                return True
+                                                        #  error: not followed by '['
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                    #  error: not followed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                            # or add another size to become 2D array
+                                            elif self.peek_next_token() == "{":
+                                                self.match_arrID2D_index_parameter("{")
+                                                #  close with ')' after assigning value/s
+                                                if self.peek_next_token() == ")":
+                                                    self.match(")")
+                                                    #  follow it with '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_sub_function_definition()  # body
+                                                        if self.peek_next_token() == "Disintegrate":
+                                                            return True
+                                                    #  has gotolerate
+                                                    elif self.peek_next_token() == "Gotolerate":
+                                                        self.match("Gotolerate")
+                                                        #  must be followed by '['
+                                                        if self.peek_next_token() == "[":
+                                                            self.parse_sub_function_definition()  # body
+                                                            if self.peek_next_token() == "Disintegrate":
+                                                                return True
+                                                        #  error: not followed by '['
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                    #  error: not followed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                                #  single id is followed by a comma, (Static Sun a{1},.....)
+                                                elif self.peek_next_token() == ",":
+                                                    self.match_param_assign_mult(",")
+                                                    #  close with ')' after assigning value/s
+                                                    if self.peek_next_token() == ")":
+                                                        self.match(")")
+                                                        #  follow it with '['
+                                                        if self.peek_next_token() == "[":
+                                                            self.parse_sub_function_definition()  # body
+                                                            if self.peek_next_token() == "Disintegrate":
+                                                                return True
+                                                        #  has gotolerate
+                                                        elif self.peek_next_token() == "Gotolerate":
+                                                            self.match("Gotolerate")
+                                                            #  must be followed by '['
+                                                            if self.peek_next_token() == "[":
+                                                                self.parse_sub_function_definition()  # body
+                                                                if self.peek_next_token() == "Disintegrate":
+                                                                    return True
+                                                            #  error: not followed by '['
+                                                            else:
+                                                                self.errors.append(
+                                                                    f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                        #  error: not followed
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                                #  error: not followed by an equal
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected ',', ')' after '{self.peek_previous_token()}'")
+                                            #  error: not followed by an equal
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected ',', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                                        else:
+                                            return True  # else: last identifier has no following identifiers (comma)
+                                    #  equals path
+                                    elif self.peek_next_token() == "=":
                                         self.match_param_assign("=")
                                         #  close with ')' after assigning value/s
                                         if self.peek_next_token() == ")":
@@ -3208,7 +9378,377 @@ class SyntaxAnalyzer:
                             self.match(Resources.Datatype2)
                             if re.match(r'Identifier\d*$', self.peek_next_token()):
                                 self.match("Identifier")
-                                if self.peek_next_token() == "=":
+                                #  parameter is an array index path (static)
+                                if self.peek_next_token() == "{":
+                                    self.match("{")  # consume
+                                    #  array index assign path
+                                    if (re.match(r'Identifier\d*$', self.peek_next_token())
+                                            or self.peek_next_token() == "SunLiteral"):
+                                        self.match(Resources.Value3)  # consume the values
+                                        #  size expression
+                                        if (
+                                                self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                                                or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                                            self.match_mathop3(Resources.mathop1)  # size is a math expr
+                                            #  close it with "}" if size is fulfilled
+                                            if self.peek_next_token() == "}":
+                                                self.match("}")
+                                                #  close with ')' after assigning value/s
+                                                if self.peek_next_token() == ")":
+                                                    self.match(")")
+                                                    #  follow it with '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_sub_function_definition()  # body
+                                                        if self.peek_next_token() == "Disintegrate":
+                                                            return True
+                                                    #  has gotolerate
+                                                    elif self.peek_next_token() == "Gotolerate":
+                                                        self.match("Gotolerate")
+                                                        #  must be followed by '['
+                                                        if self.peek_next_token() == "[":
+                                                            self.parse_sub_function_definition()  # body
+                                                            if self.peek_next_token() == "Disintegrate":
+                                                                return True
+                                                        #  error: not followed by '['
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                    #  error: not followed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                                #  single id is followed by a comma, (Static Sun a{1},.....)
+                                                elif self.peek_next_token() == ",":
+                                                    self.match_param_assign_mult(",")
+                                                    #  close with ')' after assigning value/s
+                                                    if self.peek_next_token() == ")":
+                                                        self.match(")")
+                                                        #  follow it with '['
+                                                        if self.peek_next_token() == "[":
+                                                            self.parse_sub_function_definition()  # body
+                                                            if self.peek_next_token() == "Disintegrate":
+                                                                return True
+                                                        #  has gotolerate
+                                                        elif self.peek_next_token() == "Gotolerate":
+                                                            self.match("Gotolerate")
+                                                            #  must be followed by '['
+                                                            if self.peek_next_token() == "[":
+                                                                self.parse_sub_function_definition()  # body
+                                                                if self.peek_next_token() == "Disintegrate":
+                                                                    return True
+                                                            #  error: not followed by '['
+                                                            else:
+                                                                self.errors.append(
+                                                                    f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                        #  error: not followed
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                                # or add another size to become 2D array
+                                                elif self.peek_next_token() == "{":
+                                                    self.match_arrID2D_index_parameter("{")
+                                                    #  close with ')' after assigning value/s
+                                                    if self.peek_next_token() == ")":
+                                                        self.match(")")
+                                                        #  follow it with '['
+                                                        if self.peek_next_token() == "[":
+                                                            self.parse_sub_function_definition()  # body
+                                                            if self.peek_next_token() == "Disintegrate":
+                                                                return True
+                                                        #  has gotolerate
+                                                        elif self.peek_next_token() == "Gotolerate":
+                                                            self.match("Gotolerate")
+                                                            #  must be followed by '['
+                                                            if self.peek_next_token() == "[":
+                                                                self.parse_sub_function_definition()  # body
+                                                                if self.peek_next_token() == "Disintegrate":
+                                                                    return True
+                                                            #  error: not followed by '['
+                                                            else:
+                                                                self.errors.append(
+                                                                    f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                        #  error: not followed
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                                    #  single id is followed by a comma, (Static Sun a{1},.....)
+                                                    elif self.peek_next_token() == ",":
+                                                        self.match_param_assign_mult(",")
+                                                        #  close with ')' after assigning value/s
+                                                        if self.peek_next_token() == ")":
+                                                            self.match(")")
+                                                            #  follow it with '['
+                                                            if self.peek_next_token() == "[":
+                                                                self.parse_sub_function_definition()  # body
+                                                                if self.peek_next_token() == "Disintegrate":
+                                                                    return True
+                                                            #  has gotolerate
+                                                            elif self.peek_next_token() == "Gotolerate":
+                                                                self.match("Gotolerate")
+                                                                #  must be followed by '['
+                                                                if self.peek_next_token() == "[":
+                                                                    self.parse_sub_function_definition()  # body
+                                                                    if self.peek_next_token() == "Disintegrate":
+                                                                        return True
+                                                                #  error: not followed by '['
+                                                                else:
+                                                                    self.errors.append(
+                                                                        f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                            #  error: not followed
+                                                            else:
+                                                                self.errors.append(
+                                                                    f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                                    #  error: not followed by
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected ',', ')' after '{self.peek_previous_token()}'")
+                                                #  error: not followed by
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected ',', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                                            #  not closed with '}'
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax Error: Expected 'Rcurlbrace' after {self.peek_previous_token()}")
+                                        #  size is single value
+                                        elif self.peek_next_token() == "}":
+                                            self.match("}")
+                                            #  close with ')' after assigning value/s
+                                            if self.peek_next_token() == ")":
+                                                self.match(")")
+                                                #  follow it with '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_sub_function_definition()  # body
+                                                    if self.peek_next_token() == "Disintegrate":
+                                                        return True
+                                                #  has gotolerate
+                                                elif self.peek_next_token() == "Gotolerate":
+                                                    self.match("Gotolerate")
+                                                    #  must be followed by '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_sub_function_definition()  # body
+                                                        if self.peek_next_token() == "Disintegrate":
+                                                            return True
+                                                    #  error: not followed by '['
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                #  error: not followed
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                            #  single id is followed by a comma, (Static Sun a{1},.....)
+                                            elif self.peek_next_token() == ",":
+                                                self.match_param_assign_mult(",")
+                                                #  close with ')' after assigning value/s
+                                                if self.peek_next_token() == ")":
+                                                    self.match(")")
+                                                    #  follow it with '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_sub_function_definition()  # body
+                                                        if self.peek_next_token() == "Disintegrate":
+                                                            return True
+                                                    #  has gotolerate
+                                                    elif self.peek_next_token() == "Gotolerate":
+                                                        self.match("Gotolerate")
+                                                        #  must be followed by '['
+                                                        if self.peek_next_token() == "[":
+                                                            self.parse_sub_function_definition()  # body
+                                                            if self.peek_next_token() == "Disintegrate":
+                                                                return True
+                                                        #  error: not followed by '['
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                    #  error: not followed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                            # or add another size to become 2D array
+                                            elif self.peek_next_token() == "{":
+                                                self.match_arrID2D_index_parameter("{")
+                                                #  close with ')' after assigning value/s
+                                                if self.peek_next_token() == ")":
+                                                    self.match(")")
+                                                    #  follow it with '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_sub_function_definition()  # body
+                                                        if self.peek_next_token() == "Disintegrate":
+                                                            return True
+                                                    #  has gotolerate
+                                                    elif self.peek_next_token() == "Gotolerate":
+                                                        self.match("Gotolerate")
+                                                        #  must be followed by '['
+                                                        if self.peek_next_token() == "[":
+                                                            self.parse_sub_function_definition()  # body
+                                                            if self.peek_next_token() == "Disintegrate":
+                                                                return True
+                                                        #  error: not followed by '['
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                    #  error: not followed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                                #  single id is followed by a comma, (Static Sun a{1},.....)
+                                                elif self.peek_next_token() == ",":
+                                                    self.match_param_assign_mult(",")
+                                                    #  close with ')' after assigning value/s
+                                                    if self.peek_next_token() == ")":
+                                                        self.match(")")
+                                                        #  follow it with '['
+                                                        if self.peek_next_token() == "[":
+                                                            self.parse_void_function_definition()  # body
+                                                            if self.peek_next_token() == "Disintegrate":
+                                                                return True
+                                                        #  has gotolerate
+                                                        elif self.peek_next_token() == "Gotolerate":
+                                                            self.match("Gotolerate")
+                                                            #  must be followed by '['
+                                                            if self.peek_next_token() == "[":
+                                                                self.parse_void_function_definition()  # body
+                                                                if self.peek_next_token() == "Disintegrate":
+                                                                    return True
+                                                            #  error: not followed by '['
+                                                            else:
+                                                                self.errors.append(
+                                                                    f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                        #  error: not followed
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                                #  error: not followed by an equal
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected ',', ')' after '{self.peek_previous_token()}'")
+                                            #  error: not followed by an equal
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected ',', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                                        #  size value is not followed by any of the following (# and Rcurl)
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax Error: Expected 'Rcurlbraces', '+', '-', '*', '/', '%' after {self.peek_previous_token()}")
+                                    #  empty size, proceed to close it with '}'
+                                    elif self.peek_next_token() == "}":
+                                        self.match("}")
+                                        #  close with ')' after assigning value/s
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")
+                                            #  follow it with '['
+                                            if self.peek_next_token() == "[":
+                                                self.parse_sub_function_definition()  # body
+                                                if self.peek_next_token() == "Disintegrate":
+                                                    return True
+                                            #  has gotolerate
+                                            elif self.peek_next_token() == "Gotolerate":
+                                                self.match("Gotolerate")
+                                                #  must be followed by '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_sub_function_definition()  # body
+                                                    if self.peek_next_token() == "Disintegrate":
+                                                        return True
+                                                #  error: not followed by '['
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                            #  error: not followed
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                        #  single id is followed by a comma, (Static Sun a{1},.....)
+                                        elif self.peek_next_token() == ",":
+                                            self.match_param_assign_mult(",")
+                                            #  close with ')' after assigning value/s
+                                            if self.peek_next_token() == ")":
+                                                self.match(")")
+                                                #  follow it with '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_sub_function_definition()  # body
+                                                    if self.peek_next_token() == "Disintegrate":
+                                                        return True
+                                                #  has gotolerate
+                                                elif self.peek_next_token() == "Gotolerate":
+                                                    self.match("Gotolerate")
+                                                    #  must be followed by '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_sub_function_definition()  # body
+                                                        if self.peek_next_token() == "Disintegrate":
+                                                            return True
+                                                    #  error: not followed by '['
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                #  error: not followed
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                        # or add another size to become 2D array
+                                        elif self.peek_next_token() == "{":
+                                            self.match_arrID2D_index_parameter("{")
+                                            #  close with ')' after assigning value/s
+                                            if self.peek_next_token() == ")":
+                                                self.match(")")
+                                                #  follow it with '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_sub_function_definition()  # body
+                                                    if self.peek_next_token() == "Disintegrate":
+                                                        return True
+                                                #  has gotolerate
+                                                elif self.peek_next_token() == "Gotolerate":
+                                                    self.match("Gotolerate")
+                                                    #  must be followed by '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_sub_function_definition()  # body
+                                                        if self.peek_next_token() == "Disintegrate":
+                                                            return True
+                                                    #  error: not followed by '['
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                #  error: not followed
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                            #  single id is followed by a comma, (Static Sun a{1},.....)
+                                            elif self.peek_next_token() == ",":
+                                                self.match_param_assign_mult(",")
+                                                #  close with ')' after assigning value/s
+                                                if self.peek_next_token() == ")":
+                                                    self.match(")")
+                                                    #  follow it with '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_sub_function_definition()  # body
+                                                        if self.peek_next_token() == "Disintegrate":
+                                                            return True
+                                                    #  has gotolerate
+                                                    elif self.peek_next_token() == "Gotolerate":
+                                                        self.match("Gotolerate")
+                                                        #  must be followed by '['
+                                                        if self.peek_next_token() == "[":
+                                                            self.parse_sub_function_definition()  # body
+                                                            if self.peek_next_token() == "Disintegrate":
+                                                                return True
+                                                        #  error: not followed by '['
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                    #  error: not followed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                            #  error: not followed by an equal
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected ',', ')' after '{self.peek_previous_token()}'")
+                                        #  error: not followed by an equal
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected ',', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                                    else:
+                                        return True  # else: last identifier has no following identifiers (comma)
+                                elif self.peek_next_token() == "=":
                                     self.match_param_assign("=")
                                     #  close with ')' after assigning value/s
                                     if self.peek_next_token() == ")":
@@ -3352,7 +9892,377 @@ class SyntaxAnalyzer:
                             self.match(Resources.Datatype2)
                             if re.match(r'Identifier\d*$', self.peek_next_token()):
                                 self.match("Identifier")
-                                if self.peek_next_token() == "=":
+                                #  parameter is an array index path (static)
+                                if self.peek_next_token() == "{":
+                                    self.match("{")  # consume
+                                    #  array index assign path
+                                    if (re.match(r'Identifier\d*$', self.peek_next_token())
+                                            or self.peek_next_token() == "SunLiteral"):
+                                        self.match(Resources.Value3)  # consume the values
+                                        #  size expression
+                                        if (
+                                                self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                                                or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                                            self.match_mathop3(Resources.mathop1)  # size is a math expr
+                                            #  close it with "}" if size is fulfilled
+                                            if self.peek_next_token() == "}":
+                                                self.match("}")
+                                                #  close with ')' after assigning value/s
+                                                if self.peek_next_token() == ")":
+                                                    self.match(")")
+                                                    #  follow it with '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_void_function_definition()  # body
+                                                        if self.peek_next_token() == "Disintegrate":
+                                                            return True
+                                                    #  has gotolerate
+                                                    elif self.peek_next_token() == "Gotolerate":
+                                                        self.match("Gotolerate")
+                                                        #  must be followed by '['
+                                                        if self.peek_next_token() == "[":
+                                                            self.parse_void_function_definition()  # body
+                                                            if self.peek_next_token() == "Disintegrate":
+                                                                return True
+                                                        #  error: not followed by '['
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                    #  error: not followed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                                #  single id is followed by a comma, (Static Sun a{1},.....)
+                                                elif self.peek_next_token() == ",":
+                                                    self.match_param_assign_mult(",")
+                                                    #  close with ')' after assigning value/s
+                                                    if self.peek_next_token() == ")":
+                                                        self.match(")")
+                                                        #  follow it with '['
+                                                        if self.peek_next_token() == "[":
+                                                            self.parse_void_function_definition()  # body
+                                                            if self.peek_next_token() == "Disintegrate":
+                                                                return True
+                                                        #  has gotolerate
+                                                        elif self.peek_next_token() == "Gotolerate":
+                                                            self.match("Gotolerate")
+                                                            #  must be followed by '['
+                                                            if self.peek_next_token() == "[":
+                                                                self.parse_void_function_definition()  # body
+                                                                if self.peek_next_token() == "Disintegrate":
+                                                                    return True
+                                                            #  error: not followed by '['
+                                                            else:
+                                                                self.errors.append(
+                                                                    f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                        #  error: not followed
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                                # or add another size to become 2D array
+                                                elif self.peek_next_token() == "{":
+                                                    self.match_arrID2D_index_parameter("{")
+                                                    #  close with ')' after assigning value/s
+                                                    if self.peek_next_token() == ")":
+                                                        self.match(")")
+                                                        #  follow it with '['
+                                                        if self.peek_next_token() == "[":
+                                                            self.parse_void_function_definition()  # body
+                                                            if self.peek_next_token() == "Disintegrate":
+                                                                return True
+                                                        #  has gotolerate
+                                                        elif self.peek_next_token() == "Gotolerate":
+                                                            self.match("Gotolerate")
+                                                            #  must be followed by '['
+                                                            if self.peek_next_token() == "[":
+                                                                self.parse_void_function_definition()  # body
+                                                                if self.peek_next_token() == "Disintegrate":
+                                                                    return True
+                                                            #  error: not followed by '['
+                                                            else:
+                                                                self.errors.append(
+                                                                    f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                        #  error: not followed
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                                    #  single id is followed by a comma, (Static Sun a{1},.....)
+                                                    elif self.peek_next_token() == ",":
+                                                        self.match_param_assign_mult(",")
+                                                        #  close with ')' after assigning value/s
+                                                        if self.peek_next_token() == ")":
+                                                            self.match(")")
+                                                            #  follow it with '['
+                                                            if self.peek_next_token() == "[":
+                                                                self.parse_void_function_definition()  # body
+                                                                if self.peek_next_token() == "Disintegrate":
+                                                                    return True
+                                                            #  has gotolerate
+                                                            elif self.peek_next_token() == "Gotolerate":
+                                                                self.match("Gotolerate")
+                                                                #  must be followed by '['
+                                                                if self.peek_next_token() == "[":
+                                                                    self.parse_void_function_definition()  # body
+                                                                    if self.peek_next_token() == "Disintegrate":
+                                                                        return True
+                                                                #  error: not followed by '['
+                                                                else:
+                                                                    self.errors.append(
+                                                                        f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                            #  error: not followed
+                                                            else:
+                                                                self.errors.append(
+                                                                    f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                                    #  error: not followed by
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected ',', ')' after '{self.peek_previous_token()}'")
+                                                #  error: not followed by
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected ',', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                                            #  not closed with '}'
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax Error: Expected 'Rcurlbrace' after {self.peek_previous_token()}")
+                                        #  size is single value
+                                        elif self.peek_next_token() == "}":
+                                            self.match("}")
+                                            #  close with ')' after assigning value/s
+                                            if self.peek_next_token() == ")":
+                                                self.match(")")
+                                                #  follow it with '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_void_function_definition()  # body
+                                                    if self.peek_next_token() == "Disintegrate":
+                                                        return True
+                                                #  has gotolerate
+                                                elif self.peek_next_token() == "Gotolerate":
+                                                    self.match("Gotolerate")
+                                                    #  must be followed by '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_void_function_definition()  # body
+                                                        if self.peek_next_token() == "Disintegrate":
+                                                            return True
+                                                    #  error: not followed by '['
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                #  error: not followed
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                            #  single id is followed by a comma, (Static Sun a{1},.....)
+                                            elif self.peek_next_token() == ",":
+                                                self.match_param_assign_mult(",")
+                                                #  close with ')' after assigning value/s
+                                                if self.peek_next_token() == ")":
+                                                    self.match(")")
+                                                    #  follow it with '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_void_function_definition()  # body
+                                                        if self.peek_next_token() == "Disintegrate":
+                                                            return True
+                                                    #  has gotolerate
+                                                    elif self.peek_next_token() == "Gotolerate":
+                                                        self.match("Gotolerate")
+                                                        #  must be followed by '['
+                                                        if self.peek_next_token() == "[":
+                                                            self.parse_void_function_definition()  # body
+                                                            if self.peek_next_token() == "Disintegrate":
+                                                                return True
+                                                        #  error: not followed by '['
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                    #  error: not followed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                            # or add another size to become 2D array
+                                            elif self.peek_next_token() == "{":
+                                                self.match_arrID2D_index_parameter("{")
+                                                #  close with ')' after assigning value/s
+                                                if self.peek_next_token() == ")":
+                                                    self.match(")")
+                                                    #  follow it with '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_void_function_definition()  # body
+                                                        if self.peek_next_token() == "Disintegrate":
+                                                            return True
+                                                    #  has gotolerate
+                                                    elif self.peek_next_token() == "Gotolerate":
+                                                        self.match("Gotolerate")
+                                                        #  must be followed by '['
+                                                        if self.peek_next_token() == "[":
+                                                            self.parse_void_function_definition()  # body
+                                                            if self.peek_next_token() == "Disintegrate":
+                                                                return True
+                                                        #  error: not followed by '['
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                    #  error: not followed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                                #  single id is followed by a comma, (Static Sun a{1},.....)
+                                                elif self.peek_next_token() == ",":
+                                                    self.match_param_assign_mult(",")
+                                                    #  close with ')' after assigning value/s
+                                                    if self.peek_next_token() == ")":
+                                                        self.match(")")
+                                                        #  follow it with '['
+                                                        if self.peek_next_token() == "[":
+                                                            self.parse_void_function_definition()  # body
+                                                            if self.peek_next_token() == "Disintegrate":
+                                                                return True
+                                                        #  has gotolerate
+                                                        elif self.peek_next_token() == "Gotolerate":
+                                                            self.match("Gotolerate")
+                                                            #  must be followed by '['
+                                                            if self.peek_next_token() == "[":
+                                                                self.parse_void_function_definition()  # body
+                                                                if self.peek_next_token() == "Disintegrate":
+                                                                    return True
+                                                            #  error: not followed by '['
+                                                            else:
+                                                                self.errors.append(
+                                                                    f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                        #  error: not followed
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                                #  error: not followed by an equal
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected ',', ')' after '{self.peek_previous_token()}'")
+                                            #  error: not followed by an equal
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected ',', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                                        #  size value is not followed by any of the following (# and Rcurl)
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax Error: Expected 'Rcurlbraces', '+', '-', '*', '/', '%' after {self.peek_previous_token()}")
+                                    #  empty size, proceed to close it with '}'
+                                    elif self.peek_next_token() == "}":
+                                        self.match("}")
+                                        #  close with ')' after assigning value/s
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")
+                                            #  follow it with '['
+                                            if self.peek_next_token() == "[":
+                                                self.parse_void_function_definition()  # body
+                                                if self.peek_next_token() == "Disintegrate":
+                                                    return True
+                                            #  has gotolerate
+                                            elif self.peek_next_token() == "Gotolerate":
+                                                self.match("Gotolerate")
+                                                #  must be followed by '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_void_function_definition()  # body
+                                                    if self.peek_next_token() == "Disintegrate":
+                                                        return True
+                                                #  error: not followed by '['
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                            #  error: not followed
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                        #  single id is followed by a comma, (Static Sun a{1},.....)
+                                        elif self.peek_next_token() == ",":
+                                            self.match_param_assign_mult(",")
+                                            #  close with ')' after assigning value/s
+                                            if self.peek_next_token() == ")":
+                                                self.match(")")
+                                                #  follow it with '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_void_function_definition()  # body
+                                                    if self.peek_next_token() == "Disintegrate":
+                                                        return True
+                                                #  has gotolerate
+                                                elif self.peek_next_token() == "Gotolerate":
+                                                    self.match("Gotolerate")
+                                                    #  must be followed by '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_void_function_definition()  # body
+                                                        if self.peek_next_token() == "Disintegrate":
+                                                            return True
+                                                    #  error: not followed by '['
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                #  error: not followed
+                                                else:
+                                                    self.errors.append(f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                        # or add another size to become 2D array
+                                        elif self.peek_next_token() == "{":
+                                            self.match_arrID2D_index_parameter("{")
+                                            #  close with ')' after assigning value/s
+                                            if self.peek_next_token() == ")":
+                                                self.match(")")
+                                                #  follow it with '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_void_function_definition()  # body
+                                                    if self.peek_next_token() == "Disintegrate":
+                                                        return True
+                                                #  has gotolerate
+                                                elif self.peek_next_token() == "Gotolerate":
+                                                    self.match("Gotolerate")
+                                                    #  must be followed by '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_void_function_definition()  # body
+                                                        if self.peek_next_token() == "Disintegrate":
+                                                            return True
+                                                    #  error: not followed by '['
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                #  error: not followed
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                            #  single id is followed by a comma, (Static Sun a{1},.....)
+                                            elif self.peek_next_token() == ",":
+                                                self.match_param_assign_mult(",")
+                                                #  close with ')' after assigning value/s
+                                                if self.peek_next_token() == ")":
+                                                    self.match(")")
+                                                    #  follow it with '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_void_function_definition()  # body
+                                                        if self.peek_next_token() == "Disintegrate":
+                                                            return True
+                                                    #  has gotolerate
+                                                    elif self.peek_next_token() == "Gotolerate":
+                                                        self.match("Gotolerate")
+                                                        #  must be followed by '['
+                                                        if self.peek_next_token() == "[":
+                                                            self.parse_void_function_definition()  # body
+                                                            if self.peek_next_token() == "Disintegrate":
+                                                                return True
+                                                        #  error: not followed by '['
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                    #  error: not followed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                            #  error: not followed by an equal
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected ',', ')' after '{self.peek_previous_token()}'")
+                                        #  error: not followed by an equal
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected ',', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                                    else:
+                                        return True  # else: last identifier has no following identifiers (comma)
+                                #  equals path
+                                elif self.peek_next_token() == "=":
                                     self.match_param_assign("=")
                                     #  close with ')' after assigning value/s
                                     if self.peek_next_token() == ")":
@@ -3451,7 +10361,378 @@ class SyntaxAnalyzer:
                         self.match(Resources.Datatype2)
                         if re.match(r'Identifier\d*$', self.peek_next_token()):
                             self.match("Identifier")
-                            if self.peek_next_token() == "=":
+                            #  parameter is an array index path
+                            if self.peek_next_token() == "{":
+                                self.match("{")  # consume
+                                #  array index assign path
+                                if (re.match(r'Identifier\d*$', self.peek_next_token())
+                                        or self.peek_next_token() == "SunLiteral"):
+                                    self.match(Resources.Value3)  # consume the values
+                                    #  size expression
+                                    if (
+                                            self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                                            or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                                        self.match_mathop3(Resources.mathop1)  # size is a math expr
+                                        #  close it with "}" if size is fulfilled
+                                        if self.peek_next_token() == "}":
+                                            self.match("}")
+                                            #  close with ')' after assigning value/s
+                                            if self.peek_next_token() == ")":
+                                                self.match(")")
+                                                #  follow it with '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_void_function_definition()  # body
+                                                    if self.peek_next_token() == "Disintegrate":
+                                                        return True
+                                                #  has gotolerate
+                                                elif self.peek_next_token() == "Gotolerate":
+                                                    self.match("Gotolerate")
+                                                    #  must be followed by '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_void_function_definition()  # body
+                                                        if self.peek_next_token() == "Disintegrate":
+                                                            return True
+                                                    #  error: not followed by '['
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                #  error: not followed
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                            #  single id is followed by a comma, (Static Sun a{1},.....)
+                                            elif self.peek_next_token() == ",":
+                                                self.match_param_assign_mult(",")
+                                                #  close with ')' after assigning value/s
+                                                if self.peek_next_token() == ")":
+                                                    self.match(")")
+                                                    #  follow it with '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_void_function_definition()  # body
+                                                        if self.peek_next_token() == "Disintegrate":
+                                                            return True
+                                                    #  has gotolerate
+                                                    elif self.peek_next_token() == "Gotolerate":
+                                                        self.match("Gotolerate")
+                                                        #  must be followed by '['
+                                                        if self.peek_next_token() == "[":
+                                                            self.parse_void_function_definition()  # body
+                                                            if self.peek_next_token() == "Disintegrate":
+                                                                return True
+                                                        #  error: not followed by '['
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                    #  error: not followed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                            # or add another size to become 2D array
+                                            elif self.peek_next_token() == "{":
+                                                self.match_arrID2D_index_parameter("{")
+                                                #  close with ')' after assigning value/s
+                                                if self.peek_next_token() == ")":
+                                                    self.match(")")
+                                                    #  follow it with '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_void_function_definition()  # body
+                                                        if self.peek_next_token() == "Disintegrate":
+                                                            return True
+                                                    #  has gotolerate
+                                                    elif self.peek_next_token() == "Gotolerate":
+                                                        self.match("Gotolerate")
+                                                        #  must be followed by '['
+                                                        if self.peek_next_token() == "[":
+                                                            self.parse_void_function_definition()  # body
+                                                            if self.peek_next_token() == "Disintegrate":
+                                                                return True
+                                                        #  error: not followed by '['
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                    #  error: not followed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                                #  single id is followed by a comma, (Static Sun a{1},.....)
+                                                elif self.peek_next_token() == ",":
+                                                    self.match_param_assign_mult(",")
+                                                    #  close with ')' after assigning value/s
+                                                    if self.peek_next_token() == ")":
+                                                        self.match(")")
+                                                        #  follow it with '['
+                                                        if self.peek_next_token() == "[":
+                                                            self.parse_void_function_definition()  # body
+                                                            if self.peek_next_token() == "Disintegrate":
+                                                                return True
+                                                        #  has gotolerate
+                                                        elif self.peek_next_token() == "Gotolerate":
+                                                            self.match("Gotolerate")
+                                                            #  must be followed by '['
+                                                            if self.peek_next_token() == "[":
+                                                                self.parse_void_function_definition()  # body
+                                                                if self.peek_next_token() == "Disintegrate":
+                                                                    return True
+                                                            #  error: not followed by '['
+                                                            else:
+                                                                self.errors.append(
+                                                                    f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                        #  error: not followed
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                                #  error: not followed by
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected ',', ')' after '{self.peek_previous_token()}'")
+                                            #  error: not followed by
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected ',', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                                        #  not closed with '}'
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax Error: Expected 'Rcurlbrace' after {self.peek_previous_token()}")
+                                    #  size is single value
+                                    elif self.peek_next_token() == "}":
+                                        self.match("}")
+                                        #  close with ')' after assigning value/s
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")
+                                            #  follow it with '['
+                                            if self.peek_next_token() == "[":
+                                                self.parse_void_function_definition()  # body
+                                                if self.peek_next_token() == "Disintegrate":
+                                                    return True
+                                            #  has gotolerate
+                                            elif self.peek_next_token() == "Gotolerate":
+                                                self.match("Gotolerate")
+                                                #  must be followed by '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_void_function_definition()  # body
+                                                    if self.peek_next_token() == "Disintegrate":
+                                                        return True
+                                                #  error: not followed by '['
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                            #  error: not followed
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                        #  single id is followed by a comma, (Static Sun a{1},.....)
+                                        elif self.peek_next_token() == ",":
+                                            self.match_param_assign_mult(",")
+                                            #  close with ')' after assigning value/s
+                                            if self.peek_next_token() == ")":
+                                                self.match(")")
+                                                #  follow it with '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_void_function_definition()  # body
+                                                    if self.peek_next_token() == "Disintegrate":
+                                                        return True
+                                                #  has gotolerate
+                                                elif self.peek_next_token() == "Gotolerate":
+                                                    self.match("Gotolerate")
+                                                    #  must be followed by '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_void_function_definition()  # body
+                                                        if self.peek_next_token() == "Disintegrate":
+                                                            return True
+                                                    #  error: not followed by '['
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                #  error: not followed
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                        # or add another size to become 2D array
+                                        elif self.peek_next_token() == "{":
+                                            self.match_arrID2D_index_parameter("{")
+                                            #  close with ')' after assigning value/s
+                                            if self.peek_next_token() == ")":
+                                                self.match(")")
+                                                #  follow it with '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_void_function_definition()  # body
+                                                    if self.peek_next_token() == "Disintegrate":
+                                                        return True
+                                                #  has gotolerate
+                                                elif self.peek_next_token() == "Gotolerate":
+                                                    self.match("Gotolerate")
+                                                    #  must be followed by '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_void_function_definition()  # body
+                                                        if self.peek_next_token() == "Disintegrate":
+                                                            return True
+                                                    #  error: not followed by '['
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                #  error: not followed
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                            #  single id is followed by a comma, (Static Sun a{1},.....)
+                                            elif self.peek_next_token() == ",":
+                                                self.match_param_assign_mult(",")
+                                                #  close with ')' after assigning value/s
+                                                if self.peek_next_token() == ")":
+                                                    self.match(")")
+                                                    #  follow it with '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_void_function_definition()  # body
+                                                        if self.peek_next_token() == "Disintegrate":
+                                                            return True
+                                                    #  has gotolerate
+                                                    elif self.peek_next_token() == "Gotolerate":
+                                                        self.match("Gotolerate")
+                                                        #  must be followed by '['
+                                                        if self.peek_next_token() == "[":
+                                                            self.parse_void_function_definition()  # body
+                                                            if self.peek_next_token() == "Disintegrate":
+                                                                return True
+                                                        #  error: not followed by '['
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                    #  error: not followed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                            #  error: not followed by an equal
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected ',', ')' after '{self.peek_previous_token()}'")
+                                        #  error: not followed by an equal
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected ',', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                                    #  size value is not followed by any of the following (# and Rcurl)
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax Error: Expected 'Rcurlbraces', '+', '-', '*', '/', '%' after {self.peek_previous_token()}")
+                                #  empty size, proceed to close it with '}'
+                                elif self.peek_next_token() == "}":
+                                    self.match("}")
+                                    #  close with ')' after assigning value/s
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")
+                                        #  follow it with '['
+                                        if self.peek_next_token() == "[":
+                                            self.parse_void_function_definition()  # body
+                                            if self.peek_next_token() == "Disintegrate":
+                                                return True
+                                        #  has gotolerate
+                                        elif self.peek_next_token() == "Gotolerate":
+                                            self.match("Gotolerate")
+                                            #  must be followed by '['
+                                            if self.peek_next_token() == "[":
+                                                self.parse_void_function_definition()  # body
+                                                if self.peek_next_token() == "Disintegrate":
+                                                    return True
+                                            #  error: not followed by '['
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                        #  error: not followed
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                    #  single id is followed by a comma, (Static Sun a{1},.....)
+                                    elif self.peek_next_token() == ",":
+                                        self.match_param_assign_mult(",")
+                                        #  close with ')' after assigning value/s
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")
+                                            #  follow it with '['
+                                            if self.peek_next_token() == "[":
+                                                self.parse_void_function_definition()  # body
+                                                if self.peek_next_token() == "Disintegrate":
+                                                    return True
+                                            #  has gotolerate
+                                            elif self.peek_next_token() == "Gotolerate":
+                                                self.match("Gotolerate")
+                                                #  must be followed by '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_void_function_definition()  # body
+                                                    if self.peek_next_token() == "Disintegrate":
+                                                        return True
+                                                #  error: not followed by '['
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                            #  error: not followed
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                    # or add another size to become 2D array
+                                    elif self.peek_next_token() == "{":
+                                        self.match_arrID2D_index_parameter("{")
+                                        #  close with ')' after assigning value/s
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")
+                                            #  follow it with '['
+                                            if self.peek_next_token() == "[":
+                                                self.parse_void_function_definition()  # body
+                                                if self.peek_next_token() == "Disintegrate":
+                                                    return True
+                                            #  has gotolerate
+                                            elif self.peek_next_token() == "Gotolerate":
+                                                self.match("Gotolerate")
+                                                #  must be followed by '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_void_function_definition()  # body
+                                                    if self.peek_next_token() == "Disintegrate":
+                                                        return True
+                                                #  error: not followed by '['
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                            #  error: not followed
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                        #  single id is followed by a comma, (Static Sun a{1},.....)
+                                        elif self.peek_next_token() == ",":
+                                            self.match_param_assign_mult(",")
+                                            #  close with ')' after assigning value/s
+                                            if self.peek_next_token() == ")":
+                                                self.match(")")
+                                                #  follow it with '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_void_function_definition()  # body
+                                                    if self.peek_next_token() == "Disintegrate":
+                                                        return True
+                                                #  has gotolerate
+                                                elif self.peek_next_token() == "Gotolerate":
+                                                    self.match("Gotolerate")
+                                                    #  must be followed by '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_void_function_definition()  # body
+                                                        if self.peek_next_token() == "Disintegrate":
+                                                            return True
+                                                    #  error: not followed by '['
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                #  error: not followed
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                        #  error: not followed by an equal
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected ',', ')' after '{self.peek_previous_token()}'")
+                                    #  error: not followed by an equal
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected ',', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                                else:
+                                    return True  # else: last identifier has no following identifiers (comma)
+                            #  equal path
+                            elif self.peek_next_token() == "=":
                                 self.match_param_assign("=")
                                 #  close with ')' after assigning value/s
                                 if self.peek_next_token() == ")":
@@ -3595,7 +10876,497 @@ class SyntaxAnalyzer:
                             self.match(Resources.Datatype2)
                             if re.match(r'Identifier\d*$', self.peek_next_token()):
                                 self.match("Identifier")
-                                if self.peek_next_token() == "=":
+                                #  parameter is an array index path (static)
+                                if self.peek_next_token() == "{":
+                                    self.match("{")  # consume
+                                    #  array index assign path
+                                    if (re.match(r'Identifier\d*$', self.peek_next_token())
+                                            or self.peek_next_token() == "SunLiteral"):
+                                        self.match(Resources.Value3)  # consume the values
+                                        #  size expression
+                                        if (
+                                                self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                                                or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                                            self.match_mathop3(Resources.mathop1)  # size is a math expr
+                                            #  close it with "}" if size is fulfilled
+                                            if self.peek_next_token() == "}":
+                                                self.match("}")
+                                                #  check: if closed, single 1D array
+                                                if self.peek_next_token() == ")":
+                                                    self.match(")")
+                                                    #  followed it with '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_sub_function_definition_statement()  # body
+                                                        #  close it
+                                                        if self.peek_next_token() == "]":
+                                                            self.match("]")
+                                                        #  error: not closed
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                    #  has gotolerate
+                                                    elif self.peek_next_token() == "Gotolerate":
+                                                        self.match("Gotolerate")
+                                                        #  must be followed by '['
+                                                        if self.peek_next_token() == "[":
+                                                            self.parse_sub_function_definition_statement()  # body
+                                                            #  close it
+                                                            if self.peek_next_token() == "]":
+                                                                self.match("]")
+                                                            #  error: not closed
+                                                            else:
+                                                                self.errors.append(
+                                                                    f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                        #  error: not followed by '['
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                    #  error: not followed by '['
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                                #  single id is followed by a comma, (Static Sun a{1},.....)
+                                                elif self.peek_next_token() == ",":
+                                                    self.match_param_assign_mult(",")
+                                                    #  close with ')' after assigning value/s
+                                                    if self.peek_next_token() == ")":
+                                                        self.match(")")
+                                                        #  followed by '['
+                                                        if self.peek_next_token() == "[":
+                                                            self.parse_sub_function_definition_statement()  # body
+                                                            #  close it
+                                                            if self.peek_next_token() == "]":
+                                                                self.match("]")
+                                                            #  error: not closed
+                                                            else:
+                                                                self.errors.append(
+                                                                    f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                        #  has gotolerate
+                                                        elif self.peek_next_token() == "Gotolerate":
+                                                            self.match("Gotolerate")
+                                                            #  must be followed by '['
+                                                            if self.peek_next_token() == "[":
+                                                                self.parse_sub_function_definition_statement()  # body
+                                                                #  close it
+                                                                if self.peek_next_token() == "]":
+                                                                    self.match("]")
+                                                                #  error: not closed
+                                                                else:
+                                                                    self.errors.append(
+                                                                        f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                            #  error: not followed by '['
+                                                            else:
+                                                                self.errors.append(
+                                                                    f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                        #  error: not followed by '['
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                                # or add another size to become 2D array
+                                                elif self.peek_next_token() == "{":
+                                                    self.match_arrID2D_index_parameter("{")
+                                                    #  check: if closed, single 2D array
+                                                    if self.peek_next_token() == ")":
+                                                        self.match(")")
+                                                        #  followed it with '['
+                                                        if self.peek_next_token() == "[":
+                                                            self.parse_sub_function_definition_statement()  # body
+                                                            #  close it
+                                                            if self.peek_next_token() == "]":
+                                                                self.match("]")
+                                                            #  error: not closed
+                                                            else:
+                                                                self.errors.append(
+                                                                    f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                        #  has gotolerate
+                                                        elif self.peek_next_token() == "Gotolerate":
+                                                            self.match("Gotolerate")
+                                                            #  must be followed by '['
+                                                            if self.peek_next_token() == "[":
+                                                                self.parse_sub_function_definition_statement()  # body
+                                                                #  close it
+                                                                if self.peek_next_token() == "]":
+                                                                    self.match("]")
+                                                                #  error: not closed
+                                                                else:
+                                                                    self.errors.append(
+                                                                        f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                            #  error: not followed by '['
+                                                            else:
+                                                                self.errors.append(
+                                                                    f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                        #  error: not followed by '['
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                                    #  single id is followed by a comma, (Static Sun a{1},.....)
+                                                    elif self.peek_next_token() == ",":
+                                                        self.match_param_assign_mult(",")
+                                                        #  close with ')' after assigning value/s
+                                                        if self.peek_next_token() == ")":
+                                                            self.match(")")
+                                                            #  followed by '['
+                                                            if self.peek_next_token() == "[":
+                                                                self.parse_sub_function_definition_statement()  # body
+                                                                #  close it
+                                                                if self.peek_next_token() == "]":
+                                                                    self.match("]")
+                                                                #  error: not closed
+                                                                else:
+                                                                    self.errors.append(
+                                                                        f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                            #  has gotolerate
+                                                            elif self.peek_next_token() == "Gotolerate":
+                                                                self.match("Gotolerate")
+                                                                #  must be followed by '['
+                                                                if self.peek_next_token() == "[":
+                                                                    self.parse_sub_function_definition_statement()  # body
+                                                                    #  close it
+                                                                    if self.peek_next_token() == "]":
+                                                                        self.match("]")
+                                                                    #  error: not closed
+                                                                    else:
+                                                                        self.errors.append(
+                                                                            f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                                #  error: not followed by '['
+                                                                else:
+                                                                    self.errors.append(
+                                                                        f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                            #  error: not followed by '['
+                                                            else:
+                                                                self.errors.append(
+                                                                    f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                                    #  error: not followed by
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected ',', ')' after '{self.peek_previous_token()}'")
+                                                #  error: not followed by
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected ',', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                                            #  not closed with '}'
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax Error: Expected 'Rcurlbrace' after {self.peek_previous_token()}")
+                                        #  size is single value
+                                        elif self.peek_next_token() == "}":
+                                            self.match("}")
+                                            #  check: if closed, single 1D array (size is single value)
+                                            if self.peek_next_token() == ")":
+                                                self.match(")")
+                                                #  followed it with '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_sub_function_definition_statement()  # body
+                                                    #  close it
+                                                    if self.peek_next_token() == "]":
+                                                        self.match("]")
+                                                    #  error: not closed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                #  has gotolerate
+                                                elif self.peek_next_token() == "Gotolerate":
+                                                    self.match("Gotolerate")
+                                                    #  must be followed by '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_sub_function_definition_statement()  # body
+                                                        #  close it
+                                                        if self.peek_next_token() == "]":
+                                                            self.match("]")
+                                                        #  error: not closed
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                    #  error: not followed by '['
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                #  error: not followed by '['
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                            #  single id is followed by a comma, (Static Sun a{1},.....)
+                                            elif self.peek_next_token() == ",":
+                                                self.match_param_assign_mult(",")
+                                                #  close with ')' after assigning value/s
+                                                if self.peek_next_token() == ")":
+                                                    self.match(")")
+                                                    #  followed by '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_sub_function_definition_statement()  # body
+                                                        #  close it
+                                                        if self.peek_next_token() == "]":
+                                                            self.match("]")
+                                                        #  error: not closed
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                    #  has gotolerate
+                                                    elif self.peek_next_token() == "Gotolerate":
+                                                        self.match("Gotolerate")
+                                                        #  must be followed by '['
+                                                        if self.peek_next_token() == "[":
+                                                            self.parse_sub_function_definition_statement()  # body
+                                                            #  close it
+                                                            if self.peek_next_token() == "]":
+                                                                self.match("]")
+                                                            #  error: not closed
+                                                            else:
+                                                                self.errors.append(
+                                                                    f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                        #  error: not followed by '['
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                    #  error: not followed by '['
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                            # or add another size to become 2D array
+                                            elif self.peek_next_token() == "{":
+                                                self.match_arrID2D_index_parameter("{")
+                                                #  check: if closed, single 1D array (size is single value)
+                                                if self.peek_next_token() == ")":
+                                                    self.match(")")
+                                                    #  followed it with '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_sub_function_definition_statement()  # body
+                                                        #  close it
+                                                        if self.peek_next_token() == "]":
+                                                            self.match("]")
+                                                        #  error: not closed
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                    #  has gotolerate
+                                                    elif self.peek_next_token() == "Gotolerate":
+                                                        self.match("Gotolerate")
+                                                        #  must be followed by '['
+                                                        if self.peek_next_token() == "[":
+                                                            self.parse_sub_function_definition_statement()  # body
+                                                            #  close it
+                                                            if self.peek_next_token() == "]":
+                                                                self.match("]")
+                                                            #  error: not closed
+                                                            else:
+                                                                self.errors.append(
+                                                                    f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                        #  error: not followed by '['
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                    #  error: not followed by '['
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                                #  single id is followed by a comma, (Static Sun a{1},.....)
+                                                elif self.peek_next_token() == ",":
+                                                    self.match_param_assign_mult(",")
+                                                    #  close with ')' after assigning value/s
+                                                    if self.peek_next_token() == ")":
+                                                        self.match(")")
+                                                        #  followed by '['
+                                                        if self.peek_next_token() == "[":
+                                                            self.parse_sub_function_definition_statement()  # body
+                                                            #  close it
+                                                            if self.peek_next_token() == "]":
+                                                                self.match("]")
+                                                            #  error: not closed
+                                                            else:
+                                                                self.errors.append(
+                                                                    f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                        #  has gotolerate
+                                                        elif self.peek_next_token() == "Gotolerate":
+                                                            self.match("Gotolerate")
+                                                            #  must be followed by '['
+                                                            if self.peek_next_token() == "[":
+                                                                self.parse_sub_function_definition_statement()  # body
+                                                                #  close it
+                                                                if self.peek_next_token() == "]":
+                                                                    self.match("]")
+                                                                #  error: not closed
+                                                                else:
+                                                                    self.errors.append(
+                                                                        f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                            #  error: not followed by '['
+                                                            else:
+                                                                self.errors.append(
+                                                                    f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                        #  error: not followed by '['
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                                #  error: not followed by an equal
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected ',', ')' after '{self.peek_previous_token()}'")
+                                            #  error: not followed by an equal
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected ',', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                                        #  size value is not followed by any of the following (# and Rcurl)
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax Error: Expected 'Rcurlbraces', '+', '-', '*', '/', '%' after {self.peek_previous_token()}")
+                                    #  empty size, proceed to close it with '}'
+                                    elif self.peek_next_token() == "}":
+                                        self.match("}")
+                                        #  check: if closed, single 1D array (size is empty)
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")
+                                            #  followed it with '['
+                                            if self.peek_next_token() == "[":
+                                                self.parse_sub_function_definition_statement()  # body
+                                                #  close it
+                                                if self.peek_next_token() == "]":
+                                                    self.match("]")
+                                                #  error: not closed
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                            #  has gotolerate
+                                            elif self.peek_next_token() == "Gotolerate":
+                                                self.match("Gotolerate")
+                                                #  must be followed by '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_sub_function_definition_statement()  # body
+                                                    #  close it
+                                                    if self.peek_next_token() == "]":
+                                                        self.match("]")
+                                                    #  error: not closed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                #  error: not followed by '['
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                            #  error: not followed by '['
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                        #  single id is followed by a comma, (Static Sun a{1},.....)
+                                        elif self.peek_next_token() == ",":
+                                            self.match_param_assign_mult(",")
+                                            #  close with ')' after assigning value/s
+                                            if self.peek_next_token() == ")":
+                                                self.match(")")
+                                                #  followed by '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_sub_function_definition_statement()  # body
+                                                    #  close it
+                                                    if self.peek_next_token() == "]":
+                                                        self.match("]")
+                                                    #  error: not closed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                #  has gotolerate
+                                                elif self.peek_next_token() == "Gotolerate":
+                                                    self.match("Gotolerate")
+                                                    #  must be followed by '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_sub_function_definition_statement()  # body
+                                                        #  close it
+                                                        if self.peek_next_token() == "]":
+                                                            self.match("]")
+                                                        #  error: not closed
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                    #  error: not followed by '['
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                #  error: not followed by '['
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                        # or add another size to become 2D array
+                                        elif self.peek_next_token() == "{":
+                                            self.match_arrID2D_index_parameter("{")
+                                            #  check: if closed, single 2D array
+                                            if self.peek_next_token() == ")":
+                                                self.match(")")
+                                                #  followed it with '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_sub_function_definition_statement()  # body
+                                                    #  close it
+                                                    if self.peek_next_token() == "]":
+                                                        self.match("]")
+                                                    #  error: not closed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                #  has gotolerate
+                                                elif self.peek_next_token() == "Gotolerate":
+                                                    self.match("Gotolerate")
+                                                    #  must be followed by '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_sub_function_definition_statement()  # body
+                                                        #  close it
+                                                        if self.peek_next_token() == "]":
+                                                            self.match("]")
+                                                        #  error: not closed
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                    #  error: not followed by '['
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                #  error: not followed by '['
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                            #  single id is followed by a comma, (Static Sun a{1},.....)
+                                            elif self.peek_next_token() == ",":
+                                                self.match_param_assign_mult(",")
+                                                #  close with ')' after assigning value/s
+                                                if self.peek_next_token() == ")":
+                                                    self.match(")")
+                                                    #  followed by '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_sub_function_definition_statement()  # body
+                                                        #  close it
+                                                        if self.peek_next_token() == "]":
+                                                            self.match("]")
+                                                        #  error: not closed
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                    #  has gotolerate
+                                                    elif self.peek_next_token() == "Gotolerate":
+                                                        self.match("Gotolerate")
+                                                        #  must be followed by '['
+                                                        if self.peek_next_token() == "[":
+                                                            self.parse_sub_function_definition_statement()  # body
+                                                            #  close it
+                                                            if self.peek_next_token() == "]":
+                                                                self.match("]")
+                                                            #  error: not closed
+                                                            else:
+                                                                self.errors.append(
+                                                                    f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                        #  error: not followed by '['
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                    #  error: not followed by '['
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                            #  error: not followed by an equal
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected ',', ')' after '{self.peek_previous_token()}'")
+                                        #  error: not followed by an equal
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected ',', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                                    else:
+                                        return True  # else: last identifier has no following identifiers (comma)
+                                elif self.peek_next_token() == "=":
                                     self.match_param_assign("=")
                                     #  close with ')' after assigning value/s
                                     if self.peek_next_token() == ")":
@@ -3724,7 +11495,497 @@ class SyntaxAnalyzer:
                         self.match(Resources.Datatype2)
                         if re.match(r'Identifier\d*$', self.peek_next_token()):
                             self.match("Identifier")
-                            if self.peek_next_token() == "=":
+                            #  parameter is an array index path (static)
+                            if self.peek_next_token() == "{":
+                                self.match("{")  # consume
+                                #  array index assign path
+                                if (re.match(r'Identifier\d*$', self.peek_next_token())
+                                        or self.peek_next_token() == "SunLiteral"):
+                                    self.match(Resources.Value3)  # consume the values
+                                    #  size expression
+                                    if (
+                                            self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                                            or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                                        self.match_mathop3(Resources.mathop1)  # size is a math expr
+                                        #  close it with "}" if size is fulfilled
+                                        if self.peek_next_token() == "}":
+                                            self.match("}")
+                                            #  check: if closed, single 1D array
+                                            if self.peek_next_token() == ")":
+                                                self.match(")")
+                                                #  followed it with '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_sub_function_definition_statement()  # body
+                                                    #  close it
+                                                    if self.peek_next_token() == "]":
+                                                        self.match("]")
+                                                    #  error: not closed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                #  has gotolerate
+                                                elif self.peek_next_token() == "Gotolerate":
+                                                    self.match("Gotolerate")
+                                                    #  must be followed by '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_sub_function_definition_statement()  # body
+                                                        #  close it
+                                                        if self.peek_next_token() == "]":
+                                                            self.match("]")
+                                                        #  error: not closed
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                    #  error: not followed by '['
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                #  error: not followed by '['
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                            #  single id is followed by a comma, (Static Sun a{1},.....)
+                                            elif self.peek_next_token() == ",":
+                                                self.match_param_assign_mult(",")
+                                                #  close with ')' after assigning value/s
+                                                if self.peek_next_token() == ")":
+                                                    self.match(")")
+                                                    #  followed by '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_sub_function_definition_statement()  # body
+                                                        #  close it
+                                                        if self.peek_next_token() == "]":
+                                                            self.match("]")
+                                                        #  error: not closed
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                    #  has gotolerate
+                                                    elif self.peek_next_token() == "Gotolerate":
+                                                        self.match("Gotolerate")
+                                                        #  must be followed by '['
+                                                        if self.peek_next_token() == "[":
+                                                            self.parse_sub_function_definition_statement()  # body
+                                                            #  close it
+                                                            if self.peek_next_token() == "]":
+                                                                self.match("]")
+                                                            #  error: not closed
+                                                            else:
+                                                                self.errors.append(
+                                                                    f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                        #  error: not followed by '['
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                    #  error: not followed by '['
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                            # or add another size to become 2D array
+                                            elif self.peek_next_token() == "{":
+                                                self.match_arrID2D_index_parameter("{")
+                                                #  check: if closed, single 2D array
+                                                if self.peek_next_token() == ")":
+                                                    self.match(")")
+                                                    #  followed it with '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_sub_function_definition_statement()  # body
+                                                        #  close it
+                                                        if self.peek_next_token() == "]":
+                                                            self.match("]")
+                                                        #  error: not closed
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                    #  has gotolerate
+                                                    elif self.peek_next_token() == "Gotolerate":
+                                                        self.match("Gotolerate")
+                                                        #  must be followed by '['
+                                                        if self.peek_next_token() == "[":
+                                                            self.parse_sub_function_definition_statement()  # body
+                                                            #  close it
+                                                            if self.peek_next_token() == "]":
+                                                                self.match("]")
+                                                            #  error: not closed
+                                                            else:
+                                                                self.errors.append(
+                                                                    f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                        #  error: not followed by '['
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                    #  error: not followed by '['
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                                #  single id is followed by a comma, (Static Sun a{1},.....)
+                                                elif self.peek_next_token() == ",":
+                                                    self.match_param_assign_mult(",")
+                                                    #  close with ')' after assigning value/s
+                                                    if self.peek_next_token() == ")":
+                                                        self.match(")")
+                                                        #  followed by '['
+                                                        if self.peek_next_token() == "[":
+                                                            self.parse_sub_function_definition_statement()  # body
+                                                            #  close it
+                                                            if self.peek_next_token() == "]":
+                                                                self.match("]")
+                                                            #  error: not closed
+                                                            else:
+                                                                self.errors.append(
+                                                                    f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                        #  has gotolerate
+                                                        elif self.peek_next_token() == "Gotolerate":
+                                                            self.match("Gotolerate")
+                                                            #  must be followed by '['
+                                                            if self.peek_next_token() == "[":
+                                                                self.parse_sub_function_definition_statement()  # body
+                                                                #  close it
+                                                                if self.peek_next_token() == "]":
+                                                                    self.match("]")
+                                                                #  error: not closed
+                                                                else:
+                                                                    self.errors.append(
+                                                                        f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                            #  error: not followed by '['
+                                                            else:
+                                                                self.errors.append(
+                                                                    f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                        #  error: not followed by '['
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                                #  error: not followed by
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected ',', ')' after '{self.peek_previous_token()}'")
+                                            #  error: not followed by
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected ',', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                                        #  not closed with '}'
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax Error: Expected 'Rcurlbrace' after {self.peek_previous_token()}")
+                                    #  size is single value
+                                    elif self.peek_next_token() == "}":
+                                        self.match("}")
+                                        #  check: if closed, single 1D array (size is single value)
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")
+                                            #  followed it with '['
+                                            if self.peek_next_token() == "[":
+                                                self.parse_sub_function_definition_statement()  # body
+                                                #  close it
+                                                if self.peek_next_token() == "]":
+                                                    self.match("]")
+                                                #  error: not closed
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                            #  has gotolerate
+                                            elif self.peek_next_token() == "Gotolerate":
+                                                self.match("Gotolerate")
+                                                #  must be followed by '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_sub_function_definition_statement()  # body
+                                                    #  close it
+                                                    if self.peek_next_token() == "]":
+                                                        self.match("]")
+                                                    #  error: not closed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                #  error: not followed by '['
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                            #  error: not followed by '['
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                        #  single id is followed by a comma, (Static Sun a{1},.....)
+                                        elif self.peek_next_token() == ",":
+                                            self.match_param_assign_mult(",")
+                                            #  close with ')' after assigning value/s
+                                            if self.peek_next_token() == ")":
+                                                self.match(")")
+                                                #  followed by '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_sub_function_definition_statement()  # body
+                                                    #  close it
+                                                    if self.peek_next_token() == "]":
+                                                        self.match("]")
+                                                    #  error: not closed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                #  has gotolerate
+                                                elif self.peek_next_token() == "Gotolerate":
+                                                    self.match("Gotolerate")
+                                                    #  must be followed by '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_sub_function_definition_statement()  # body
+                                                        #  close it
+                                                        if self.peek_next_token() == "]":
+                                                            self.match("]")
+                                                        #  error: not closed
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                    #  error: not followed by '['
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                #  error: not followed by '['
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                        # or add another size to become 2D array
+                                        elif self.peek_next_token() == "{":
+                                            self.match_arrID2D_index_parameter("{")
+                                            #  check: if closed, single 1D array (size is single value)
+                                            if self.peek_next_token() == ")":
+                                                self.match(")")
+                                                #  followed it with '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_sub_function_definition_statement()  # body
+                                                    #  close it
+                                                    if self.peek_next_token() == "]":
+                                                        self.match("]")
+                                                    #  error: not closed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                #  has gotolerate
+                                                elif self.peek_next_token() == "Gotolerate":
+                                                    self.match("Gotolerate")
+                                                    #  must be followed by '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_sub_function_definition_statement()  # body
+                                                        #  close it
+                                                        if self.peek_next_token() == "]":
+                                                            self.match("]")
+                                                        #  error: not closed
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                    #  error: not followed by '['
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                #  error: not followed by '['
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                            #  single id is followed by a comma, (Static Sun a{1},.....)
+                                            elif self.peek_next_token() == ",":
+                                                self.match_param_assign_mult(",")
+                                                #  close with ')' after assigning value/s
+                                                if self.peek_next_token() == ")":
+                                                    self.match(")")
+                                                    #  followed by '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_sub_function_definition_statement()  # body
+                                                        #  close it
+                                                        if self.peek_next_token() == "]":
+                                                            self.match("]")
+                                                        #  error: not closed
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                    #  has gotolerate
+                                                    elif self.peek_next_token() == "Gotolerate":
+                                                        self.match("Gotolerate")
+                                                        #  must be followed by '['
+                                                        if self.peek_next_token() == "[":
+                                                            self.parse_sub_function_definition_statement()  # body
+                                                            #  close it
+                                                            if self.peek_next_token() == "]":
+                                                                self.match("]")
+                                                            #  error: not closed
+                                                            else:
+                                                                self.errors.append(
+                                                                    f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                        #  error: not followed by '['
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                    #  error: not followed by '['
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                            #  error: not followed by an equal
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected ',', ')' after '{self.peek_previous_token()}'")
+                                        #  error: not followed by an equal
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected ',', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                                    #  size value is not followed by any of the following (# and Rcurl)
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax Error: Expected 'Rcurlbraces', '+', '-', '*', '/', '%' after {self.peek_previous_token()}")
+                                #  empty size, proceed to close it with '}'
+                                elif self.peek_next_token() == "}":
+                                    self.match("}")
+                                    #  check: if closed, single 1D array (size is empty)
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")
+                                        #  followed it with '['
+                                        if self.peek_next_token() == "[":
+                                            self.parse_sub_function_definition_statement()  # body
+                                            #  close it
+                                            if self.peek_next_token() == "]":
+                                                self.match("]")
+                                            #  error: not closed
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                        #  has gotolerate
+                                        elif self.peek_next_token() == "Gotolerate":
+                                            self.match("Gotolerate")
+                                            #  must be followed by '['
+                                            if self.peek_next_token() == "[":
+                                                self.parse_sub_function_definition_statement()  # body
+                                                #  close it
+                                                if self.peek_next_token() == "]":
+                                                    self.match("]")
+                                                #  error: not closed
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                            #  error: not followed by '['
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                        #  error: not followed by '['
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                    #  single id is followed by a comma, (Static Sun a{1},.....)
+                                    elif self.peek_next_token() == ",":
+                                        self.match_param_assign_mult(",")
+                                        #  close with ')' after assigning value/s
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")
+                                            #  followed by '['
+                                            if self.peek_next_token() == "[":
+                                                self.parse_sub_function_definition_statement()  # body
+                                                #  close it
+                                                if self.peek_next_token() == "]":
+                                                    self.match("]")
+                                                #  error: not closed
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                            #  has gotolerate
+                                            elif self.peek_next_token() == "Gotolerate":
+                                                self.match("Gotolerate")
+                                                #  must be followed by '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_sub_function_definition_statement()  # body
+                                                    #  close it
+                                                    if self.peek_next_token() == "]":
+                                                        self.match("]")
+                                                    #  error: not closed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                #  error: not followed by '['
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                            #  error: not followed by '['
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                    # or add another size to become 2D array
+                                    elif self.peek_next_token() == "{":
+                                        self.match_arrID2D_index_parameter("{")
+                                        #  check: if closed, single 2D array
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")
+                                            #  followed it with '['
+                                            if self.peek_next_token() == "[":
+                                                self.parse_sub_function_definition_statement()  # body
+                                                #  close it
+                                                if self.peek_next_token() == "]":
+                                                    self.match("]")
+                                                #  error: not closed
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                            #  has gotolerate
+                                            elif self.peek_next_token() == "Gotolerate":
+                                                self.match("Gotolerate")
+                                                #  must be followed by '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_sub_function_definition_statement()  # body
+                                                    #  close it
+                                                    if self.peek_next_token() == "]":
+                                                        self.match("]")
+                                                    #  error: not closed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                #  error: not followed by '['
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                            #  error: not followed by '['
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                        #  single id is followed by a comma, (Static Sun a{1},.....)
+                                        elif self.peek_next_token() == ",":
+                                            self.match_param_assign_mult(",")
+                                            #  close with ')' after assigning value/s
+                                            if self.peek_next_token() == ")":
+                                                self.match(")")
+                                                #  followed by '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_sub_function_definition_statement()  # body
+                                                    #  close it
+                                                    if self.peek_next_token() == "]":
+                                                        self.match("]")
+                                                    #  error: not closed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                #  has gotolerate
+                                                elif self.peek_next_token() == "Gotolerate":
+                                                    self.match("Gotolerate")
+                                                    #  must be followed by '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_sub_function_definition_statement()  # body
+                                                        #  close it
+                                                        if self.peek_next_token() == "]":
+                                                            self.match("]")
+                                                        #  error: not closed
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                    #  error: not followed by '['
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                #  error: not followed by '['
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                        #  error: not followed by an equal
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected ',', ')' after '{self.peek_previous_token()}'")
+                                    #  error: not followed by an equal
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected ',', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                                else:
+                                    return True  # else: last identifier has no following identifiers (comma)
+                            elif self.peek_next_token() == "=":
                                 self.match_param_assign("=")
                                 #  close with ')' after assigning value/s
                                 if self.peek_next_token() == ")":
@@ -3903,7 +12164,498 @@ class SyntaxAnalyzer:
                     self.match(Resources.Datatype2)
                     if re.match(r'Identifier\d*$', self.peek_next_token()):
                         self.match("Identifier")
-                        if self.peek_next_token() == "=":
+                        #  parameter is an array index path (static)
+                        if self.peek_next_token() == "{":
+                            self.match("{")  # consume
+                            #  array index assign path
+                            if (re.match(r'Identifier\d*$', self.peek_next_token())
+                                    or self.peek_next_token() == "SunLiteral"):
+                                self.match(Resources.Value3)  # consume the values
+                                #  size expression
+                                if (
+                                        self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                                        or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                                    self.match_mathop3(Resources.mathop1)  # size is a math expr
+                                    #  close it with "}" if size is fulfilled
+                                    if self.peek_next_token() == "}":
+                                        self.match("}")
+                                        #  check: if closed, single 1D array
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")
+                                            #  followed it with '['
+                                            if self.peek_next_token() == "[":
+                                                self.parse_sub_function_definition_statement()  # body
+                                                #  close it
+                                                if self.peek_next_token() == "]":
+                                                    self.match("]")
+                                                #  error: not closed
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                            #  has gotolerate
+                                            elif self.peek_next_token() == "Gotolerate":
+                                                self.match("Gotolerate")
+                                                #  must be followed by '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_sub_function_definition_statement()  # body
+                                                    #  close it
+                                                    if self.peek_next_token() == "]":
+                                                        self.match("]")
+                                                    #  error: not closed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                #  error: not followed by '['
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                            #  error: not followed by '['
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                        #  single id is followed by a comma, (Static Sun a{1},.....)
+                                        elif self.peek_next_token() == ",":
+                                            self.match_param_assign_mult(",")
+                                            #  close with ')' after assigning value/s
+                                            if self.peek_next_token() == ")":
+                                                self.match(")")
+                                                #  followed by '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_sub_function_definition_statement() # body
+                                                    #  close it
+                                                    if self.peek_next_token() == "]":
+                                                        self.match("]")
+                                                    #  error: not closed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                #  has gotolerate
+                                                elif self.peek_next_token() == "Gotolerate":
+                                                    self.match("Gotolerate")
+                                                    #  must be followed by '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_sub_function_definition_statement()  # body
+                                                        #  close it
+                                                        if self.peek_next_token() == "]":
+                                                            self.match("]")
+                                                        #  error: not closed
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                    #  error: not followed by '['
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                #  error: not followed by '['
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                        # or add another size to become 2D array
+                                        elif self.peek_next_token() == "{":
+                                            self.match_arrID2D_index_parameter("{")
+                                            #  check: if closed, single 2D array
+                                            if self.peek_next_token() == ")":
+                                                self.match(")")
+                                                #  followed it with '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_sub_function_definition_statement()  # body
+                                                    #  close it
+                                                    if self.peek_next_token() == "]":
+                                                        self.match("]")
+                                                    #  error: not closed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                #  has gotolerate
+                                                elif self.peek_next_token() == "Gotolerate":
+                                                    self.match("Gotolerate")
+                                                    #  must be followed by '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_sub_function_definition_statement()  # body
+                                                        #  close it
+                                                        if self.peek_next_token() == "]":
+                                                            self.match("]")
+                                                        #  error: not closed
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                    #  error: not followed by '['
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                #  error: not followed by '['
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                            #  single id is followed by a comma, (Static Sun a{1},.....)
+                                            elif self.peek_next_token() == ",":
+                                                self.match_param_assign_mult(",")
+                                                #  close with ')' after assigning value/s
+                                                if self.peek_next_token() == ")":
+                                                    self.match(")")
+                                                    #  followed by '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_sub_function_definition_statement()  # body
+                                                        #  close it
+                                                        if self.peek_next_token() == "]":
+                                                            self.match("]")
+                                                        #  error: not closed
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                    #  has gotolerate
+                                                    elif self.peek_next_token() == "Gotolerate":
+                                                        self.match("Gotolerate")
+                                                        #  must be followed by '['
+                                                        if self.peek_next_token() == "[":
+                                                            self.parse_sub_function_definition_statement()  # body
+                                                            #  close it
+                                                            if self.peek_next_token() == "]":
+                                                                self.match("]")
+                                                            #  error: not closed
+                                                            else:
+                                                                self.errors.append(
+                                                                    f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                        #  error: not followed by '['
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                    #  error: not followed by '['
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                            #  error: not followed by
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected ',', ')' after '{self.peek_previous_token()}'")
+                                        #  error: not followed by
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected ',', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                                    #  not closed with '}'
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax Error: Expected 'Rcurlbrace' after {self.peek_previous_token()}")
+                                #  size is single value
+                                elif self.peek_next_token() == "}":
+                                    self.match("}")
+                                    #  check: if closed, single 1D array (size is single value)
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")
+                                        #  followed it with '['
+                                        if self.peek_next_token() == "[":
+                                            self.parse_sub_function_definition_statement()  # body
+                                            #  close it
+                                            if self.peek_next_token() == "]":
+                                                self.match("]")
+                                            #  error: not closed
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                        #  has gotolerate
+                                        elif self.peek_next_token() == "Gotolerate":
+                                            self.match("Gotolerate")
+                                            #  must be followed by '['
+                                            if self.peek_next_token() == "[":
+                                                self.parse_sub_function_definition_statement()  # body
+                                                #  close it
+                                                if self.peek_next_token() == "]":
+                                                    self.match("]")
+                                                #  error: not closed
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                            #  error: not followed by '['
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                        #  error: not followed by '['
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                    #  single id is followed by a comma, (Static Sun a{1},.....)
+                                    elif self.peek_next_token() == ",":
+                                        self.match_param_assign_mult(",")
+                                        #  close with ')' after assigning value/s
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")
+                                            #  followed by '['
+                                            if self.peek_next_token() == "[":
+                                                self.parse_sub_function_definition_statement()  # body
+                                                #  close it
+                                                if self.peek_next_token() == "]":
+                                                    self.match("]")
+                                                #  error: not closed
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                            #  has gotolerate
+                                            elif self.peek_next_token() == "Gotolerate":
+                                                self.match("Gotolerate")
+                                                #  must be followed by '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_sub_function_definition_statement()  # body
+                                                    #  close it
+                                                    if self.peek_next_token() == "]":
+                                                        self.match("]")
+                                                    #  error: not closed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                #  error: not followed by '['
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                            #  error: not followed by '['
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                    # or add another size to become 2D array
+                                    elif self.peek_next_token() == "{":
+                                        self.match_arrID2D_index_parameter("{")
+                                        #  check: if closed, single 1D array (size is single value)
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")
+                                            #  followed it with '['
+                                            if self.peek_next_token() == "[":
+                                                self.parse_sub_function_definition_statement()  # body
+                                                #  close it
+                                                if self.peek_next_token() == "]":
+                                                    self.match("]")
+                                                #  error: not closed
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                            #  has gotolerate
+                                            elif self.peek_next_token() == "Gotolerate":
+                                                self.match("Gotolerate")
+                                                #  must be followed by '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_sub_function_definition_statement()  # body
+                                                    #  close it
+                                                    if self.peek_next_token() == "]":
+                                                        self.match("]")
+                                                    #  error: not closed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                #  error: not followed by '['
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                            #  error: not followed by '['
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                        #  single id is followed by a comma, (Static Sun a{1},.....)
+                                        elif self.peek_next_token() == ",":
+                                            self.match_param_assign_mult(",")
+                                            #  close with ')' after assigning value/s
+                                            if self.peek_next_token() == ")":
+                                                self.match(")")
+                                                #  followed by '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_sub_function_definition_statement()  # body
+                                                    #  close it
+                                                    if self.peek_next_token() == "]":
+                                                        self.match("]")
+                                                    #  error: not closed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                #  has gotolerate
+                                                elif self.peek_next_token() == "Gotolerate":
+                                                    self.match("Gotolerate")
+                                                    #  must be followed by '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_sub_function_definition_statement()  # body
+                                                        #  close it
+                                                        if self.peek_next_token() == "]":
+                                                            self.match("]")
+                                                        #  error: not closed
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                    #  error: not followed by '['
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                #  error: not followed by '['
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                        #  error: not followed by an equal
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected ',', ')' after '{self.peek_previous_token()}'")
+                                    #  error: not followed by an equal
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected ',', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                                #  size value is not followed by any of the following (# and Rcurl)
+                                else:
+                                    self.errors.append(
+                                        f"Syntax Error: Expected 'Rcurlbraces', '+', '-', '*', '/', '%' after {self.peek_previous_token()}")
+                            #  empty size, proceed to close it with '}'
+                            elif self.peek_next_token() == "}":
+                                self.match("}")
+                                #  check: if closed, single 1D array (size is empty)
+                                if self.peek_next_token() == ")":
+                                    self.match(")")
+                                    #  followed it with '['
+                                    if self.peek_next_token() == "[":
+                                        self.parse_sub_function_definition_statement()  # body
+                                        #  close it
+                                        if self.peek_next_token() == "]":
+                                            self.match("]")
+                                        #  error: not closed
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                    #  has gotolerate
+                                    elif self.peek_next_token() == "Gotolerate":
+                                        self.match("Gotolerate")
+                                        #  must be followed by '['
+                                        if self.peek_next_token() == "[":
+                                            self.parse_sub_function_definition_statement()  # body
+                                            #  close it
+                                            if self.peek_next_token() == "]":
+                                                self.match("]")
+                                            #  error: not closed
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                        #  error: not followed by '['
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                    #  error: not followed by '['
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                #  single id is followed by a comma, (Static Sun a{1},.....)
+                                elif self.peek_next_token() == ",":
+                                    self.match_param_assign_mult(",")
+                                    #  close with ')' after assigning value/s
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")
+                                        #  followed by '['
+                                        if self.peek_next_token() == "[":
+                                            self.parse_sub_function_definition_statement()  # body
+                                            #  close it
+                                            if self.peek_next_token() == "]":
+                                                self.match("]")
+                                            #  error: not closed
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                        #  has gotolerate
+                                        elif self.peek_next_token() == "Gotolerate":
+                                            self.match("Gotolerate")
+                                            #  must be followed by '['
+                                            if self.peek_next_token() == "[":
+                                                self.parse_sub_function_definition_statement()  # body
+                                                #  close it
+                                                if self.peek_next_token() == "]":
+                                                    self.match("]")
+                                                #  error: not closed
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                            #  error: not followed by '['
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                        #  error: not followed by '['
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                # or add another size to become 2D array
+                                elif self.peek_next_token() == "{":
+                                    self.match_arrID2D_index_parameter("{")
+                                    #  check: if closed, single 2D array
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")
+                                        #  followed it with '['
+                                        if self.peek_next_token() == "[":
+                                            self.parse_sub_function_definition_statement()  # body
+                                            #  close it
+                                            if self.peek_next_token() == "]":
+                                                self.match("]")
+                                            #  error: not closed
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                        #  has gotolerate
+                                        elif self.peek_next_token() == "Gotolerate":
+                                            self.match("Gotolerate")
+                                            #  must be followed by '['
+                                            if self.peek_next_token() == "[":
+                                                self.parse_sub_function_definition_statement()  # body
+                                                #  close it
+                                                if self.peek_next_token() == "]":
+                                                    self.match("]")
+                                                #  error: not closed
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                            #  error: not followed by '['
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                        #  error: not followed by '['
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                    #  single id is followed by a comma, (Static Sun a{1},.....)
+                                    elif self.peek_next_token() == ",":
+                                        self.match_param_assign_mult(",")
+                                        #  close with ')' after assigning value/s
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")
+                                            #  followed by '['
+                                            if self.peek_next_token() == "[":
+                                                self.parse_sub_function_definition_statement()  # body
+                                                #  close it
+                                                if self.peek_next_token() == "]":
+                                                    self.match("]")
+                                                #  error: not closed
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                            #  has gotolerate
+                                            elif self.peek_next_token() == "Gotolerate":
+                                                self.match("Gotolerate")
+                                                #  must be followed by '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_sub_function_definition_statement()  # body
+                                                    #  close it
+                                                    if self.peek_next_token() == "]":
+                                                        self.match("]")
+                                                    #  error: not closed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                #  error: not followed by '['
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                            #  error: not followed by '['
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                    #  error: not followed by an equal
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected ',', ')' after '{self.peek_previous_token()}'")
+                                #  error: not followed by an equal
+                                else:
+                                    self.errors.append(
+                                        f"Syntax error: Expected ',', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                            else:
+                                return True  # else: last identifier has no following identifiers (comma)
+                        #  equals, assign value to the parameter path (static)
+                        elif self.peek_next_token() == "=":
                             self.match_param_assign("=")
                             #  close with ')' after assigning value/s
                             if self.peek_next_token() == ")":
@@ -4032,7 +12784,497 @@ class SyntaxAnalyzer:
                 self.match(Resources.Datatype2)
                 if re.match(r'Identifier\d*$', self.peek_next_token()):
                     self.match("Identifier")
-                    if self.peek_next_token() == "=":
+                    #  parameter is an array index path
+                    if self.peek_next_token() == "{":
+                        self.match("{")  # consume
+                        #  array index assign path
+                        if (re.match(r'Identifier\d*$', self.peek_next_token())
+                                or self.peek_next_token() == "SunLiteral"):
+                            self.match(Resources.Value3)  # consume the values
+                            #  size expression
+                            if (
+                                    self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                                    or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                                self.match_mathop3(Resources.mathop1)  # size is a math expr
+                                #  close it with "}" if size is fulfilled
+                                if self.peek_next_token() == "}":
+                                    self.match("}")
+                                    #  check: if closed, single 1D array
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")
+                                        #  followed it with '['
+                                        if self.peek_next_token() == "[":
+                                            self.parse_sub_function_definition_statement()  # body
+                                            #  close it
+                                            if self.peek_next_token() == "]":
+                                                self.match("]")
+                                            #  error: not closed
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                        #  has gotolerate
+                                        elif self.peek_next_token() == "Gotolerate":
+                                            self.match("Gotolerate")
+                                            #  must be followed by '['
+                                            if self.peek_next_token() == "[":
+                                                self.parse_sub_function_definition_statement()  # body
+                                                #  close it
+                                                if self.peek_next_token() == "]":
+                                                    self.match("]")
+                                                #  error: not closed
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                            #  error: not followed by '['
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                        #  error: not followed by '['
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                    #  single id is followed by a comma, (Static Sun a{1},.....)
+                                    elif self.peek_next_token() == ",":
+                                        self.match_param_assign_mult(",")
+                                        #  close with ')' after assigning value/s
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")
+                                            #  followed by '['
+                                            if self.peek_next_token() == "[":
+                                                self.parse_sub_function_definition_statement()  # body
+                                                #  close it
+                                                if self.peek_next_token() == "]":
+                                                    self.match("]")
+                                                #  error: not closed
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                            #  has gotolerate
+                                            elif self.peek_next_token() == "Gotolerate":
+                                                self.match("Gotolerate")
+                                                #  must be followed by '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_sub_function_definition_statement()  # body
+                                                    #  close it
+                                                    if self.peek_next_token() == "]":
+                                                        self.match("]")
+                                                    #  error: not closed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                #  error: not followed by '['
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                            #  error: not followed by '['
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                    # or add another size to become 2D array
+                                    elif self.peek_next_token() == "{":
+                                        self.match_arrID2D_index_parameter("{")
+                                        #  check: if closed, single 2D array
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")
+                                            #  followed it with '['
+                                            if self.peek_next_token() == "[":
+                                                self.parse_sub_function_definition_statement()  # body
+                                                #  close it
+                                                if self.peek_next_token() == "]":
+                                                    self.match("]")
+                                                #  error: not closed
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                            #  has gotolerate
+                                            elif self.peek_next_token() == "Gotolerate":
+                                                self.match("Gotolerate")
+                                                #  must be followed by '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_sub_function_definition_statement()  # body
+                                                    #  close it
+                                                    if self.peek_next_token() == "]":
+                                                        self.match("]")
+                                                    #  error: not closed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                #  error: not followed by '['
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                            #  error: not followed by '['
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                        #  single id is followed by a comma, (Static Sun a{1},.....)
+                                        elif self.peek_next_token() == ",":
+                                            self.match_param_assign_mult(",")
+                                            #  close with ')' after assigning value/s
+                                            if self.peek_next_token() == ")":
+                                                self.match(")")
+                                                #  followed by '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_sub_function_definition_statement()  # body
+                                                    #  close it
+                                                    if self.peek_next_token() == "]":
+                                                        self.match("]")
+                                                    #  error: not closed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                #  has gotolerate
+                                                elif self.peek_next_token() == "Gotolerate":
+                                                    self.match("Gotolerate")
+                                                    #  must be followed by '['
+                                                    if self.peek_next_token() == "[":
+                                                        self.parse_sub_function_definition_statement()  # body
+                                                        #  close it
+                                                        if self.peek_next_token() == "]":
+                                                            self.match("]")
+                                                        #  error: not closed
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                    #  error: not followed by '['
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                                #  error: not followed by '['
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                        #  error: not followed by
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected ',', ')' after '{self.peek_previous_token()}'")
+                                    #  error: not followed by
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected ',', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                                #  not closed with '}'
+                                else:
+                                    self.errors.append(
+                                        f"Syntax Error: Expected 'Rcurlbrace' after {self.peek_previous_token()}")
+                            #  size is single value
+                            elif self.peek_next_token() == "}":
+                                self.match("}")
+                                #  check: if closed, single 1D array (size is single value)
+                                if self.peek_next_token() == ")":
+                                    self.match(")")
+                                    #  followed it with '['
+                                    if self.peek_next_token() == "[":
+                                        self.parse_sub_function_definition_statement()  # body
+                                        #  close it
+                                        if self.peek_next_token() == "]":
+                                            self.match("]")
+                                        #  error: not closed
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                    #  has gotolerate
+                                    elif self.peek_next_token() == "Gotolerate":
+                                        self.match("Gotolerate")
+                                        #  must be followed by '['
+                                        if self.peek_next_token() == "[":
+                                            self.parse_sub_function_definition_statement()  # body
+                                            #  close it
+                                            if self.peek_next_token() == "]":
+                                                self.match("]")
+                                            #  error: not closed
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                        #  error: not followed by '['
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                    #  error: not followed by '['
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                #  single id is followed by a comma, (Static Sun a{1},.....)
+                                elif self.peek_next_token() == ",":
+                                    self.match_param_assign_mult(",")
+                                    #  close with ')' after assigning value/s
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")
+                                        #  followed by '['
+                                        if self.peek_next_token() == "[":
+                                            self.parse_sub_function_definition_statement()  # body
+                                            #  close it
+                                            if self.peek_next_token() == "]":
+                                                self.match("]")
+                                            #  error: not closed
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                        #  has gotolerate
+                                        elif self.peek_next_token() == "Gotolerate":
+                                            self.match("Gotolerate")
+                                            #  must be followed by '['
+                                            if self.peek_next_token() == "[":
+                                                self.parse_sub_function_definition_statement()  # body
+                                                #  close it
+                                                if self.peek_next_token() == "]":
+                                                    self.match("]")
+                                                #  error: not closed
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                            #  error: not followed by '['
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                        #  error: not followed by '['
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                # or add another size to become 2D array
+                                elif self.peek_next_token() == "{":
+                                    self.match_arrID2D_index_parameter("{")
+                                    #  check: if closed, single 1D array (size is single value)
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")
+                                        #  followed it with '['
+                                        if self.peek_next_token() == "[":
+                                            self.parse_sub_function_definition_statement()  # body
+                                            #  close it
+                                            if self.peek_next_token() == "]":
+                                                self.match("]")
+                                            #  error: not closed
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                        #  has gotolerate
+                                        elif self.peek_next_token() == "Gotolerate":
+                                            self.match("Gotolerate")
+                                            #  must be followed by '['
+                                            if self.peek_next_token() == "[":
+                                                self.parse_sub_function_definition_statement()  # body
+                                                #  close it
+                                                if self.peek_next_token() == "]":
+                                                    self.match("]")
+                                                #  error: not closed
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                            #  error: not followed by '['
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                        #  error: not followed by '['
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                    #  single id is followed by a comma, (Static Sun a{1},.....)
+                                    elif self.peek_next_token() == ",":
+                                        self.match_param_assign_mult(",")
+                                        #  close with ')' after assigning value/s
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")
+                                            #  followed by '['
+                                            if self.peek_next_token() == "[":
+                                                self.parse_sub_function_definition_statement()  # body
+                                                #  close it
+                                                if self.peek_next_token() == "]":
+                                                    self.match("]")
+                                                #  error: not closed
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                            #  has gotolerate
+                                            elif self.peek_next_token() == "Gotolerate":
+                                                self.match("Gotolerate")
+                                                #  must be followed by '['
+                                                if self.peek_next_token() == "[":
+                                                    self.parse_sub_function_definition_statement()  # body
+                                                    #  close it
+                                                    if self.peek_next_token() == "]":
+                                                        self.match("]")
+                                                    #  error: not closed
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                                #  error: not followed by '['
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                            #  error: not followed by '['
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                    #  error: not followed by an equal
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected ',', ')' after '{self.peek_previous_token()}'")
+                                #  error: not followed by an equal
+                                else:
+                                    self.errors.append(
+                                        f"Syntax error: Expected ',', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                            #  size value is not followed by any of the following (# and Rcurl)
+                            else:
+                                self.errors.append(
+                                    f"Syntax Error: Expected 'Rcurlbraces', '+', '-', '*', '/', '%' after {self.peek_previous_token()}")
+                        #  empty size, proceed to close it with '}'
+                        elif self.peek_next_token() == "}":
+                            self.match("}")
+                            #  check: if closed, single 1D array (size is empty)
+                            if self.peek_next_token() == ")":
+                                self.match(")")
+                                #  followed it with '['
+                                if self.peek_next_token() == "[":
+                                    self.parse_sub_function_definition_statement()  # body
+                                    #  close it
+                                    if self.peek_next_token() == "]":
+                                        self.match("]")
+                                    #  error: not closed
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                #  has gotolerate
+                                elif self.peek_next_token() == "Gotolerate":
+                                    self.match("Gotolerate")
+                                    #  must be followed by '['
+                                    if self.peek_next_token() == "[":
+                                        self.parse_sub_function_definition_statement()  # body
+                                        #  close it
+                                        if self.peek_next_token() == "]":
+                                            self.match("]")
+                                        #  error: not closed
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                    #  error: not followed by '['
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                #  error: not followed by '['
+                                else:
+                                    self.errors.append(
+                                        f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                            #  single id is followed by a comma, (Static Sun a{1},.....)
+                            elif self.peek_next_token() == ",":
+                                self.match_param_assign_mult(",")
+                                #  close with ')' after assigning value/s
+                                if self.peek_next_token() == ")":
+                                    self.match(")")
+                                    #  followed by '['
+                                    if self.peek_next_token() == "[":
+                                        self.parse_sub_function_definition_statement()  # body
+                                        #  close it
+                                        if self.peek_next_token() == "]":
+                                            self.match("]")
+                                        #  error: not closed
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                    #  has gotolerate
+                                    elif self.peek_next_token() == "Gotolerate":
+                                        self.match("Gotolerate")
+                                        #  must be followed by '['
+                                        if self.peek_next_token() == "[":
+                                            self.parse_sub_function_definition_statement()  # body
+                                            #  close it
+                                            if self.peek_next_token() == "]":
+                                                self.match("]")
+                                            #  error: not closed
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                        #  error: not followed by '['
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                    #  error: not followed by '['
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                            # or add another size to become 2D array
+                            elif self.peek_next_token() == "{":
+                                self.match_arrID2D_index_parameter("{")
+                                #  check: if closed, single 2D array
+                                if self.peek_next_token() == ")":
+                                    self.match(")")
+                                    #  followed it with '['
+                                    if self.peek_next_token() == "[":
+                                        self.parse_sub_function_definition_statement()  # body
+                                        #  close it
+                                        if self.peek_next_token() == "]":
+                                            self.match("]")
+                                        #  error: not closed
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                    #  has gotolerate
+                                    elif self.peek_next_token() == "Gotolerate":
+                                        self.match("Gotolerate")
+                                        #  must be followed by '['
+                                        if self.peek_next_token() == "[":
+                                            self.parse_sub_function_definition_statement()  # body
+                                            #  close it
+                                            if self.peek_next_token() == "]":
+                                                self.match("]")
+                                            #  error: not closed
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                        #  error: not followed by '['
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                    #  error: not followed by '['
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                #  single id is followed by a comma, (Static Sun a{1},.....)
+                                elif self.peek_next_token() == ",":
+                                    self.match_param_assign_mult(",")
+                                    #  close with ')' after assigning value/s
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")
+                                        #  followed by '['
+                                        if self.peek_next_token() == "[":
+                                            self.parse_sub_function_definition_statement()  # body
+                                            #  close it
+                                            if self.peek_next_token() == "]":
+                                                self.match("]")
+                                            #  error: not closed
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                        #  has gotolerate
+                                        elif self.peek_next_token() == "Gotolerate":
+                                            self.match("Gotolerate")
+                                            #  must be followed by '['
+                                            if self.peek_next_token() == "[":
+                                                self.parse_sub_function_definition_statement()  # body
+                                                #  close it
+                                                if self.peek_next_token() == "]":
+                                                    self.match("]")
+                                                #  error: not closed
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                            #  error: not followed by '['
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                        #  error: not followed by '['
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                                #  error: not followed by an equal
+                                else:
+                                    self.errors.append(
+                                        f"Syntax error: Expected ',', ')' after '{self.peek_previous_token()}'")
+                            #  error: not followed by an equal
+                            else:
+                                self.errors.append(
+                                    f"Syntax error: Expected ',', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                        else:
+                            return True  # else: last identifier has no following identifiers (comma)
+                    elif self.peek_next_token() == "=":
                         self.match_param_assign("=")
                         #  close with ')' after assigning value/s
                         if self.peek_next_token() == ")":
@@ -4221,6 +13463,145 @@ class SyntaxAnalyzer:
                 elif re.match(r'Identifier\d*$', self.peek_next_token()) or self.peek_next_token() == "SunLiteral" \
                         or self.peek_next_token() == "LuhmanLiteral":
                     self.match(Resources.Value2)
+                    #  return is an array index path
+                    if self.peek_next_token() == "{":
+                        self.match("{")  # consume
+                        #  array index assign path
+                        if (re.match(r'Identifier\d*$', self.peek_next_token())
+                                or self.peek_next_token() == "SunLiteral"):
+                            self.match(Resources.Value3)  # consume the values
+                            #  size expression
+                            if (
+                                    self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                                    or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                                self.match_mathop3(Resources.mathop1)  # size is a math expr
+                                #  close it with "}" if size is fulfilled
+                                if self.peek_next_token() == "}":
+                                    self.match("}")
+                                    #  check: if terminated, single 1D array
+                                    if self.peek_next_token() == "#":
+                                        self.match("#")
+                                        #  close it with ']'
+                                        if self.peek_next_token() == "]":
+                                            return True
+                                        #  error: not followed by ']'
+                                        else:
+                                            return False
+                                    # or add another size to become 2D array
+                                    elif self.peek_next_token() == "{":
+                                        self.match_arrID2D_index_parameter("{")
+                                        #  check: if terminated, single 2D array
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                            #  close it with ']'
+                                            if self.peek_next_token() == "]":
+                                                return True
+                                            #  error: not followed by ']'
+                                            else:
+                                                return False
+                                        #  error: not followed by a terminator
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '#' after '{self.peek_previous_token()}'")
+                                    #  error: not followed by '#' or '{'
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected '#', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                                #  not closed with '}'
+                                else:
+                                    self.errors.append(
+                                        f"Syntax Error: Expected 'Rcurlbrace' after {self.peek_previous_token()}")
+                            #  size is single value
+                            elif self.peek_next_token() == "}":
+                                self.match("}")
+                                #  check: if terminated, single 1D array (size is single value)
+                                if self.peek_next_token() == "#":
+                                    self.match("#")
+                                    #  close it with ']'
+                                    if self.peek_next_token() == "]":
+                                        return True
+                                    #  error: not followed by ']'
+                                    else:
+                                        return False
+                                # or add another size to become 2D array
+                                elif self.peek_next_token() == "{":
+                                    self.match_arrID2D_index_parameter("{")
+                                    #  check: if terminated, single 1D array (size is single value)
+                                    if self.peek_next_token() == "#":
+                                        self.match("#")
+                                        #  close it with ']'
+                                        if self.peek_next_token() == "]":
+                                            return True
+                                        #  error: not followed by ']'
+                                        else:
+                                            return False
+                                    #  error: not followed by a terminator
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected '#' after '{self.peek_previous_token()}'")
+                                #  error: not followed by a terminator or '{'
+                                else:
+                                    self.errors.append(
+                                        f"Syntax error: Expected '#', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                            #  size value is not followed by any of the following (# and Rcurl)
+                            else:
+                                self.errors.append(
+                                    f"Syntax Error: Expected 'Rcurlbraces', '+', '-', '*', '/', '%' after {self.peek_previous_token()}")
+                        #  empty size, proceed to close it with '}'
+                        elif self.peek_next_token() == "}":
+                            self.match("}")
+                            #  check: if terminated, single 1D array (size is single value)
+                            if self.peek_next_token() == "#":
+                                self.match("#")
+                                #  close it with ']'
+                                if self.peek_next_token() == "]":
+                                    return True
+                                #  error: not followed by ']'
+                                else:
+                                    return False
+                            # or add another size to become 2D array
+                            elif self.peek_next_token() == "{":
+                                self.match_arrID2D_index_parameter("{")
+                                #  check: if terminated, single 1D array (size is single value)
+                                if self.peek_next_token() == "#":
+                                    self.match("#")
+                                    #  close it with ']'
+                                    if self.peek_next_token() == "]":
+                                        return True
+                                    #  error: not followed by ']'
+                                    else:
+                                        return False
+                                #  error: not followed by a terminator
+                                else:
+                                    self.errors.append(
+                                        f"Syntax error: Expected '#' after '{self.peek_previous_token()}'")
+                            #  error: not followed by a terminator or '{'
+                            else:
+                                self.errors.append(
+                                    f"Syntax error: Expected '#', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                        #  no following
+                        else:
+                            self.errors.append(
+                                f"Syntax error: Expected 'Idnetifier', 'SunLiteral', 'Rcurlbraces' after '{self.peek_previous_token()}'")
+                    # multiple return id?
+                    if self.peek_next_token() == "," and re.match(r'Identifier\d*$', self.peek_previous_token()):
+                        self.match(",")
+                        # must be followed by another identifier
+                        if re.match(r'Identifier\d*$', self.peek_next_token()):
+                            self.matchID_mult("Identifier")
+                            #  terminate it
+                            if self.peek_next_token() == "#":
+                                self.match("#")  # consume terminator
+                                #  close it with ']'
+                                if self.peek_next_token() == "]":
+                                    return True
+                                #  error: not followed by ']'
+                                else:
+                                    return False
+                        #  error: not followed by an identifier
+                        else:
+                            self.errors.append(
+                                f"Syntax error: Expected 'Identifier' after {self.peek_previous_token()}")
                     #  add it
                     if self.peek_next_token() == "+":
                         self.match_mathop2("+")
@@ -4238,7 +13619,7 @@ class SyntaxAnalyzer:
                             self.errors.append(
                                 f"Syntax error: Expected '#' after {self.peek_previous_token()}")
                     #  subtract it
-                    if self.peek_next_token() == "-":
+                    elif self.peek_next_token() == "-":
                         self.match_mathop2("-")
                         #  terminate it
                         if self.peek_next_token() == "#":
@@ -4254,7 +13635,7 @@ class SyntaxAnalyzer:
                             self.errors.append(
                                 f"Syntax error: Expected '#' after {self.peek_previous_token()}")
                     #  multiply it
-                    if self.peek_next_token() == "*":
+                    elif self.peek_next_token() == "*":
                         self.match_mathop2("*")
                         #  terminate it
                         if self.peek_next_token() == "#":
@@ -4270,7 +13651,7 @@ class SyntaxAnalyzer:
                             self.errors.append(
                                 f"Syntax error: Expected '#' after {self.peek_previous_token()}")
                     #  divide it
-                    if self.peek_next_token() == "/":
+                    elif self.peek_next_token() == "/":
                         self.match_mathop2("/")
                         #  terminate it
                         if self.peek_next_token() == "#":
@@ -4286,7 +13667,7 @@ class SyntaxAnalyzer:
                             self.errors.append(
                                 f"Syntax error: Expected '#' after {self.peek_previous_token()}")
                     #  modulo it
-                    if self.peek_next_token() == "%":
+                    elif self.peek_next_token() == "%":
                         self.match_mathop2("%")
                         #  terminate it
                         if self.peek_next_token() == "#":
@@ -4302,7 +13683,7 @@ class SyntaxAnalyzer:
                             self.errors.append(
                                 f"Syntax error: Expected '#' after {self.peek_previous_token()}")
                     #  exponentiate it
-                    if self.peek_next_token() == "**":
+                    elif self.peek_next_token() == "**":
                         self.match_exponent2("**")
                         #  terminate it
                         if self.peek_next_token() == "#":
@@ -4337,7 +13718,7 @@ class SyntaxAnalyzer:
                         f"Syntax error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
                         f"'StarsysLiteral', 'True', 'False' after {self.peek_previous_token()}")
             else:
-                self.errors.append(f"Syntax Error: Expected ']', 'Retrieve' after {self.peek_previous_token()}")
+                self.errors.append(f"Syntax Error: Expected ']', 'Retrieve', 'Sun', 'Luhman', 'Starsys', 'Boolean', 'Identifier', 'Class', 'ISS', 'Void' after {self.peek_previous_token()}")
         else:
             self.errors.append(
                 f"Syntax error: Expected '[' after {self.peek_previous_token()}")
@@ -4351,7 +13732,7 @@ class SyntaxAnalyzer:
             if self.peek_next_token() == "]":
                 return True  # close it
             else:
-                self.errors.append(f"Syntax Error: Expected ']' after {self.peek_previous_token()}")
+                self.errors.append(f"Syntax Error: Expected ']', 'Sun', 'Luhman', 'Starsys', 'Boolean', 'Identifier', 'Class', 'ISS', 'Void' after {self.peek_previous_token()}")
         else:
             self.errors.append(
                 f"Syntax error: Expected '[' after {self.peek_previous_token()}")
@@ -4396,7 +13777,7 @@ class SyntaxAnalyzer:
                     self.errors.append(f"Syntax Error: Expected 'Disintegrate', 'Sun', 'Luhman',"
                                        f"'Starsys', 'Boolean', 'Class', 'Void' after {self.peek_previous_token()}")
             else:
-                self.errors.append(f"Syntax Error: Expected ']' after {self.peek_previous_token()}")
+                self.errors.append(f"Syntax Error: Expected ']', 'Sun', 'Luhman', 'Starsys', 'Boolean', 'Identifier', 'Class', 'ISS', 'Void' after {self.peek_previous_token()}")
         else:
             self.errors.append(
                 f"Syntax error: Expected '[' after {self.peek_previous_token()}")
@@ -4449,7 +13830,7 @@ class SyntaxAnalyzer:
                     self.errors.append(f"Syntax Error: Expected 'Disintegrate', 'Sun', 'Luhman',"
                                        f"'Starsys', 'Boolean', 'Class', 'Void' after {self.peek_previous_token()}")
             else:
-                self.errors.append(f"Syntax Error: Expected ']', 'Retrieve' after {self.peek_previous_token()}")
+                self.errors.append(f"Syntax Error: Expected ']', 'Retrieve', 'Sun', 'Luhman', 'Starsys', 'Boolean', 'Identifier', 'Void', 'Class', 'ISS' after {self.peek_previous_token()}")
         else:
             self.errors.append(
                 f"Syntax error: Expected '[' after {self.peek_previous_token()}")
@@ -4482,8 +13863,147 @@ class SyntaxAnalyzer:
             elif re.match(r'Identifier\d*$', self.peek_next_token()) or self.peek_next_token() == "SunLiteral"\
                     or self.peek_next_token() == "LuhmanLiteral":
                 self.match(Resources.Value2)  # consume values
+                #  return is an array index path
+                if self.peek_next_token() == "{":
+                    self.match("{")  # consume
+                    #  array index assign path
+                    if (re.match(r'Identifier\d*$', self.peek_next_token())
+                            or self.peek_next_token() == "SunLiteral"):
+                        self.match(Resources.Value3)  # consume the values
+                        #  size expression
+                        if (
+                                self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                                or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                            self.match_mathop3(Resources.mathop1)  # size is a math expr
+                            #  close it with "}" if size is fulfilled
+                            if self.peek_next_token() == "}":
+                                self.match("}")
+                                #  check: if terminated, single 1D array
+                                if self.peek_next_token() == "#":
+                                    self.match("#")
+                                    #  close it with ']'
+                                    if self.peek_next_token() == "]":
+                                        return True
+                                    #  error: not followed by ']'
+                                    else:
+                                        return False
+                                # or add another size to become 2D array
+                                elif self.peek_next_token() == "{":
+                                    self.match_arrID2D_index_parameter("{")
+                                    #  check: if terminated, single 2D array
+                                    if self.peek_next_token() == "#":
+                                        self.match("#")
+                                        #  close it with ']'
+                                        if self.peek_next_token() == "]":
+                                            return True
+                                        #  error: not followed by ']'
+                                        else:
+                                            return False
+                                    #  error: not followed by a terminator
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected '#' after '{self.peek_previous_token()}'")
+                                #  error: not followed by '#' or '{'
+                                else:
+                                    self.errors.append(
+                                        f"Syntax error: Expected '#', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                            #  not closed with '}'
+                            else:
+                                self.errors.append(
+                                    f"Syntax Error: Expected 'Rcurlbrace' after {self.peek_previous_token()}")
+                        #  size is single value
+                        elif self.peek_next_token() == "}":
+                            self.match("}")
+                            #  check: if terminated, single 1D array (size is single value)
+                            if self.peek_next_token() == "#":
+                                self.match("#")
+                                #  close it with ']'
+                                if self.peek_next_token() == "]":
+                                    return True
+                                #  error: not followed by ']'
+                                else:
+                                    return False
+                            # or add another size to become 2D array
+                            elif self.peek_next_token() == "{":
+                                self.match_arrID2D_index_parameter("{")
+                                #  check: if terminated, single 1D array (size is single value)
+                                if self.peek_next_token() == "#":
+                                    self.match("#")
+                                    #  close it with ']'
+                                    if self.peek_next_token() == "]":
+                                        return True
+                                    #  error: not followed by ']'
+                                    else:
+                                        return False
+                                #  error: not followed by a terminator
+                                else:
+                                    self.errors.append(
+                                        f"Syntax error: Expected '#' after '{self.peek_previous_token()}'")
+                            #  error: not followed by a terminator or '{'
+                            else:
+                                self.errors.append(
+                                    f"Syntax error: Expected '#', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                        #  size value is not followed by any of the following (# and Rcurl)
+                        else:
+                            self.errors.append(
+                                f"Syntax Error: Expected 'Rcurlbraces', '+', '-', '*', '/', '%' after {self.peek_previous_token()}")
+                    #  empty size, proceed to close it with '}'
+                    elif self.peek_next_token() == "}":
+                        self.match("}")
+                        #  check: if terminated, single 1D array (size is single value)
+                        if self.peek_next_token() == "#":
+                            self.match("#")
+                            #  close it with ']'
+                            if self.peek_next_token() == "]":
+                                return True
+                            #  error: not followed by ']'
+                            else:
+                                return False
+                        # or add another size to become 2D array
+                        elif self.peek_next_token() == "{":
+                            self.match_arrID2D_index_parameter("{")
+                            #  check: if terminated, single 1D array (size is single value)
+                            if self.peek_next_token() == "#":
+                                self.match("#")
+                                #  close it with ']'
+                                if self.peek_next_token() == "]":
+                                    return True
+                                #  error: not followed by ']'
+                                else:
+                                    return False
+                            #  error: not followed by a terminator
+                            else:
+                                self.errors.append(
+                                    f"Syntax error: Expected '#' after '{self.peek_previous_token()}'")
+                        #  error: not followed by a terminator or '{'
+                        else:
+                            self.errors.append(
+                                f"Syntax error: Expected '#', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                    #  no following
+                    else:
+                        self.errors.append(
+                            f"Syntax error: Expected 'Idnetifier', 'SunLiteral', 'Rcurlbraces' after '{self.peek_previous_token()}'")
+                # multiple return id?
+                elif self.peek_next_token() == "," and re.match(r'Identifier\d*$', self.peek_previous_token()):
+                    self.match(",")
+                    # must be followed by another identifier
+                    if re.match(r'Identifier\d*$', self.peek_next_token()):
+                        self.matchID_mult("Identifier")
+                        #  terminate it
+                        if self.peek_next_token() == "#":
+                            self.match("#")  # consume terminator
+                            #  close it with ']'
+                            if self.peek_next_token() == "]":
+                                return True
+                            #  error: not followed by ']'
+                            else:
+                                return False
+                    #  error: not followed by an identifier
+                    else:
+                        self.errors.append(
+                            f"Syntax error: Expected 'Identifier' after {self.peek_previous_token()}")
                 #  add it
-                if self.peek_next_token() == "+":
+                elif self.peek_next_token() == "+":
                     self.match_mathop2("+")
                     #  terminate it
                     if self.peek_next_token() == "#":
@@ -4580,7 +14100,6 @@ class SyntaxAnalyzer:
                             f"Syntax error: Expected '#' after {self.peek_previous_token()}")
                 #  terminate it (single value)
                 elif self.peek_next_token() == "#":
-                    print("")
                     self.match("#")  # consume terminator
                     #  close it with ']'
                     if self.peek_next_token() == "]":
@@ -4593,6 +14112,21 @@ class SyntaxAnalyzer:
                     self.errors.append(
                         f"Syntax error: Expected '#', '+', '-', "
                         f"'*', '/', '%', '**' after {self.peek_previous_token()}")
+            elif self.peek_next_token() == "(":
+                self.match_parenth("(")
+                #  terminate it
+                if self.peek_next_token() == "#":
+                    self.match("#")  # consume terminator
+                    #  close it with ']'
+                    if self.peek_next_token() == "]":
+                        return True
+                    #  error: not followed by ']'
+                    else:
+                        return False
+                #  not terminated
+                else:
+                    self.errors.append(
+                        f"Syntax error: Expected '#' after {self.peek_previous_token()}")
             #  error: not followed by any of the values
             else:
                 self.errors.append(
@@ -4616,7 +14150,441 @@ class SyntaxAnalyzer:
                     self.match(Resources.Datatype2)
                     if re.match(r'Identifier\d*$', self.peek_next_token()):
                         self.match("Identifier")
-                        if self.peek_next_token() == "=":
+                        #  parameter is an array index path (static)
+                        if self.peek_next_token() == "{":
+                            self.match("{")  # consume
+                            #  array index assign path
+                            if (re.match(r'Identifier\d*$', self.peek_next_token())
+                                    or self.peek_next_token() == "SunLiteral"):
+                                self.match(Resources.Value3)  # consume the values
+                                #  size expression
+                                if (
+                                        self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                                        or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                                    self.match_mathop3(Resources.mathop1)  # size is a math expr
+                                    #  close it with "}" if size is fulfilled
+                                    if self.peek_next_token() == "}":
+                                        self.match("}")
+                                        #  check: if closed, single 1D array
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")
+                                            #  terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  has gotolerate
+                                            elif self.peek_next_token() == "Gotolerate":
+                                                self.match("Gotolerate")
+                                                #  terminate it
+                                                if self.peek_next_token() == "#":
+                                                    self.match("#")
+                                                # error: not terminated
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                                            #  error: not followed by '#'
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '#', 'Gotolerate' after {self.peek_previous_token()}")
+                                        #  single id is followed by a comma, (Static Sun a{1},.....)
+                                        elif self.peek_next_token() == ",":
+                                            self.match_param_assign_mult(",")
+                                            #  close with ')' after assigning value/s
+                                            if self.peek_next_token() == ")":
+                                                self.match(")")
+                                                #  terminate it
+                                                if self.peek_next_token() == "#":
+                                                    self.match("#")
+                                                #  has gotolerate
+                                                elif self.peek_next_token() == "Gotolerate":
+                                                    self.match("Gotolerate")
+                                                    #  terminate it
+                                                    if self.peek_next_token() == "#":
+                                                        self.match("#")
+                                                    # error: not terminated
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                                                #  error: not followed by '#'
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '#', 'Gotolerate' after {self.peek_previous_token()}")
+                                        # or add another size to become 2D array
+                                        elif self.peek_next_token() == "{":
+                                            self.match_arrID2D_index_parameter("{")
+                                            #  check: if closed, single 2D array
+                                            if self.peek_next_token() == ")":
+                                                self.match(")")
+                                                #  terminate it
+                                                if self.peek_next_token() == "#":
+                                                    self.match("#")
+                                                #  has gotolerate
+                                                elif self.peek_next_token() == "Gotolerate":
+                                                    self.match("Gotolerate")
+                                                    #  terminate it
+                                                    if self.peek_next_token() == "#":
+                                                        self.match("#")
+                                                    # error: not terminated
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                                                #  error: not followed by '#'
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '#', 'Gotolerate' after {self.peek_previous_token()}")
+                                            #  single id is followed by a comma, (Static Sun a{1},.....)
+                                            elif self.peek_next_token() == ",":
+                                                self.match_param_assign_mult(",")
+                                                #  close with ')' after assigning value/s
+                                                if self.peek_next_token() == ")":
+                                                    self.match(")")
+                                                    #  terminate it
+                                                    if self.peek_next_token() == "#":
+                                                        self.match("#")
+                                                    #  has gotolerate
+                                                    elif self.peek_next_token() == "Gotolerate":
+                                                        self.match("Gotolerate")
+                                                        #  terminate it
+                                                        if self.peek_next_token() == "#":
+                                                            self.match("#")
+                                                        # error: not terminated
+                                                        else:
+                                                            self.errors.append(
+                                                                f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                                                    #  error: not followed by '#'
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '#', 'Gotolerate' after {self.peek_previous_token()}")
+                                            #  error: not followed by
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected ',', ')' after '{self.peek_previous_token()}'")
+                                        #  error: not followed by
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected ',', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                                    #  not closed with '}'
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax Error: Expected 'Rcurlbrace' after {self.peek_previous_token()}")
+                                #  size is single value
+                                elif self.peek_next_token() == "}":
+                                    self.match("}")
+                                    #  check: if closed, single 1D array (size is single value)
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")
+                                        #  terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        #  has gotolerate
+                                        elif self.peek_next_token() == "Gotolerate":
+                                            self.match("Gotolerate")
+                                            #  terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            # error: not terminated
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                                        #  error: not followed by '#'
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '#', 'Gotolerate' after {self.peek_previous_token()}")
+                                    #  single id is followed by a comma, (Static Sun a{1},.....)
+                                    elif self.peek_next_token() == ",":
+                                        self.match_param_assign_mult(",")
+                                        #  close with ')' after assigning value/s
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")
+                                            #  terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  has gotolerate
+                                            elif self.peek_next_token() == "Gotolerate":
+                                                self.match("Gotolerate")
+                                                #  terminate it
+                                                if self.peek_next_token() == "#":
+                                                    self.match("#")
+                                                # error: not terminated
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                                            #  error: not followed by '#'
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '#', 'Gotolerate' after {self.peek_previous_token()}")
+                                    # or add another size to become 2D array
+                                    elif self.peek_next_token() == "{":
+                                        self.match_arrID2D_index_parameter("{")
+                                        #  check: if closed, single 1D array (size is single value)
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")
+                                            #  terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  has gotolerate
+                                            elif self.peek_next_token() == "Gotolerate":
+                                                self.match("Gotolerate")
+                                                #  terminate it
+                                                if self.peek_next_token() == "#":
+                                                    self.match("#")
+                                                # error: not terminated
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                                            #  error: not followed by '#'
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '#', 'Gotolerate' after {self.peek_previous_token()}")
+                                        #  single id is followed by a comma, (Static Sun a{1},.....)
+                                        elif self.peek_next_token() == ",":
+                                            self.match_param_assign_mult(",")
+                                            #  close with ')' after assigning value/s
+                                            if self.peek_next_token() == ")":
+                                                self.match(")")
+                                                #  terminate it
+                                                if self.peek_next_token() == "#":
+                                                    self.match("#")
+                                                #  has gotolerate
+                                                elif self.peek_next_token() == "Gotolerate":
+                                                    self.match("Gotolerate")
+                                                    #  terminate it
+                                                    if self.peek_next_token() == "#":
+                                                        self.match("#")
+                                                    # error: not terminated
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                                                #  error: not followed by '#'
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '#', 'Gotolerate' after {self.peek_previous_token()}")
+                                        #  error: not followed by an equal
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected ',', ')' after '{self.peek_previous_token()}'")
+                                    #  error: not followed by an equal
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected ',', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                                #  size value is not followed by any of the following (# and Rcurl)
+                                else:
+                                    self.errors.append(
+                                        f"Syntax Error: Expected 'Rcurlbraces', '+', '-', '*', '/', '%' after {self.peek_previous_token()}")
+                            #  empty size, proceed to close it with '}'
+                            elif self.peek_next_token() == "}":
+                                self.match("}")
+                                #  check: if closed, single 1D array (size is empty)
+                                if self.peek_next_token() == ")":
+                                    self.match(")")
+                                    #  terminate it
+                                    if self.peek_next_token() == "#":
+                                        self.match("#")
+                                    #  has gotolerate
+                                    elif self.peek_next_token() == "Gotolerate":
+                                        self.match("Gotolerate")
+                                        #  terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        # error: not terminated
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                                    #  error: not followed by '#'
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected '#', 'Gotolerate' after {self.peek_previous_token()}")
+                                #  single id is followed by a comma, (Static Sun a{1},.....)
+                                elif self.peek_next_token() == ",":
+                                    self.match_param_assign_mult(",")
+                                    #  close with ')' after assigning value/s
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")
+                                        #  terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        #  has gotolerate
+                                        elif self.peek_next_token() == "Gotolerate":
+                                            self.match("Gotolerate")
+                                            #  terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            # error: not terminated
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                                        #  error: not followed by '#'
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '#', 'Gotolerate' after {self.peek_previous_token()}")
+                                # or add another size to become 2D array
+                                elif self.peek_next_token() == "{":
+                                    self.match_arrID2D_index_parameter("{")
+                                    #  check: if closed, single 2D array
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")
+                                        #  terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        #  has gotolerate
+                                        elif self.peek_next_token() == "Gotolerate":
+                                            self.match("Gotolerate")
+                                            #  terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            # error: not terminated
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                                        #  error: not followed by '#'
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '#', 'Gotolerate' after {self.peek_previous_token()}")
+                                    #  single id is followed by a comma, (Static Sun a{1},.....)
+                                    elif self.peek_next_token() == ",":
+                                        self.match_param_assign_mult(",")
+                                        #  close with ')' after assigning value/s
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")
+                                            #  terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  has gotolerate
+                                            elif self.peek_next_token() == "Gotolerate":
+                                                self.match("Gotolerate")
+                                                #  terminate it
+                                                if self.peek_next_token() == "#":
+                                                    self.match("#")
+                                                # error: not terminated
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                                            #  error: not followed by '#'
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '#', 'Gotolerate' after {self.peek_previous_token()}")
+                                    #  error: not followed by an equal
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected ',', ')' after '{self.peek_previous_token()}'")
+                                #  error: not followed by an equal
+                                else:
+                                    self.errors.append(
+                                        f"Syntax error: Expected ',', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                            else:
+                                return True  # else: last identifier has no following identifiers (comma)
+                        #  equals, assign value to the parameter path (static)
+                        elif self.peek_next_token() == "=":
+                            self.match_param_assign("=")
+                            #  close with ')' after assigning value/s
+                            if self.peek_next_token() == ")":
+                                self.match(")")
+                                #  follow it with '['
+                                if self.peek_next_token() == "[":
+                                    self.parse_sub_function_definition_statement()  # body
+                                    #  close it
+                                    if self.peek_next_token() == "]":
+                                        self.match("]")
+                                    #  error: not closed
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                #  has gotolerate
+                                elif self.peek_next_token() == "Gotolerate":
+                                    self.match("Gotolerate")
+                                    #  must be followed by '['
+                                    if self.peek_next_token() == "[":
+                                        self.parse_sub_function_definition_statement()  # body
+                                        #  close it
+                                        if self.peek_next_token() == "]":
+                                            self.match("]")
+                                        #  error: not closed
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                    #  error: not followed by '['
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                #  error: not followed
+                                else:
+                                    self.errors.append(
+                                        f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                            #  error: not closed
+                            else:
+                                self.errors.append(
+                                    f"Syntax error: Expected ')' after {self.peek_previous_token()}")
+                        #  check: if closed, single id no value
+                        elif self.peek_next_token() == ")":
+                            self.match(")")
+                            #  followed it with '['
+                            if self.peek_next_token() == "[":
+                                self.parse_sub_function_definition_statement()  # body
+                                #  close it
+                                if self.peek_next_token() == "]":
+                                    self.match("]")
+                                #  error: not closed
+                                else:
+                                    self.errors.append(
+                                        f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                            #  has gotolerate
+                            elif self.peek_next_token() == "Gotolerate":
+                                self.match("Gotolerate")
+                                #  must be followed by '['
+                                if self.peek_next_token() == "[":
+                                    self.parse_sub_function_definition_statement()  # body
+                                    #  close it
+                                    if self.peek_next_token() == "]":
+                                        self.match("]")
+                                    #  error: not closed
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                #  error: not followed by '['
+                                else:
+                                    self.errors.append(
+                                        f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                            #  error: not followed by '['
+                            else:
+                                self.errors.append(
+                                    f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                        #  single id is followed by a comma
+                        elif self.peek_next_token() == ",":
+                            self.match_param_assign_mult(",")
+                            #  close with ')' after assigning value/s
+                            if self.peek_next_token() == ")":
+                                self.match(")")
+                                #  followed by '['
+                                if self.peek_next_token() == "[":
+                                    self.parse_sub_function_definition_statement()  # body
+                                    #  close it
+                                    if self.peek_next_token() == "]":
+                                        self.match("]")
+                                    #  error: not closed
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                #  has gotolerate
+                                elif self.peek_next_token() == "Gotolerate":
+                                    self.match("Gotolerate")
+                                    #  must be followed by '['
+                                    if self.peek_next_token() == "[":
+                                        self.parse_sub_function_definition_statement()  # body
+                                        #  close it
+                                        if self.peek_next_token() == "]":
+                                            self.match("]")
+                                        #  error: not closed
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected ']' after {self.peek_previous_token()}")
+                                    #  error: not followed by '['
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected '[', after {self.peek_previous_token()}")
+                                #  error: not followed by '['
+                                else:
+                                    self.errors.append(
+                                        f"Syntax error: Expected '[', 'Gotolerate' after {self.peek_previous_token()}")
+                        elif self.peek_next_token() == "=":
                             self.match_param_assign("=")
                             #  close with ')' after assigning value/s
                             if self.peek_next_token() == ")":
@@ -4703,7 +14671,329 @@ class SyntaxAnalyzer:
                 self.match(Resources.Datatype2)
                 if re.match(r'Identifier\d*$', self.peek_next_token()):
                     self.match("Identifier")
-                    if self.peek_next_token() == "=":
+                    #  parameter is an array index path
+                    if self.peek_next_token() == "{":
+                        self.match("{")  # consume
+                        #  array index assign path
+                        if (re.match(r'Identifier\d*$', self.peek_next_token())
+                                or self.peek_next_token() == "SunLiteral"):
+                            self.match(Resources.Value3)  # consume the values
+                            #  size expression
+                            if (
+                                    self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                                    or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                                self.match_mathop3(Resources.mathop1)  # size is a math expr
+                                #  close it with "}" if size is fulfilled
+                                if self.peek_next_token() == "}":
+                                    self.match("}")
+                                    #  check: if closed, single 1D array
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")
+                                        #  terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        #  has gotolerate
+                                        elif self.peek_next_token() == "Gotolerate":
+                                            self.match("Gotolerate")
+                                            #  terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            # error: not terminated
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                                        #  error: not followed by '#'
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '#', 'Gotolerate' after {self.peek_previous_token()}")
+                                    #  single id is followed by a comma, (Static Sun a{1},.....)
+                                    elif self.peek_next_token() == ",":
+                                        self.match_param_assign_mult(",")
+                                        #  close with ')' after assigning value/s
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")
+                                            #  terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  has gotolerate
+                                            elif self.peek_next_token() == "Gotolerate":
+                                                self.match("Gotolerate")
+                                                #  terminate it
+                                                if self.peek_next_token() == "#":
+                                                    self.match("#")
+                                                # error: not terminated
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                                            #  error: not followed by '#'
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '#', 'Gotolerate' after {self.peek_previous_token()}")
+                                    # or add another size to become 2D array
+                                    elif self.peek_next_token() == "{":
+                                        self.match_arrID2D_index_parameter("{")
+                                        #  check: if closed, single 2D array
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")
+                                            #  terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  has gotolerate
+                                            elif self.peek_next_token() == "Gotolerate":
+                                                self.match("Gotolerate")
+                                                #  terminate it
+                                                if self.peek_next_token() == "#":
+                                                    self.match("#")
+                                                # error: not terminated
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                                            #  error: not followed by '#'
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '#', 'Gotolerate' after {self.peek_previous_token()}")
+                                        #  single id is followed by a comma, (Static Sun a{1},.....)
+                                        elif self.peek_next_token() == ",":
+                                            self.match_param_assign_mult(",")
+                                            #  close with ')' after assigning value/s
+                                            if self.peek_next_token() == ")":
+                                                self.match(")")
+                                                #  terminate it
+                                                if self.peek_next_token() == "#":
+                                                    self.match("#")
+                                                #  has gotolerate
+                                                elif self.peek_next_token() == "Gotolerate":
+                                                    self.match("Gotolerate")
+                                                    #  terminate it
+                                                    if self.peek_next_token() == "#":
+                                                        self.match("#")
+                                                    # error: not terminated
+                                                    else:
+                                                        self.errors.append(
+                                                            f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                                                #  error: not followed by '#'
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '#', 'Gotolerate' after {self.peek_previous_token()}")
+                                        #  error: not followed by
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected ',', ')' after '{self.peek_previous_token()}'")
+                                    #  error: not followed by
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected ',', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                                #  not closed with '}'
+                                else:
+                                    self.errors.append(
+                                        f"Syntax Error: Expected 'Rcurlbrace' after {self.peek_previous_token()}")
+                            #  size is single value
+                            elif self.peek_next_token() == "}":
+                                self.match("}")
+                                #  check: if closed, single 1D array (size is single value)
+                                if self.peek_next_token() == ")":
+                                    self.match(")")
+                                    #  terminate it
+                                    if self.peek_next_token() == "#":
+                                        self.match("#")
+                                    #  has gotolerate
+                                    elif self.peek_next_token() == "Gotolerate":
+                                        self.match("Gotolerate")
+                                        #  terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        # error: not terminated
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                                    #  error: not followed by '#'
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected '#', 'Gotolerate' after {self.peek_previous_token()}")
+                                #  single id is followed by a comma, (Static Sun a{1},.....)
+                                elif self.peek_next_token() == ",":
+                                    self.match_param_assign_mult(",")
+                                    #  close with ')' after assigning value/s
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")
+                                        #  terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        #  has gotolerate
+                                        elif self.peek_next_token() == "Gotolerate":
+                                            self.match("Gotolerate")
+                                            #  terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            # error: not terminated
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                                        #  error: not followed by '#'
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '#', 'Gotolerate' after {self.peek_previous_token()}")
+                                # or add another size to become 2D array
+                                elif self.peek_next_token() == "{":
+                                    self.match_arrID2D_index_parameter("{")
+                                    #  check: if closed, single 1D array (size is single value)
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")
+                                        #  terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        #  has gotolerate
+                                        elif self.peek_next_token() == "Gotolerate":
+                                            self.match("Gotolerate")
+                                            #  terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            # error: not terminated
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                                        #  error: not followed by '#'
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '#', 'Gotolerate' after {self.peek_previous_token()}")
+                                    #  single id is followed by a comma, (Static Sun a{1},.....)
+                                    elif self.peek_next_token() == ",":
+                                        self.match_param_assign_mult(",")
+                                        #  close with ')' after assigning value/s
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")
+                                            #  terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  has gotolerate
+                                            elif self.peek_next_token() == "Gotolerate":
+                                                self.match("Gotolerate")
+                                                #  terminate it
+                                                if self.peek_next_token() == "#":
+                                                    self.match("#")
+                                                # error: not terminated
+                                                else:
+                                                    self.errors.append(
+                                                        f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                                            #  error: not followed by '#'
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '#', 'Gotolerate' after {self.peek_previous_token()}")
+                                    #  error: not followed by an equal
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected ',', ')' after '{self.peek_previous_token()}'")
+                                #  error: not followed by an equal
+                                else:
+                                    self.errors.append(
+                                        f"Syntax error: Expected ',', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                            #  size value is not followed by any of the following (# and Rcurl)
+                            else:
+                                self.errors.append(
+                                    f"Syntax Error: Expected 'Rcurlbraces', '+', '-', '*', '/', '%' after {self.peek_previous_token()}")
+                        #  empty size, proceed to close it with '}'
+                        elif self.peek_next_token() == "}":
+                            self.match("}")
+                            #  check: if closed, single 1D array (size is empty)
+                            if self.peek_next_token() == ")":
+                                self.match(")")
+                                #  terminate it
+                                if self.peek_next_token() == "#":
+                                    self.match("#")
+                                #  has gotolerate
+                                elif self.peek_next_token() == "Gotolerate":
+                                    self.match("Gotolerate")
+                                    #  terminate it
+                                    if self.peek_next_token() == "#":
+                                        self.match("#")
+                                    # error: not terminated
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                                #  error: not followed by '#'
+                                else:
+                                    self.errors.append(
+                                        f"Syntax error: Expected '#', 'Gotolerate' after {self.peek_previous_token()}")
+                            #  single id is followed by a comma, (Static Sun a{1},.....)
+                            elif self.peek_next_token() == ",":
+                                self.match_param_assign_mult(",")
+                                #  close with ')' after assigning value/s
+                                if self.peek_next_token() == ")":
+                                    self.match(")")
+                                    #  terminate it
+                                    if self.peek_next_token() == "#":
+                                        self.match("#")
+                                    #  has gotolerate
+                                    elif self.peek_next_token() == "Gotolerate":
+                                        self.match("Gotolerate")
+                                        #  terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        # error: not terminated
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                                    #  error: not followed by '#'
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected '#', 'Gotolerate' after {self.peek_previous_token()}")
+                            # or add another size to become 2D array
+                            elif self.peek_next_token() == "{":
+                                self.match_arrID2D_index_parameter("{")
+                                #  check: if closed, single 2D array
+                                if self.peek_next_token() == ")":
+                                    self.match(")")
+                                    #  terminate it
+                                    if self.peek_next_token() == "#":
+                                        self.match("#")
+                                    #  has gotolerate
+                                    elif self.peek_next_token() == "Gotolerate":
+                                        self.match("Gotolerate")
+                                        #  terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        # error: not terminated
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                                    #  error: not followed by '#'
+                                    else:
+                                        self.errors.append(
+                                            f"Syntax error: Expected '#', 'Gotolerate' after {self.peek_previous_token()}")
+                                #  single id is followed by a comma, (Static Sun a{1},.....)
+                                elif self.peek_next_token() == ",":
+                                    self.match_param_assign_mult(",")
+                                    #  close with ')' after assigning value/s
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")
+                                        #  terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        #  has gotolerate
+                                        elif self.peek_next_token() == "Gotolerate":
+                                            self.match("Gotolerate")
+                                            #  terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            # error: not terminated
+                                            else:
+                                                self.errors.append(
+                                                    f"Syntax error: Expected '#' after {self.peek_previous_token()}")
+                                        #  error: not followed by '#'
+                                        else:
+                                            self.errors.append(
+                                                f"Syntax error: Expected '#', 'Gotolerate' after {self.peek_previous_token()}")
+                                #  error: not followed by an equal
+                                else:
+                                    self.errors.append(
+                                        f"Syntax error: Expected ',', ')' after '{self.peek_previous_token()}'")
+                            #  error: not followed by an equal
+                            else:
+                                self.errors.append(
+                                    f"Syntax error: Expected ',', 'Lcurlbraces' after '{self.peek_previous_token()}'")
+                        else:
+                            return True  # else: last identifier has no following identifiers (comma)
+                    elif self.peek_next_token() == "=":
                         self.match_param_assign("=")
                         #  close with ')' after assigning value/s
                         if self.peek_next_token() == ")":
@@ -4803,20 +15093,195 @@ class SyntaxAnalyzer:
             else:
                 self.errors.append(f"Syntax Error: Expected ')' after {self.peek_previous_token()}")
 
-    #  method for main function definition
+    #  method for function definition
     def parse_func_def(self):
         if self.peek_next_token() == "[":
             self.match("[")
-            self.parse_statements()
+            self.parse_statements_main()
             if self.peek_next_token() == "]":
                 return True
             #  error: main function is not closed
             else:
-                self.errors.append(f"Syntax Error: Expected ']' after {self.peek_previous_token()}")
+                self.errors.append(f"Syntax Error: Expected 'Sun', 'Luhman', 'Starsys', 'Identifier', 'ISS', 'Class', 'Divert',  after {self.peek_previous_token()}")
         else:
             return
 
-    #  method for statements of functions (incld main)
+    #  method for statements of main
+    def parse_statements_main(self):
+        # Parse: is it a Sun global variable declaration or a subfunction prototype?
+        while (self.peek_next_token() in ["Static", "Sun", "Luhman", "Starsys", "Boolean", "Autom", "Disp", "Capt", "If",
+                                         "Divert", "Fore", "Span", "Perform", "Test", "ISS", "Class"]
+               or re.match(r'Identifier\d*$', self.peek_next_token())):
+            #  Parse: is it a constant dec?
+            if self.peek_next_token() == "Static":
+                self.match("Static")  # consume Static
+                # Parse: is it a Sun global variable declaration or a subfunction prototype?
+                if self.peek_next_token() == "Sun":
+                    self.match("Sun")  # consume Sun
+                    #  check if there is an identifier after the datatype
+                    if re.match(r'Identifier\d*$', self.peek_next_token()):
+                        self.parse_variable_declaration_main()
+                    #  error: no identifier after datatype
+                    else:
+                        self.errors.append(
+                            f"Syntax error: Expected 'Identifier' after {self.peek_previous_token()}")
+                # Parse: is it a Luhman global variable declaration or a subfunction prototype?
+                elif self.peek_next_token() == "Luhman":
+                    self.match("Luhman")  # consume Luhman
+                    #  check if there is an identifier after the datatype
+                    if re.match(r'Identifier\d*$', self.peek_next_token()):
+                        self.parse_variable_declaration_main()
+                    #  error: no identifier after datatype
+                    else:
+                        self.errors.append(
+                            f"Syntax error: Expected 'Identifier' after {self.peek_previous_token()}")
+                # Parse: is it a Starsys global variable declaration or a subfunction prototype?
+                elif self.peek_next_token() == "Starsys":
+                    self.match("Starsys")  # consume Starsys
+                    #  check if there is an identifier after the datatype
+                    if re.match(r'Identifier\d*$', self.peek_next_token()):
+                        self.parse_variable_declaration_main()
+                    else:
+                        #  error: no identifier after datatype
+                        self.errors.append(
+                            f"Syntax error: Expected 'Identifier' after {self.peek_previous_token()}")
+                # Parse: is it a Boolean global variable declaration or a subfunction prototype?
+                elif self.peek_next_token() == "Boolean":
+                    self.match("Boolean")  # consume Bool
+                    #  check if there is an identifier after the datatype
+                    if re.match(r'Identifier\d*$', self.peek_next_token()):
+                        self.parse_boolean_main()
+                    #  error: no identifier after datatype
+                    else:
+                        self.errors.append(
+                            f"Syntax error: Expected 'Identifier' after {self.peek_previous_token()}")
+                #  no data type is next to Static
+                else:
+                    self.errors.append(f"Syntax Error: Expected 'Sun', 'Luhman', 'Starsys', 'Boolean', after {self.peek_previous_token()}")
+            # Parse: is it a Sun global variable declaration or a subfunction prototype?
+            elif self.peek_next_token() == "Sun":
+                self.match("Sun")  # consume Sun
+                #  check if there is an identifier after the datatype
+                if re.match(r'Identifier\d*$', self.peek_next_token()):
+                    self.parse_variable_declaration_main()
+                #  error: no identifier after datatype
+                else:
+                    self.errors.append(
+                        f"Syntax error: Expected 'Identifier' after {self.peek_previous_token()}")
+            # Parse: is it a Luhman global variable declaration or a subfunction prototype?
+            elif self.peek_next_token() == "Luhman":
+                self.match("Luhman")  # consume Luhman
+                #  check if there is an identifier after the datatype
+                if re.match(r'Identifier\d*$', self.peek_next_token()):
+                    self.parse_variable_declaration_main()
+                #  error: no identifier after datatype
+                else:
+                    self.errors.append(
+                        f"Syntax error: Expected 'Identifier' after {self.peek_previous_token()}")
+            # Parse: is it a Starsys global variable declaration or a subfunction prototype?
+            elif self.peek_next_token() == "Starsys":
+                self.match("Starsys")  # consume Starsys
+                #  check if there is an identifier after the datatype
+                if re.match(r'Identifier\d*$', self.peek_next_token()):
+                    self.parse_variable_declaration_main()
+                else:
+                    #  error: no identifier after datatype
+                    self.errors.append(
+                        f"Syntax error: Expected 'Identifier' after {self.peek_previous_token()}")
+            # Parse: is it a Boolean global variable declaration or a subfunction prototype?
+            elif self.peek_next_token() == "Boolean":
+                self.match("Boolean")  # consume Bool
+                #  check if there is an identifier after the datatype
+                if re.match(r'Identifier\d*$', self.peek_next_token()):
+                    self.parse_boolean_main()
+                #  error: no identifier after datatype
+                else:
+                    self.errors.append(
+                        f"Syntax error: Expected 'Identifier' after {self.peek_previous_token()}")
+            # Parse: is it an Autom global variable declaration?
+            elif self.peek_next_token() == "Autom":
+                self.match("Autom")  # consume Autom
+                #  check if there is an identifier after the datatype
+                if re.match(r'Identifier\d*$', self.peek_next_token()):
+                    self.parse_auto_dec()
+                #  error: no identifier after datatype
+                else:
+                    self.errors.append(
+                        f"Syntax error: Expected 'Identifier' after {self.peek_previous_token()}")
+            #  Parse: is it an output statement? (Disp)
+            elif self.peek_next_token() == "Disp":
+                self.match("Disp")
+                #  check if there is a '<<' after the Disp keyword
+                if self.peek_next_token() == "<<":
+                    self.parse_disp_stmnt()
+                #  error: not followed by "<<"
+                else:
+                    self.errors.append(
+                        f"Syntax error: Expected '<<' after {self.peek_previous_token()}")
+            #  Parse: is it an input statement? (Capt)
+            elif self.peek_next_token() == "Capt":
+                self.match("Capt")
+                #  check if there is a '<<' after the Disp keyword
+                if self.peek_next_token() == ">>":
+                    self.parse_capt_stmnt()
+                #  error: not followed by "<<"
+                else:
+                    self.errors.append(
+                        f"Syntax error: Expected '>>' after {self.peek_previous_token()}")
+            #  Parse: is an If condition statement?
+            elif self.peek_next_token() == "If":
+                self.match("If")
+                #  check if there is a '(' after the If keyword
+                if self.peek_next_token() == "(":
+                    self.parse_if_stmnt()
+                #  error: not followed by "("
+                else:
+                    self.errors.append(
+                            f"Syntax error: Expected '(' after {self.peek_previous_token()}")
+            #  Parse: is it a Switch condition statement (Divert)?
+            elif self.peek_next_token() == "Divert":
+                self.match("Divert")
+                #  check if there is a '(' after the Divert keyword
+                if self.peek_next_token() == "(":
+                    self.parse_switch_stmnt()
+                #  error: not followed by "("
+                else:
+                    self.errors.append(
+                        f"Syntax error: Expected '(' after {self.peek_previous_token()}")
+            #  Parse: is it a for loop statement (Fore)?
+            elif self.peek_next_token() == "Fore":
+                self.match("Fore")  # consume Fore
+                #  check if there is a '(' after the Divert keyword
+                if self.peek_next_token() == "(":
+                    self.parse_for_loop()
+                #  error: not followed by "("
+                else:
+                    self.errors.append(
+                        f"Syntax error: Expected '(' after {self.peek_previous_token()}")
+            #  Parse: is it a while loop statement (Span)?
+            elif self.peek_next_token() == "Span":
+                self.parse_while_loop()
+            #  Parse: is it a do-while loop statement (Span)?
+            elif self.peek_next_token() == "Perform":
+                self.parse_dowhile_loop()
+            #  Parse: is it a Try-Catch?
+            elif self.peek_next_token() == "Test":
+                self.parse_trycatch()
+            #  Parse: is it a Struct?
+            elif self.peek_next_token() == "ISS":
+                self.match_struct("ISS")
+            #  Parse: is it a globally declared Class?
+            elif self.peek_next_token() == "Class":
+                self.match_class_stmnt("Class")
+            #  is it am assignment, or function call, or module access? (a = a#
+            #  a(value)# : mod.mod1.mod2#/s.func()#)
+            elif re.match(r'Identifier\d*$', self.peek_next_token()):
+                self.match_assignment1("Identifier")
+            else:
+                break
+
+
+    #  method for statements of functions
     def parse_statements(self):
         # Parse: is it a Sun global variable declaration or a subfunction prototype?
         while (self.peek_next_token() in ["Static", "Sun", "Luhman", "Starsys", "Boolean", "Autom", "Disp", "Capt", "If",
@@ -5477,7 +15942,7 @@ class SyntaxAnalyzer:
                 self.match("#")
             #  not terminated
             else:
-                self.errors.append(f"Syntax Error: Expected '#' after {self.peek_previous_token()}")
+                self.errors.append(f"Syntax Error: Expected '#', '<<' after {self.peek_previous_token()}")
         #  not followed by '<<'
         else:
             self.errors.append(f"Syntax Error: Expected '<<' after {self.peek_next_token()}")
@@ -5490,7 +15955,7 @@ class SyntaxAnalyzer:
                 self.match("#")
             #  not terminated
             else:
-                self.errors.append(f"Syntax Error: Unexpected End, Expected '#' after {self.peek_next_token()}")
+                self.errors.append(f"Syntax Error: Expected '#' after {self.peek_previous_token()}")
         #  not followed by '<<'
         else:
             self.errors.append(f"Syntax Error: Expected '>>' after {self.peek_previous_token()}")
@@ -6572,9 +17037,9 @@ class SyntaxAnalyzer:
             self.match("Formulate")
             # Check if there are no statements after Formulate, Disintegrate immediately
             if self.peek_next_token() == "Disintegrate":
-                self.errors.append(f"Syntax Error: 'Import', 'ISS', 'Static', 'Boolean', 'Autom', 'Luhman', "
-                                   f"'Starsys', 'Void', 'Class', 'Sun' ")
-
+                self.disintegrate_exist = True
+                self.errors.append(f"Syntax Error: Expected 'Import', 'ISS', 'Static', 'Boolean', 'Autom', 'Luhman', "
+                                   f"'Starsys', 'Void', 'Class', 'Sun' after 'Formulate'")
             #  parse import statement
             self.parse_import_statement()
 
@@ -6699,24 +17164,27 @@ class SyntaxAnalyzer:
                 else:
                     break
         else:
-            self.errors.append(f"Syntax Error: Expected 'Formulate'")
-            self.errors.append(f"Syntax Error: 'Import', 'ISS', 'Static', 'Boolean', 'Autom', 'Luhman', "
-            f"'Starsys', 'Void', 'Class', 'Sun' ")
+            self.errors.append(f"Syntax Error: Expected 'Formulate' before '{self.peek_next_token()}'")
+            self.errors.append(f"Syntax Error: Expected 'Import', 'ISS', 'Static', 'Boolean', 'Autom', 'Luhman', "
+            f"'Starsys', 'Void', 'Class', 'Sun' after 'Formulate'")
 
 
         # check if Import appeared even when not after 'Formulate'
         if self.peek_next_token() == "Import":
-            self.errors.append(f"Syntax Error: 'Import' statements can only be declared after 'Formulate'")
+            self.errors.append(f"Syntax Error: 'Import' syntax unexpected")
         elif self.peek_next_token() == "Formulate":
             self.errors.append(
                 f"Syntax Error: 'Formulate' keyword can only appear once and on the very top of the program")
         else:
             pass
-
-
+        '''
+        if not self.disintegrate_exist:
+            self.errors.append(f"Syntax Error: Expected 'Disintegrate' ")
+        '''
+        '''
         if not self.function_is_defined:
             self.errors.append(f"Syntax Error: Expected 'Sun' ")
-
+        '''
 
     '''
     def parse_main_program(self):
