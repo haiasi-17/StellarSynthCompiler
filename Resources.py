@@ -82,11 +82,11 @@ delim26 =               Space + Tab + ComAlpha + Newline + RSqrBrkt + RParenth
 delim27 =               PrintableChar + Newline + Tab # Not in use
 
 Sun_delim =             (Space + RParenth + RCurBrace + RSqrBrkt + Terminator + Comma +
-                        Ampersand + VerticalBar + ExclaMark + MathOp + AssignOp + GreaterThan + LessThan + Tab + LSqrBrkt)
+                        Ampersand + VerticalBar + ExclaMark + MathOp + AssignOp + GreaterThan + LessThan + Tab + LSqrBrkt + Colon)
 Luhman_delim =          (Space + RParenth + RSqrBrkt + Terminator + Comma + Ampersand + VerticalBar
                         + ExclaMark + MathOp + AssignOp + GreaterThan + LessThan + Tab)
-Starsys_delim =         Space + RParenth + Comma + Terminator + LessThan + RSqrBrkt + Tab
-Boolean_delim =         Space + Terminator + RParenth + Ampersand + VerticalBar + ExclaMark + Comma + RSqrBrkt + Tab
+Starsys_delim =         Space + RParenth + Comma + Terminator + LessThan + RSqrBrkt + Tab + Colon
+Boolean_delim =         Space + Terminator + RParenth + Ampersand + VerticalBar + ExclaMark + Comma + RSqrBrkt + Tab + Colon
 Identifier_delim =      (Space + Terminator + LParenth + RParenth + LCurBrace + RSqrBrkt + MathOp
                         + Ampersand + VerticalBar + ExclaMark + AssignOp + GreaterThan + LessThan + Comma + Period + Colon + Tilde + LSqrBrkt + Newline + RCurBrace + Tab)
 
