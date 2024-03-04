@@ -172,7 +172,7 @@ class MainWindow:
 
             self.tag_rows(self.Lexeme_Token_Table)
             self.errors_result.insert(tk.END, "")
-            self.errors_result.insert(tk.END, " StellarSynth -> Lexical Analysis Complete.")
+            self.errors_result.insert(tk.END, " StellarSynth -> Lexical Analysis Complete. Tokenization Complete")
             self.errors_result.insert(tk.END, f" StellarSynth -> Generated a total of {tok_count} tokens. ")
 
         except Exception as e:
@@ -197,7 +197,7 @@ class MainWindow:
                     for error in syntax_analyzer.errors:
                         self.errors_result.insert(tk.END, f" StellarSynth -> {error}")
                 else:
-                    self.errors_result.insert(tk.END, " StellarSynth -> Syntax Analysis Complete. No Errors Found.")
+                    self.errors_result.insert(tk.END, " StellarSynth -> Syntax Analysis Complete. Syntax is correct. No Errors Found.")
 
         except Exception as e:
             print(f"Error: {e}")
