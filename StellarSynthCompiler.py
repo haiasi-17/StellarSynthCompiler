@@ -4,6 +4,10 @@ import subprocess
 
 from Syntax import SyntaxAnalyzer
 
+temp_list_tokens = []
+lexer_flag = False
+userAfterLexerEdit_flag = False
+
 
 class MainWindow:
     def __init__(self, master):
@@ -92,8 +96,10 @@ class MainWindow:
         self.master.after(self.UpdateDelay, self.update)
 
     def user_writes(self, event):
+        global userAfterLexerEdit_flag
         if self.opened_file_flag is True:
             self.opened_file_flag = False
+        userAfterLexerEdit_flag = True
 
     def use_user_input(self):
         if self.opened_file_flag is False:
@@ -120,6 +126,9 @@ class MainWindow:
                 file.write(self.editor.get("1.0", tk.END))
 
     def run_lexical(self):
+        global temp_list_tokens, lexer_flag, userAfterLexerEdit_flag
+        tok_count = 0
+        userAfterLexerEdit_flag = False
         try:
             self.use_user_input()
             result = subprocess.check_output(['python', 'Lexer.py'], universal_newlines=True)
@@ -132,7 +141,7 @@ class MainWindow:
             self.errors_result.delete(0, tk.END)
 
             if not errors:
-                self.errors_result.insert(tk.END, " StellarSynth -> No errors found during tokenization.")
+                self.errors_result.insert(tk.END, " StellarSynth -> No errors found during lexical analysis.")
             else:
                 for error in errors:
                     self.errors_result.insert(tk.END, f" StellarSynth -> {error}")
@@ -142,6 +151,8 @@ class MainWindow:
                 self.errors_result.insert(tk.END, " StellarSynth -> Tokens list is empty.")
             else:
                 tok_count = 0
+                temp_list_tokens = tokens
+                lexer_flag = True
                 for lexeme, token in tokens:
                     if token == "\n" or token == "\t":
                         tempval1 = repr(lexeme)
@@ -161,66 +172,32 @@ class MainWindow:
 
             self.tag_rows(self.Lexeme_Token_Table)
             self.errors_result.insert(tk.END, "")
-            self.errors_result.insert(tk.END, " StellarSynth -> Tokenization Complete.")
+            self.errors_result.insert(tk.END, " StellarSynth -> Lexical Analysis Complete.")
+            self.errors_result.insert(tk.END, f" StellarSynth -> Generated a total of {tok_count} tokens. ")
 
         except Exception as e:
             print(f"Error: {e}")
 
     def run_syntax(self):
+        global userAfterLexerEdit_flag
         try:
-            self.use_user_input()
-            result = subprocess.check_output(['python', 'Lexer.py'], universal_newlines=True)
-
-            lines = result.strip().split('\n')
-
-            errors = eval(lines[0]) if lines else []
-            tokens = eval(lines[1]) if len(lines) > 1 else []
-
             self.errors_result.delete(0, tk.END)
-
-            if not errors:
-                self.errors_result.insert(tk.END, "StellarSynth -> No errors found during tokenization.")
+            if not temp_list_tokens:
+                self.errors_result.insert(tk.END, " StellarSynth -> Tokens list is empty. Run Lexical Analysis.")
+            elif userAfterLexerEdit_flag is True:
+                self.errors_result.insert(tk.END, " StellarSynth -> New input detected, re-run Lexical Analysis.")
+                userAfterLexerEdit_flag = False
             else:
-                for error in errors:
-                    self.errors_result.insert(tk.END, f"StellarSynth -> {error}")
+                # Now, you can integrate the SyntaxAnalyzer and call its methods with the tokens list
+                syntax_analyzer = SyntaxAnalyzer(temp_list_tokens)
+                syntax_analyzer.parse_top_program()
+                #  syntax_analyzer.parse_main_program()
 
-            self.Lexeme_Token_Table.delete(*self.Lexeme_Token_Table.get_children())
-
-            if not tokens:
-                self.errors_result.insert(tk.END, "StellarSynth -> Tokens list is empty.")
-            else:
-                tok_count = 0
-                for lexeme, token in tokens:
-                    if token == "\n" or token == "\t":
-                        tempval1 = repr(lexeme)
-                        tempval1 = tempval1[1:-1]
-                        tempval2 = repr(token)
-                        tempval2 = tempval2[1:-1]
-                        tok_count += 1
-                        self.Lexeme_Token_Table.insert("", tk.END, values=(tok_count, tempval1, tempval2))
-                    elif token == "StarsysLiteral":
-                        tempval1 = repr(lexeme)
-                        tempval1 = tempval1[1:-1]
-                        tok_count += 1
-                        self.Lexeme_Token_Table.insert("", tk.END, values=(tok_count, tempval1, token))
-                    else:
-                        tok_count += 1
-                        self.Lexeme_Token_Table.insert("", tk.END, values=(tok_count, lexeme, token))
-
-                self.tag_rows(self.Lexeme_Token_Table)
-                self.errors_result.insert(tk.END, "")
-                self.errors_result.insert(tk.END, "StellarSynth -> Tokenization Complete.")
-
-            # Now, you can integrate the SyntaxAnalyzer and call its methods with the tokens list
-            syntax_analyzer = SyntaxAnalyzer(tokens)
-            syntax_analyzer.parse_top_program()
-            #  syntax_analyzer.parse_main_program()
-
-            if syntax_analyzer.errors:
-                for error in syntax_analyzer.errors:
-                    self.errors_result.insert(tk.END, f"StellarSynth -> {error}")
-            else:
-                self.errors_result.insert(tk.END, "StellarSynth -> Syntax is correct")
+                if syntax_analyzer.errors:
+                    for error in syntax_analyzer.errors:
+                        self.errors_result.insert(tk.END, f" StellarSynth -> {error}")
+                else:
+                    self.errors_result.insert(tk.END, " StellarSynth -> Syntax Analysis Complete. No Errors Found.")
 
         except Exception as e:
             print(f"Error: {e}")
