@@ -74,7 +74,7 @@ delim18 =               PrintableChar + Tab + Newline # Unused, Was used for \' 
 delim19 =               Space + Tab + AlphaNum + RCurBrace
 delim20 =               Space + Tab + Terminator + AssignOp + LCurBrace + GreaterThan + LessThan + MathOp + RParenth
 delim21 =               [x for x in PrintableChar if x not in RegQtMarks and x != 'n'] + Newline + Tab # Formerly used for chars  that come after in string \ except n, ', "
-delim22 =               Space + Tab + Newline + UpperAlpha
+delim22 =               Space + Tab + Newline + UpperAlpha + LSqrBrkt
 delim23 =               Space + Tab + RParenth
 delim24 =               Space + Tab + AlphaNum + LParenth + RegSglQtMark + RegDblQtMark
 delim25 =               Space + Tab + Colon
@@ -82,7 +82,7 @@ delim26 =               Space + Tab + ComAlpha + Newline + RSqrBrkt + RParenth
 delim27 =               PrintableChar + Newline + Tab # Not in use
 
 Sun_delim =             (Space + RParenth + RCurBrace + RSqrBrkt + Terminator + Comma +
-                        Ampersand + VerticalBar + ExclaMark + MathOp + AssignOp + GreaterThan + LessThan + Tab)
+                        Ampersand + VerticalBar + ExclaMark + MathOp + AssignOp + GreaterThan + LessThan + Tab + LSqrBrkt)
 Luhman_delim =          (Space + RParenth + RSqrBrkt + Terminator + Comma + Ampersand + VerticalBar
                         + ExclaMark + MathOp + AssignOp + GreaterThan + LessThan + Tab)
 Starsys_delim =         Space + RParenth + Comma + Terminator + LessThan + RSqrBrkt + Tab
