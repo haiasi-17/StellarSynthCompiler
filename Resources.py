@@ -104,7 +104,7 @@ WordSymbolDelims =      {
                         "Formulate":    delim9,
                         "Gotolerate":   delim10,
                         "If":           delim1,
-                        "ISS":          delim2,
+                        "ISS":          sdelim,
                         "Import":       sdelim,
                         "Latch":        delim1,
                         "Launch":       sdelim,
