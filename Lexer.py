@@ -1416,7 +1416,7 @@ class Lexer:
                     return
             else:
                 self.Errors.append(
-                    f"(Line {self.line_num}, Column {self.column_num}) | Lexical Error: \'{sign + self.current_lexeme}\' expected a Sun delimiter for leading zero Sun literals or a period for luhman, instead got {repr(self.current_char)}.")
+                    f"(Line {self.line_num}, Column {self.column_num}) | Lexical Error: {repr(sign + self.current_lexeme)} has invalid delimiter {repr(self.current_char)}.")
                 self.current_lexeme = ""
                 return
         else:
@@ -1424,13 +1424,13 @@ class Lexer:
 
         while True:
             self.advance()
-            if len(self.current_lexeme) == 15 and self.current_char in Resources.DigitsWithZero:
+            if len(self.current_lexeme) == 10 and self.current_char in Resources.DigitsWithZero:
                 self.Errors.append(
-                    f"(Line {self.line_num}, Column {self.column_num}) | Lexical Error: \'{sign + self.current_lexeme}\' Sun length is 15 max. Expected Sun delimiter, instead got {repr(self.current_char)}.")
+                    f"(Line {self.line_num}, Column {self.column_num}) | Lexical Error: {repr(sign + self.current_lexeme)} has invalid delimiter {repr(self.current_char)}.")
                 self.current_lexeme = ""
                 self.retreat()
                 return
-            elif len(self.current_lexeme) <= 15 and self.current_char == Resources.Period[0]:
+            elif len(self.current_lexeme) <= 10 and self.current_char == Resources.Period[0]:
                 self.process_luhman(sign)
                 return
             elif self.current_char not in Resources.DigitsWithZero:
@@ -1454,9 +1454,9 @@ class Lexer:
 
         while True:
             self.advance()
-            if (len(self.current_lexeme) - count) == 15 and self.current_char in Resources.DigitsWithZero:
+            if (len(self.current_lexeme) - count) == 5 and self.current_char in Resources.DigitsWithZero:
                 self.Errors.append(
-                    f"(Line {self.line_num}, Column {self.column_num}) | Lexical Error: \'{sign + self.current_lexeme}\' luhman length is 15 max. Expected luhman delimiter, instead got {repr(self.current_char)}.")
+                    f"(Line {self.line_num}, Column {self.column_num}) | Lexical Error: {repr(sign + self.current_lexeme)} has invalid delimiter {repr(self.current_char)}.")
                 self.current_lexeme = ""
                 return
             elif self.current_char not in Resources.DigitsWithZero:
@@ -1464,7 +1464,7 @@ class Lexer:
                 if self.current_char in Resources.Luhman_delim:
                     if self.current_lexeme[-1] == '0':
                         self.Errors.append(
-                            f"(Line {self.line_num}, Column {self.column_num}) | Lexical Error: \'{sign + self.current_lexeme}\' luhman literal must not end with a trailing zero.")
+                            f"(Line {self.line_num}, Column {self.column_num}) | Lexical Error: {repr(sign + self.current_lexeme)} has invalid delimiter {repr(self.current_char)}.")
                         self.current_lexeme = ""
                         return
                     else:
@@ -1475,10 +1475,10 @@ class Lexer:
                 else:
                     if self.current_lexeme[-1] == Resources.Period[0]:
                         self.Errors.append(
-                            f"(Line {self.line_num}, Column {self.column_num}) | Lexical Error: \'{sign + self.current_lexeme}\' luhman literal must be succeeded by either a digit or a zero.")
+                            f"(Line {self.line_num}, Column {self.column_num}) | Lexical Error: {repr(sign + self.current_lexeme)} has invalid delimiter {repr(self.current_char)}.")
                     else:
                         self.Errors.append(
-                            f"(Line {self.line_num}, Column {self.column_num}) | Lexical Error: {repr(self.current_lexeme)} has invalid delimiter {repr(self.current_char)}.")
+                            f"(Line {self.line_num}, Column {self.column_num}) | Lexical Error: {repr(sign + self.current_lexeme)} has invalid delimiter {repr(self.current_char)}.")
                     self.current_lexeme = ""
                     return
             elif self.current_char in Resources.DigitsWithZero:
