@@ -109,7 +109,6 @@ WordSymbolDelims =      {
                         "Latch":        delim1,
                         "Launch":       sdelim,
                         "Luhman":       delim1,
-                        "Navgto":       sdelim,
                         "Nominal":      delim25,
                         "Other":        delim6,
                         "Perform":      delim6,
