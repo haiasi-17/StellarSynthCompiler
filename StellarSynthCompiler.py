@@ -138,7 +138,6 @@ class MainWindow:
         if self.opened_file_flag is True:
             self.opened_file_flag = False
         userAfterLexerEdit_flag = True
-        self.last_line_with_text = self.editor.index(tk.END).strip()
 
     def use_user_input(self):
         if self.opened_file_flag is False:
@@ -235,8 +234,10 @@ class MainWindow:
                     for error in syntax_analyzer.errors:
                         self.errors_result.insert(tk.END, f" StellarSynth -> {error}")
                 else:
-                    self.errors_result.insert(tk.END, " StellarSynth -> Syntax Analysis Complete. Syntax is correct. No Errors Found.")
+                    self.errors_result.insert(tk.END, " StellarSynth -> Syntax is correct. No Errors Found.")
 
+            self.errors_result.insert(tk.END, "")
+            self.errors_result.insert(tk.END, " StellarSynth -> Syntax Analysis Complete.")
         except Exception as e:
             print(f"Error: {e}")
 
