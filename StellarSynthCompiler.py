@@ -225,7 +225,6 @@ class MainWindow:
                 self.errors_result.insert(tk.END, " StellarSynth -> Tokens list is empty. Run Lexical Analysis.")
             elif userAfterLexerEdit_flag is True:
                 self.errors_result.insert(tk.END, " StellarSynth -> New input detected, re-run Lexical Analysis.")
-                userAfterLexerEdit_flag = False
             else:
                 # Now, you can integrate the SyntaxAnalyzer and call its methods with the tokens list
                 syntax_analyzer = SyntaxAnalyzer(temp_list_tokens)
