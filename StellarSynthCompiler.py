@@ -20,12 +20,13 @@ class MainWindow:
         self.master.iconbitmap("Astronaut.ico")
         self.UpdateDelay = 300
         self.s_index = 0
-        self.s = "-> STELLARSYNTH COMPILER <- " * 10000
+        self.s = "-> STELLARSYNTH COMPILER <- " * 20000
 
         self.main_frame = tk.Frame(self.master, bg='#f3f3ff', width=1240, height=680, bd=1, relief="solid")
         self.main_frame.grid(row=1, column=1)
         self.grid_configure(self.master)
 
+        # Buttons
         self.lexer_button = tk.Button(self.main_frame, text="Lexer", bg="#dbdbff", bd=1, relief="solid", width=10, command=self.run_lexical)
         self.lexer_button.place(x=15, y=40)
 
@@ -41,24 +42,35 @@ class MainWindow:
         self.save_button = tk.Button(self.main_frame, text="Save",bg="#dbdbff", bd=1, relief="solid", width=10, command=self.save_file)
         self.save_button.place(x=737, y=40)
 
+        # Logo
         self.stellar_synth_logo = tk.Label(self.main_frame, text=self.s, bg="BLACK", fg="#dbdbff", font=("terminal", 18))
         self.stellar_synth_logo.place(x=0, y=0)
 
+        # Editor
         self.editor_with_scrollbar = tk.Frame(self.main_frame)
-        self.editor_with_scrollbar.place(x=15, y=80, width=800, height=380)
+        self.editor_with_scrollbar.place(x=65, y=80, width=750, height=380)
+
+        self.editorNumbers = ttk.Treeview(self.main_frame,columns="Numbers", show="")
+        self.editorNumbers.heading("Numbers", text="Num")
+        self.editorNumbers.configure(height=100)
+        self.editorNumbers.place(x=15,y=80, width = 50, height = 400)
 
         self.editor = tk.Text(self.editor_with_scrollbar, wrap="none", font=("Courier New", 11))
         self.editor.pack(expand=True, fill="both", side="left")
         self.editor.bind("<KeyRelease>", self.user_writes)
+        self.editor.bind("<Return>", lambda event: self.addlineNumbers())
+        self.editor.bind("<BackSpace>",lambda event: self.HandleBackSpace())
+        self.editor.configure(spacing3=2.5)
+        self.addlineNumbers()
 
-        self.scrollbar = tk.Scrollbar(self.editor_with_scrollbar, command=self.editor.yview)
+        self.scrollbar = tk.Scrollbar(self.editor_with_scrollbar, command=self.sync_scroll)
         self.scrollbar.pack(side="right", fill="y")
 
-        self.editor['yscrollcommand'] = self.scrollbar.set
-
+        # Results
         self.errors_result = tk.Listbox(self.main_frame, bg="black", fg="white",font=("Courier New", 10))
         self.errors_result.place(x=14, y=460, width=802, height=200)
 
+        # Lexeme token Table
         self.Lexeme_Token_Table = ttk.Treeview(self.main_frame, columns=("Number","Lexeme", "Token"), show="headings")
         self.Lexeme_Token_Table.heading("Number", text="Num.")
         self.Lexeme_Token_Table.heading("Lexeme", text="Lexeme")
@@ -71,7 +83,33 @@ class MainWindow:
         self.Lexeme_Token_Table.place(x=820, y=80, width=380, height=580)
         self.Lexeme_Token_Table_scrollbar.place(x=1195, y=80, height=580)
 
+        # Initiate animation
         self.master.after(self.UpdateDelay, self.update)
+
+    def sync_scroll(self, *args):
+        self.editorNumbers.yview(*args)
+        self.editor.yview(*args)
+
+    def HandleBackSpace(self):
+        input_text = self.editor.get("1.0", "end-1c")
+        line_num = input_text.count("\n")
+        self.editorNumbers.tag_configure("addlineNumbers_font", font=("Courier New", 11))
+        if len(self.editorNumbers.get_children()) > 2:
+            self.editorNumbers.delete(*self.editorNumbers.get_children())
+            for i in range(1, line_num+2):
+                self.editorNumbers.insert("", tk.END, values=(i,), tags="addlineNumbers_font")
+    def addlineNumbers(self):
+        input_text = self.editor.get("1.0", tk.END)
+        line_num = input_text.count("\n")
+        self.editorNumbers.tag_configure("addlineNumbers_font", font=("Courier New", 11))
+
+        if len(self.editorNumbers.get_children()) == 0:
+            for i in range(1, line_num + 2):
+                self.editorNumbers.insert("", tk.END, values=(i,), tags="addlineNumbers_font")
+        else:
+            self.editorNumbers.delete(*self.editorNumbers.get_children())
+            for i in range(1,line_num+3):
+                self.editorNumbers.insert("", tk.END, values=(i,), tags="addlineNumbers_font")
 
     def tag_rows(self, tree):
         for i, item in enumerate(tree.get_children()):
@@ -100,6 +138,7 @@ class MainWindow:
         if self.opened_file_flag is True:
             self.opened_file_flag = False
         userAfterLexerEdit_flag = True
+        self.last_line_with_text = self.editor.index(tk.END).strip()
 
     def use_user_input(self):
         if self.opened_file_flag is False:
@@ -209,41 +248,4 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
