@@ -2720,10 +2720,59 @@ class SyntaxAnalyzer:
 
                 else:
                     return True  # else: last identifier has no following identifiers (comma)
+            #  type conversion path
+            elif self.peek_next_token() == "Sun":
+                self.match("Sun")
+                if self.peek_next_token() == "(":
+                    self.match_parenth("(")
+                    if self.peek_previous_token() == ")":
+                        return True
+                    else:
+                        self.errors.append(
+                            f"(Line {self.line_number}) | Syntax Error: Expected ')', '+', '-', '*', '/', '%', '**'")
+                else:
+                    self.errors.append(
+                        f"(Line {self.line_number}) | Syntax error: Expected '(', but instead got '{self.peek_next_token()}'")
+            # Luhman type convert
+            elif self.peek_next_token() == "Luhman":
+                self.match("Luhman")
+                if self.peek_next_token() == "(":
+                    self.match_parenth("(")
+                    if self.peek_previous_token() == ")":
+                        return True
+                    else:
+                        self.errors.append(
+                            f"(Line {self.line_number}) | Syntax Error: Expected ')', '+', '-', '*', '/', '%', '**'")
+                else:
+                    self.errors.append(
+                        f"(Line {self.line_number}) | Syntax error: Expected '(', but instead got '{self.peek_next_token()}'")
+            # Starsys type convert
+            elif self.peek_next_token() == "Starsys":
+                self.match("Starsys")
+                if self.peek_next_token() == "(":
+                    self.match("(")
+                    if self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral" \
+                            or self.peek_next_token() == "True" or self.peek_next_token() == "False":
+                        self.match(Resources.Value4)  # consume values
+                        #  close it with ')'
+                        if self.peek_next_token() == ")":
+                            self.match(")")
+                            return True
+                        #  error: not followed by ')'
+                        else:
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Syntax Error: Expected ')', but instead got '{self.peek_next_token()}'")
+                    #  error: values are not as expected
+                    else:
+                        self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected 'SunLiteral', "
+                                           f"'LuhmanLiteral', 'True', 'False', but instead got '{self.peek_next_token()}'")
+                else:
+                    self.errors.append(
+                        f"(Line {self.line_number}) | Syntax error: Expected '(', but instead got '{self.peek_next_token()}'")
             #  else: if it is not followed by any of the value it shows the error
             else:
                 self.errors.append(
-                    f"(Line {self.line_number}) | Syntax error: Expected  'Identifier', "
+                    f"(Line {self.line_number}) | Syntax error: Expected  'Sun', 'Luhman', 'Starsys', 'Identifier', "
                     f"'SunLiteral', 'LuhmanLiteral', 'StarsysLiteral', 'True', 'False', but instead got '{self.peek_next_token()}'")
         #  else: no equals sign
         else:
