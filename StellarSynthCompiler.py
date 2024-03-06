@@ -211,7 +211,7 @@ class MainWindow:
 
             self.tag_rows(self.Lexeme_Token_Table)
             self.errors_result.insert(tk.END, "")
-            self.errors_result.insert(tk.END, " StellarSynth -> Lexical Analysis Complete. Tokenization Complete")
+            self.errors_result.insert(tk.END, " StellarSynth -> Lexical Analysis Complete. Tokenization Complete.")
             self.errors_result.insert(tk.END, f" StellarSynth -> Generated a total of {tok_count} tokens. ")
 
         except Exception as e:
