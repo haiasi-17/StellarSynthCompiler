@@ -72,7 +72,7 @@ delim16 =               Space + Tab + Newline + Terminator + ComAlpha + RSqrBrkt
 delim17 =               Space + Tab + AlphaNum + RegSglQtMark + RegDblQtMark + LSqrBrkt
 delim18 =               PrintableChar + Tab + Newline # Unused, Was used for \' and \" delims and $ Delimiter
 delim19 =               Space + Tab + AlphaNum + RCurBrace
-delim20 =               Space + Tab + Terminator + AssignOp + LCurBrace + GreaterThan + LessThan + MathOp + RParenth
+delim20 =               Space + Tab + Terminator + AssignOp + LCurBrace + GreaterThan + LessThan + MathOp + RParenth + Comma
 delim21 =               [x for x in PrintableChar if x not in RegQtMarks and x != 'n'] + Newline + Tab # Formerly used for chars  that come after in string \ except n, ', "
 delim22 =               Space + Tab + Newline + UpperAlpha + LSqrBrkt
 delim23 =               Space + Tab + RParenth
