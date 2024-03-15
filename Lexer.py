@@ -1623,10 +1623,7 @@ def read_text(file):
     contents = open(file, "r").read()
     lexer_instance = Lexer(contents)
     errors, tokens = lexer_instance.split_content_into_lines()
-    print(errors)
-    print(tokens)
-
-read_text('StellarSynth')
+    return errors, tokens
 
 
 """

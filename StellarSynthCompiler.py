@@ -1,13 +1,7 @@
 import tkinter as tk
 from tkinter import filedialog, ttk
-import subprocess
-
-from Syntax import SyntaxAnalyzer
-
-temp_list_tokens = []
-lexer_flag = False
-userAfterLexerEdit_flag = False
-
+import Syntax
+import Lexer
 
 class MainWindow:
     def __init__(self, master):
@@ -18,6 +12,7 @@ class MainWindow:
         self.master.geometry("1280x720")
         self.master.configure(bg='#a09fff')
         self.master.iconbitmap("Astronaut.ico")
+
         self.UpdateDelay = 300
         self.s_index = 0
         self.s = "-> STELLARSYNTH COMPILER <- " * 20000
@@ -134,10 +129,8 @@ class MainWindow:
         self.master.after(self.UpdateDelay, self.update)
 
     def user_writes(self, event):
-        global userAfterLexerEdit_flag
         if self.opened_file_flag is True:
             self.opened_file_flag = False
-        userAfterLexerEdit_flag = True
 
     def use_user_input(self):
         if self.opened_file_flag is False:
@@ -156,6 +149,7 @@ class MainWindow:
                 self.editor.delete("1.0", tk.END)
                 self.editor.insert(tk.END, content)
                 self.opened_file_flag = True
+        self.addlineNumbers()
 
     def save_file(self):
         file_path = filedialog.asksaveasfilename(defaultextension=".txt", filetypes=[("All Files", "*.*")])
@@ -164,21 +158,15 @@ class MainWindow:
                 file.write(self.editor.get("1.0", tk.END))
 
     def run_lexical(self):
-        global temp_list_tokens, lexer_flag, userAfterLexerEdit_flag
         tok_count = 0
-        userAfterLexerEdit_flag = False
         try:
             self.use_user_input()
-            result = subprocess.check_output(['python', 'Lexer.py'], universal_newlines=True)
 
-            lines = result.strip().split('\n')
-
-            errors = eval(lines[0]) if lines else []
-            tokens = eval(lines[1]) if len(lines) > 1 else []
+            errors, tokens = Lexer.read_text('StellarSynth')
 
             self.errors_result.delete(0, tk.END)
 
-            if not errors:
+            if not errors and tokens:
                 self.errors_result.insert(tk.END, " StellarSynth -> No errors found during lexical analysis.")
             else:
                 for error in errors:
@@ -189,8 +177,6 @@ class MainWindow:
                 self.errors_result.insert(tk.END, " StellarSynth -> Tokens list is empty.")
             else:
                 tok_count = 0
-                temp_list_tokens = tokens
-                lexer_flag = True
                 for lexeme, token in tokens:
                     if token == "\n" or token == "\t":
                         tempval1 = repr(lexeme)
@@ -210,23 +196,27 @@ class MainWindow:
 
             self.tag_rows(self.Lexeme_Token_Table)
             self.errors_result.insert(tk.END, "")
-            self.errors_result.insert(tk.END, " StellarSynth -> Lexical Analysis Complete. Tokenization Complete.")
+            self.errors_result.insert(tk.END, " StellarSynth -> Lexical Analysis Complete.")
             self.errors_result.insert(tk.END, f" StellarSynth -> Generated a total of {tok_count} tokens. ")
+            return errors, tokens
 
         except Exception as e:
             print(f"Error: {e}")
 
     def run_syntax(self):
-        global userAfterLexerEdit_flag
+        self.run_lexical()
+        errors, tokens = Lexer.read_text('StellarSynth')
         try:
             self.errors_result.delete(0, tk.END)
-            if not temp_list_tokens:
-                self.errors_result.insert(tk.END, " StellarSynth -> Tokens list is empty. Run Lexical Analysis.")
-            elif userAfterLexerEdit_flag is True:
-                self.errors_result.insert(tk.END, " StellarSynth -> New input detected, re-run Lexical Analysis.")
+            if not tokens:
+                self.errors_result.insert(tk.END, " StellarSynth -> Tokens list is empty.")
+                if errors:
+                    self.errors_result.insert(tk.END," StellarSynth -> Lexical Analysis Error. Cannot proceed with Syntax Analysis.")
+            elif errors:
+                self.errors_result.insert(tk.END, " StellarSynth -> Lexical Analysis Error. Cannot proceed with Syntax Analysis.")
             else:
                 # Now, you can integrate the SyntaxAnalyzer and call its methods with the tokens list
-                syntax_analyzer = SyntaxAnalyzer(temp_list_tokens)
+                syntax_analyzer = Syntax.SyntaxAnalyzer(tokens)
                 syntax_analyzer.parse_top_program()
                 #  syntax_analyzer.parse_main_program()
 
