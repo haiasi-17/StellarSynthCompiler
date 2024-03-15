@@ -782,7 +782,7 @@ class SyntaxAnalyzer:
                     return True
 
 
-    #  assign multiple values in parameter
+    #  assign multiple values in parameter subfunc definition
     def match_param_assign_mult(self, expected_token):
         self.get_next_token()
         while self.current_token == "Space":
@@ -1263,7 +1263,8 @@ class SyntaxAnalyzer:
                                     self.errors.append(
                                         f"(Line {self.line_number}) | Syntax error: Expected ',', 'Lcurlbraces', but instead got '{self.peek_next_token()}'")
                             else:
-                                return True  # else: last identifier has no following identifiers (comma)
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax error: Expected 'SunLiteral', 'Identifier', 'Rcurlbraces', but instead got '{self.peek_next_token()}'")
                         elif self.peek_next_token() == ",":
                             self.match_param_assign_mult(",")
                         elif self.peek_next_token() == "=":
@@ -1271,6 +1272,7 @@ class SyntaxAnalyzer:
                         #  no assign value (=) or next value (comma)
                         #  no more assigned values
                         elif self.peek_next_token() == ")":
+
                             return True
                         #  not closed with ')' or followed by any...
                         else:
@@ -1754,7 +1756,8 @@ class SyntaxAnalyzer:
                                 self.errors.append(
                                     f"(Line {self.line_number}) | Syntax error: Expected ',', 'Lcurlbraces', but instead got '{self.peek_next_token()}'")
                         else:
-                            return True  # else: last identifier has no following identifiers (comma)
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Syntax error: Expected 'SunLiteral', 'Identifier', 'Rcurlbraces', but instead got '{self.peek_next_token()}'")
                     elif self.peek_next_token() == ",":
                         self.match_param_assign_mult(",")
                     elif self.peek_next_token() == "=":
@@ -1777,6 +1780,722 @@ class SyntaxAnalyzer:
                                            f", but instead got '{self.peek_next_token()}'")
         else:
             self.errors.append(f"(Line {self.line_number}) | Syntax error: Expected '{expected_token}' but found '{self.current_token}'")
+            return False
+
+    #  assign multiple values in parameter subfunc prototype
+    def match_param_assign_mult_prototype(self, expected_token):
+        self.get_next_token()
+        while self.current_token == "Space":
+            self.get_next_token()
+
+        if expected_token == ",":
+            #  if the next is a comma proceed to check if it is followed by Static
+            if self.peek_next_token() == "Static":
+                self.match("Static")
+                #  if the next is a Static proceed to check if it is followed by data type
+                if self.peek_next_token() == "Sun" or self.peek_next_token() == "Luhman" \
+                        or self.peek_next_token() == "Starsys" or self.peek_next_token() == "Boolean":
+                    self.match(Resources.Datatype2)
+                    if re.match(r'Identifier\d*$', self.peek_next_token()):
+                        self.match("Identifier")
+                        #  parameter is an array index path (static)
+                        if self.peek_next_token() == "{":
+                            self.match("{")  # consume
+                            #  array index assign path
+                            if (re.match(r'Identifier\d*$', self.peek_next_token())
+                                    or self.peek_next_token() == "SunLiteral"):
+                                self.match(Resources.Value3)  # consume the values
+                                #  size expression
+                                if (
+                                        self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                                        or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                                    self.match_mathop3(Resources.mathop1)  # size is a math expr
+                                    #  close it with "}" if size is fulfilled
+                                    if self.peek_next_token() == "}":
+                                        self.match("}")
+                                        #  check: if closed, single 1D array
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")
+                                            #  followed it with '#'
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  has gotolerate
+                                            elif self.peek_next_token() == "Gotolerate":
+                                                self.match("Gotolerate")
+                                                #  must be followed by '#'
+                                                if self.peek_next_token() == "#":
+                                                    self.match("#")
+                                                #  error: not followed by '#'
+                                                else:
+                                                    self.errors.append(
+                                                        f"(Line {self.line_number}) | Syntax error: Expected '#', but instead got '{self.peek_next_token()}'")
+                                            #  error: not followed by '#' or gotolerate
+                                            else:
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
+                                        #  single id is followed by a comma, (Static Sun a{1},.....)
+                                        elif self.peek_next_token() == ",":
+                                            self.match_param_assign_mult_prototype(",")
+                                            #  close with ')' after assigning value/s
+                                            if self.peek_next_token() == ")":
+                                                self.match(")")
+                                                #  followed it with '#'
+                                                if self.peek_next_token() == "#":
+                                                    self.match("#")
+                                                #  has gotolerate
+                                                elif self.peek_next_token() == "Gotolerate":
+                                                    self.match("Gotolerate")
+                                                    #  must be followed by '#'
+                                                    if self.peek_next_token() == "#":
+                                                        self.match("#")
+                                                    #  error: not followed by '#'
+                                                    else:
+                                                        self.errors.append(
+                                                            f"(Line {self.line_number}) | Syntax error: Expected '#', but instead got '{self.peek_next_token()}'")
+                                                #  error: not followed by '#' or gotolerate
+                                                else:
+                                                    self.errors.append(
+                                                        f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
+                                        # or add another size to become 2D array
+                                        elif self.peek_next_token() == "{":
+                                            self.match_arrID2D_index_parameter("{")
+                                            #  check: if closed, single 2D array
+                                            if self.peek_next_token() == ")":
+                                                self.match(")")
+                                                #  followed it with '#'
+                                                if self.peek_next_token() == "#":
+                                                    self.match("#")
+                                                #  has gotolerate
+                                                elif self.peek_next_token() == "Gotolerate":
+                                                    self.match("Gotolerate")
+                                                    #  must be followed by '#'
+                                                    if self.peek_next_token() == "#":
+                                                        self.match("#")
+                                                    #  error: not followed by '#'
+                                                    else:
+                                                        self.errors.append(
+                                                            f"(Line {self.line_number}) | Syntax error: Expected '#', but instead got '{self.peek_next_token()}'")
+                                                #  error: not followed by '#' or gotolerate
+                                                else:
+                                                    self.errors.append(
+                                                        f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
+                                            #  single id is followed by a comma, (Static Sun a{1},.....)
+                                            elif self.peek_next_token() == ",":
+                                                self.match_param_assign_mult_prototype(",")
+                                                #  close with ')' after assigning value/s
+                                                if self.peek_next_token() == ")":
+                                                    self.match(")")
+                                                    #  followed it with '#'
+                                                    if self.peek_next_token() == "#":
+                                                        self.match("#")
+                                                    #  has gotolerate
+                                                    elif self.peek_next_token() == "Gotolerate":
+                                                        self.match("Gotolerate")
+                                                        #  must be followed by '#'
+                                                        if self.peek_next_token() == "#":
+                                                            self.match("#")
+                                                        #  error: not followed by '#'
+                                                        else:
+                                                            self.errors.append(
+                                                                f"(Line {self.line_number}) | Syntax error: Expected '#', but instead got '{self.peek_next_token()}'")
+                                                    #  error: not followed by '#' or gotolerate
+                                                    else:
+                                                        self.errors.append(
+                                                            f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
+                                            #  error: not followed by
+                                            else:
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax error: Expected ',', ')', but instead got '{self.peek_next_token()}'")
+                                        #  error: not followed by
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax error: Expected ',', 'Lcurlbraces', but instead got '{self.peek_next_token()}'")
+                                    #  not closed with '}'
+                                    else:
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax Error: Expected 'Rcurlbrace', but instead got '{self.peek_next_token()}'")
+                                #  size is single value
+                                elif self.peek_next_token() == "}":
+                                    self.match("}")
+                                    #  check: if closed, single 1D array (size is single value)
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")
+                                        #  followed it with '#'
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        #  has gotolerate
+                                        elif self.peek_next_token() == "Gotolerate":
+                                            self.match("Gotolerate")
+                                            #  must be followed by '#'
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  error: not followed by '#'
+                                            else:
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax error: Expected '#', but instead got '{self.peek_next_token()}'")
+                                        #  error: not followed by '#' or gotolerate
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
+                                    #  single id is followed by a comma, (Static Sun a{1},.....)
+                                    elif self.peek_next_token() == ",":
+                                        self.match_param_assign_mult_prototype(",")
+                                        #  close with ')' after assigning value/s
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")
+                                            #  followed it with '#'
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  has gotolerate
+                                            elif self.peek_next_token() == "Gotolerate":
+                                                self.match("Gotolerate")
+                                                #  must be followed by '#'
+                                                if self.peek_next_token() == "#":
+                                                    self.match("#")
+                                                #  error: not followed by '#'
+                                                else:
+                                                    self.errors.append(
+                                                        f"(Line {self.line_number}) | Syntax error: Expected '#', but instead got '{self.peek_next_token()}'")
+                                            #  error: not followed by '#' or gotolerate
+                                            else:
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
+                                    # or add another size to become 2D array
+                                    elif self.peek_next_token() == "{":
+                                        self.match_arrID2D_index_parameter("{")
+                                        #  check: if closed, single 1D array (size is single value)
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")
+                                            #  followed it with '#'
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  has gotolerate
+                                            elif self.peek_next_token() == "Gotolerate":
+                                                self.match("Gotolerate")
+                                                #  must be followed by '#'
+                                                if self.peek_next_token() == "#":
+                                                    self.match("#")
+                                                #  error: not followed by '#'
+                                                else:
+                                                    self.errors.append(
+                                                        f"(Line {self.line_number}) | Syntax error: Expected '#', but instead got '{self.peek_next_token()}'")
+                                            #  error: not followed by '#' or gotolerate
+                                            else:
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
+                                        #  single id is followed by a comma, (Static Sun a{1},.....)
+                                        elif self.peek_next_token() == ",":
+                                            self.match_param_assign_mult_prototype(",")
+                                            #  close with ')' after assigning value/s
+                                            if self.peek_next_token() == ")":
+                                                self.match(")")
+                                                #  followed it with '#'
+                                                if self.peek_next_token() == "#":
+                                                    self.match("#")
+                                                #  has gotolerate
+                                                elif self.peek_next_token() == "Gotolerate":
+                                                    self.match("Gotolerate")
+                                                    #  must be followed by '#'
+                                                    if self.peek_next_token() == "#":
+                                                        self.match("#")
+                                                    #  error: not followed by '#'
+                                                    else:
+                                                        self.errors.append(
+                                                            f"(Line {self.line_number}) | Syntax error: Expected '#', but instead got '{self.peek_next_token()}'")
+                                                #  error: not followed by '#' or gotolerate
+                                                else:
+                                                    self.errors.append(
+                                                        f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
+                                        #  error: not followed by an equal
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax error: Expected ',', ')', but instead got '{self.peek_next_token()}'")
+                                    #  error: not followed by an equal
+                                    else:
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax error: Expected ',', 'Lcurlbraces', but instead got '{self.peek_next_token()}'")
+                                #  size value is not followed by any of the following (# and Rcurl)
+                                else:
+                                    self.errors.append(
+                                        f"(Line {self.line_number}) | Syntax Error: Expected 'Rcurlbraces', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
+                            #  empty size, proceed to close it with '}'
+                            elif self.peek_next_token() == "}":
+                                self.match("}")
+                                #  check: if closed, single 1D array (size is empty)
+                                if self.peek_next_token() == ")":
+                                    self.match(")")
+                                    #  followed it with '#'
+                                    if self.peek_next_token() == "#":
+                                        self.match("#")
+                                    #  has gotolerate
+                                    elif self.peek_next_token() == "Gotolerate":
+                                        self.match("Gotolerate")
+                                        #  must be followed by '#'
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        #  error: not followed by '#'
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax error: Expected '#', but instead got '{self.peek_next_token()}'")
+                                    #  error: not followed by '#' or gotolerate
+                                    else:
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
+                                #  single id is followed by a comma, (Static Sun a{1},.....)
+                                elif self.peek_next_token() == ",":
+                                    self.match_param_assign_mult_prototype(",")
+                                    #  close with ')' after assigning value/s
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")
+                                        #  followed it with '#'
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        #  has gotolerate
+                                        elif self.peek_next_token() == "Gotolerate":
+                                            self.match("Gotolerate")
+                                            #  must be followed by '#'
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  error: not followed by '#'
+                                            else:
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax error: Expected '#', but instead got '{self.peek_next_token()}'")
+                                        #  error: not followed by '#' or gotolerate
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
+                                # or add another size to become 2D array
+                                elif self.peek_next_token() == "{":
+                                    self.match_arrID2D_index_parameter("{")
+                                    #  check: if closed, single 2D array
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")
+                                        #  followed it with '#'
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        #  has gotolerate
+                                        elif self.peek_next_token() == "Gotolerate":
+                                            self.match("Gotolerate")
+                                            #  must be followed by '#'
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  error: not followed by '#'
+                                            else:
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax error: Expected '#', but instead got '{self.peek_next_token()}'")
+                                        #  error: not followed by '#' or gotolerate
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
+                                    #  single id is followed by a comma, (Static Sun a{1},.....)
+                                    elif self.peek_next_token() == ",":
+                                        self.match_param_assign_mult_prototype(",")
+                                        #  close with ')' after assigning value/s
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")
+                                            #  followed it with '#'
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  has gotolerate
+                                            elif self.peek_next_token() == "Gotolerate":
+                                                self.match("Gotolerate")
+                                                #  must be followed by '#'
+                                                if self.peek_next_token() == "#":
+                                                    self.match("#")
+                                                #  error: not followed by '#'
+                                                else:
+                                                    self.errors.append(
+                                                        f"(Line {self.line_number}) | Syntax error: Expected '#', but instead got '{self.peek_next_token()}'")
+                                            #  error: not followed by '#' or gotolerate
+                                            else:
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
+                                    #  error: not followed by an equal
+                                    else:
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax error: Expected ',', ')', but instead got '{self.peek_next_token()}'")
+                                #  error: not followed by an equal
+                                else:
+                                    self.errors.append(
+                                        f"(Line {self.line_number}) | Syntax error: Expected ',', 'Lcurlbraces', but instead got '{self.peek_next_token()}'")
+                            else:
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax error: Expected 'SunLiteral', 'Identifier', 'Rcurlbraces', but instead got '{self.peek_next_token()}'")
+                        elif self.peek_next_token() == ",":
+                            self.match_param_assign_mult_prototype(",")
+                        elif self.peek_next_token() == "=":
+                            self.match_param_assign("=")
+                        #  no assign value (=) or next value (comma)
+                        #  no more assigned values
+                        elif self.peek_next_token() == ")":
+
+                            return True
+                        #  not closed with ')' or followed by any...
+                        else:
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Syntax Error: Expected ')', ',', '=', but instead got '{self.peek_next_token()}'")
+                    # else: if it is not followed by an id, it shows the error
+                    else:
+                        self.errors.append(f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', "
+                                           f"but instead got '{self.peek_next_token()}'")
+                #  no datatype
+                else:
+                    self.errors.append(
+                        f"(Line {self.line_number}) | Syntax error: Expected 'Sun', 'Luhman', 'Starsys', 'Boolean' "
+                        f"but instead got '{self.peek_next_token()}'")
+            #  else if the next is a comma proceed to check if it is followed by data type
+            elif self.peek_next_token() == "Sun" or self.peek_next_token() == "Luhman" \
+                    or self.peek_next_token() == "Starsys" or self.peek_next_token() == "Boolean":
+                self.match(Resources.Datatype2)
+                if re.match(r'Identifier\d*$', self.peek_next_token()):
+                    self.match("Identifier")
+                    #  parameter is an array index path
+                    if self.peek_next_token() == "{":
+                        self.match("{")  # consume
+                        #  array index assign path
+                        if (re.match(r'Identifier\d*$', self.peek_next_token())
+                                or self.peek_next_token() == "SunLiteral"):
+                            self.match(Resources.Value3)  # consume the values
+                            #  size expression
+                            if (
+                                    self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                                    or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                                self.match_mathop3(Resources.mathop1)  # size is a math expr
+                                #  close it with "}" if size is fulfilled
+                                if self.peek_next_token() == "}":
+                                    self.match("}")
+                                    #  check: if closed, single 1D array
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")
+                                        #  followed it with '#'
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        #  has gotolerate
+                                        elif self.peek_next_token() == "Gotolerate":
+                                            self.match("Gotolerate")
+                                            #  must be followed by '#'
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  error: not followed by '#'
+                                            else:
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax error: Expected '#', but instead got '{self.peek_next_token()}'")
+                                        #  error: not followed by '#' or gotolerate
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
+                                    #  single id is followed by a comma, (Static Sun a{1},.....)
+                                    elif self.peek_next_token() == ",":
+                                        self.match_param_assign_mult_prototype(",")
+                                        #  close with ')' after assigning value/s
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")
+                                            #  followed it with '#'
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  has gotolerate
+                                            elif self.peek_next_token() == "Gotolerate":
+                                                self.match("Gotolerate")
+                                                #  must be followed by '#'
+                                                if self.peek_next_token() == "#":
+                                                    self.match("#")
+                                                #  error: not followed by '#'
+                                                else:
+                                                    self.errors.append(
+                                                        f"(Line {self.line_number}) | Syntax error: Expected '#', but instead got '{self.peek_next_token()}'")
+                                            #  error: not followed by '#' or gotolerate
+                                            else:
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
+                                    # or add another size to become 2D array
+                                    elif self.peek_next_token() == "{":
+                                        self.match_arrID2D_index_parameter("{")
+                                        #  check: if closed, single 2D array
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")
+                                            #  followed it with '#'
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  has gotolerate
+                                            elif self.peek_next_token() == "Gotolerate":
+                                                self.match("Gotolerate")
+                                                #  must be followed by '#'
+                                                if self.peek_next_token() == "#":
+                                                    self.match("#")
+                                                #  error: not followed by '#'
+                                                else:
+                                                    self.errors.append(
+                                                        f"(Line {self.line_number}) | Syntax error: Expected '#', but instead got '{self.peek_next_token()}'")
+                                            #  error: not followed by '#' or gotolerate
+                                            else:
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
+                                        #  single id is followed by a comma, (Static Sun a{1},.....)
+                                        elif self.peek_next_token() == ",":
+                                            self.match_param_assign_mult_prototype(",")
+                                            #  close with ')' after assigning value/s
+                                            if self.peek_next_token() == ")":
+                                                self.match(")")
+                                                #  followed it with '#'
+                                                if self.peek_next_token() == "#":
+                                                    self.match("#")
+                                                #  has gotolerate
+                                                elif self.peek_next_token() == "Gotolerate":
+                                                    self.match("Gotolerate")
+                                                    #  must be followed by '#'
+                                                    if self.peek_next_token() == "#":
+                                                        self.match("#")
+                                                    #  error: not followed by '#'
+                                                    else:
+                                                        self.errors.append(
+                                                            f"(Line {self.line_number}) | Syntax error: Expected '#', but instead got '{self.peek_next_token()}'")
+                                                #  error: not followed by '#' or gotolerate
+                                                else:
+                                                    self.errors.append(
+                                                        f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
+                                        #  error: not followed by
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax error: Expected ',', ')', but instead got '{self.peek_next_token()}'")
+                                    #  error: not followed by
+                                    else:
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax error: Expected ',', 'Lcurlbraces', but instead got '{self.peek_next_token()}'")
+                                #  not closed with '}'
+                                else:
+                                    self.errors.append(
+                                        f"(Line {self.line_number}) | Syntax Error: Expected 'Rcurlbrace', but instead got '{self.peek_next_token()}'")
+                            #  size is single value
+                            elif self.peek_next_token() == "}":
+                                self.match("}")
+                                #  check: if closed, single 1D array (size is single value)
+                                if self.peek_next_token() == ")":
+                                    self.match(")")
+                                    #  followed it with '#'
+                                    if self.peek_next_token() == "#":
+                                        self.match("#")
+                                    #  has gotolerate
+                                    elif self.peek_next_token() == "Gotolerate":
+                                        self.match("Gotolerate")
+                                        #  must be followed by '#'
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        #  error: not followed by '#'
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax error: Expected '#', but instead got '{self.peek_next_token()}'")
+                                    #  error: not followed by '#' or gotolerate
+                                    else:
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
+                                #  single id is followed by a comma, (Static Sun a{1},.....)
+                                elif self.peek_next_token() == ",":
+                                    self.match_param_assign_mult_prototype(",")
+                                    #  close with ')' after assigning value/s
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")
+                                        #  followed it with '#'
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        #  has gotolerate
+                                        elif self.peek_next_token() == "Gotolerate":
+                                            self.match("Gotolerate")
+                                            #  must be followed by '#'
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  error: not followed by '#'
+                                            else:
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax error: Expected '#', but instead got '{self.peek_next_token()}'")
+                                        #  error: not followed by '#' or gotolerate
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
+                                # or add another size to become 2D array
+                                elif self.peek_next_token() == "{":
+                                    self.match_arrID2D_index_parameter("{")
+                                    #  check: if closed, single 1D array (size is single value)
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")
+                                        #  followed it with '#'
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        #  has gotolerate
+                                        elif self.peek_next_token() == "Gotolerate":
+                                            self.match("Gotolerate")
+                                            #  must be followed by '#'
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  error: not followed by '#'
+                                            else:
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax error: Expected '#', but instead got '{self.peek_next_token()}'")
+                                        #  error: not followed by '#' or gotolerate
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
+                                    #  single id is followed by a comma, (Static Sun a{1},.....)
+                                    elif self.peek_next_token() == ",":
+                                        self.match_param_assign_mult_prototype(",")
+                                        #  close with ')' after assigning value/s
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")
+                                            #  followed it with '#'
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  has gotolerate
+                                            elif self.peek_next_token() == "Gotolerate":
+                                                self.match("Gotolerate")
+                                                #  must be followed by '#'
+                                                if self.peek_next_token() == "#":
+                                                    self.match("#")
+                                                #  error: not followed by '#'
+                                                else:
+                                                    self.errors.append(
+                                                        f"(Line {self.line_number}) | Syntax error: Expected '#', but instead got '{self.peek_next_token()}'")
+                                            #  error: not followed by '#' or gotolerate
+                                            else:
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
+                                    #  error: not followed by an equal
+                                    else:
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax error: Expected ',', ')', but instead got '{self.peek_next_token()}'")
+                                #  error: not followed by an equal
+                                else:
+                                    self.errors.append(
+                                        f"(Line {self.line_number}) | Syntax error: Expected ',', 'Lcurlbraces', but instead got '{self.peek_next_token()}'")
+                            #  size value is not followed by any of the following (# and Rcurl)
+                            else:
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax Error: Expected 'Rcurlbraces', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
+                        #  empty size, proceed to close it with '}'
+                        elif self.peek_next_token() == "}":
+                            self.match("}")
+                            #  check: if closed, single 1D array (size is empty)
+                            if self.peek_next_token() == ")":
+                                self.match(")")
+                                #  followed it with '#'
+                                if self.peek_next_token() == "#":
+                                    self.match("#")
+                                #  has gotolerate
+                                elif self.peek_next_token() == "Gotolerate":
+                                    self.match("Gotolerate")
+                                    #  must be followed by '#'
+                                    if self.peek_next_token() == "#":
+                                        self.match("#")
+                                    #  error: not followed by '#'
+                                    else:
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax error: Expected '#', but instead got '{self.peek_next_token()}'")
+                                #  error: not followed by '#' or gotolerate
+                                else:
+                                    self.errors.append(
+                                        f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
+                            #  single id is followed by a comma, (Static Sun a{1},.....)
+                            elif self.peek_next_token() == ",":
+                                self.match_param_assign_mult_prototype(",")
+                                #  close with ')' after assigning value/s
+                                if self.peek_next_token() == ")":
+                                    self.match(")")
+                                    #  followed it with '#'
+                                    if self.peek_next_token() == "#":
+                                        self.match("#")
+                                    #  has gotolerate
+                                    elif self.peek_next_token() == "Gotolerate":
+                                        self.match("Gotolerate")
+                                        #  must be followed by '#'
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        #  error: not followed by '#'
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax error: Expected '#', but instead got '{self.peek_next_token()}'")
+                                    #  error: not followed by '#' or gotolerate
+                                    else:
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
+                            # or add another size to become 2D array
+                            elif self.peek_next_token() == "{":
+                                self.match_arrID2D_index_parameter("{")
+                                #  check: if closed, single 2D array
+                                if self.peek_next_token() == ")":
+                                    self.match(")")
+                                    #  followed it with '#'
+                                    if self.peek_next_token() == "#":
+                                        self.match("#")
+                                    #  has gotolerate
+                                    elif self.peek_next_token() == "Gotolerate":
+                                        self.match("Gotolerate")
+                                        #  must be followed by '#'
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        #  error: not followed by '#'
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax error: Expected '#', but instead got '{self.peek_next_token()}'")
+                                    #  error: not followed by '#' or gotolerate
+                                    else:
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
+                                #  single id is followed by a comma, (Static Sun a{1},.....)
+                                elif self.peek_next_token() == ",":
+                                    self.match_param_assign_mult_prototype(",")
+                                    #  close with ')' after assigning value/s
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")
+                                        #  followed it with '#'
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        #  has gotolerate
+                                        elif self.peek_next_token() == "Gotolerate":
+                                            self.match("Gotolerate")
+                                            #  must be followed by '#'
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  error: not followed by '#'
+                                            else:
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax error: Expected '#', but instead got '{self.peek_next_token()}'")
+                                        #  error: not followed by '#' or gotolerate
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
+                                #  error: not followed by an equal
+                                else:
+                                    self.errors.append(
+                                        f"(Line {self.line_number}) | Syntax error: Expected ',', ')', but instead got '{self.peek_next_token()}'")
+                            #  error: not followed by an equal
+                            else:
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax error: Expected ',', 'Lcurlbraces', but instead got '{self.peek_next_token()}'")
+                        else:
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Syntax error: Expected 'SunLiteral', 'Identifier', 'Rcurlbraces', but instead got '{self.peek_next_token()}'")
+                    elif self.peek_next_token() == ",":
+                        self.match_param_assign_mult_prototype(",")
+                    elif self.peek_next_token() == "=":
+                        self.match_param_assign("=")
+                    #  no assign value (=) or next value (comma)
+                    #  no more assigned values
+                    elif self.peek_next_token() == ")":
+                        return True
+                    #  not closed with ')' or followed by any...
+                    else:
+                        self.errors.append(
+                            f"(Line {self.line_number}) | Syntax Error: Expected ')', ',', '=', but instead got '{self.peek_next_token()}'")
+                # else: if it is not followed by an id, it shows the error
+                else:
+                    self.errors.append(f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', "
+                                       f" but instead got '{self.peek_next_token()}'")
+            #  no datatype
+            else:
+                self.errors.append(
+                    f"(Line {self.line_number}) | Syntax error: Expected 'Static', 'Sun', 'Luhman', 'Starsys', 'Boolean' "
+                    f", but instead got '{self.peek_next_token()}'")
+        else:
+            self.errors.append(
+                f"(Line {self.line_number}) | Syntax error: Expected '{expected_token}' but found '{self.current_token}'")
             return False
 
     #  method for assigning parameter with values
@@ -7470,11 +8189,12 @@ class SyntaxAnalyzer:
     def parse_sub_function_ptype_void(self):
         if self.peek_next_token() == "(":
             self.match("(")
+            # static
             if self.peek_next_token() == "Static":
                 self.match("Static")
                 # has parameter path
                 if (self.peek_next_token() == "Sun" or self.peek_next_token() == "Luhman"
-                        or self.peek_next_token() == "Boolean" or self.peek_next_token() ==  "Starsys"):
+                        or self.peek_next_token() == "Boolean" or self.peek_next_token() == "Starsys"):
                     self.match(Resources.Datatype2)
                     if re.match(r'Identifier\d*$', self.peek_next_token()):
                         self.match("Identifier")
@@ -7511,11 +8231,12 @@ class SyntaxAnalyzer:
                                                         f"(Line {self.line_number}) | Syntax error: Expected '#', but instead got '{self.peek_next_token()}'")
                                             #  error: not followed by '#'
                                             else:
+
                                                 self.errors.append(
                                                     f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
                                         #  single id is followed by a comma, (Static Sun a{1},.....)
                                         elif self.peek_next_token() == ",":
-                                            self.match_param_assign_mult(",")
+                                            self.match_param_assign_mult_prototype(",")
                                             #  close with ')' after assigning value/s
                                             if self.peek_next_token() == ")":
                                                 self.match(")")
@@ -7561,7 +8282,7 @@ class SyntaxAnalyzer:
                                                         f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
                                             #  single id is followed by a comma, (Static Sun a{1},.....)
                                             elif self.peek_next_token() == ",":
-                                                self.match_param_assign_mult(",")
+                                                self.match_param_assign_mult_prototype(",")
                                                 #  close with ')' after assigning value/s
                                                 if self.peek_next_token() == ")":
                                                     self.match(")")
@@ -7619,7 +8340,7 @@ class SyntaxAnalyzer:
                                                 f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
                                     #  single id is followed by a comma, (Static Sun a{1},.....)
                                     elif self.peek_next_token() == ",":
-                                        self.match_param_assign_mult(",")
+                                        self.match_param_assign_mult_prototype(",")
                                         #  close with ')' after assigning value/s
                                         if self.peek_next_token() == ")":
                                             self.match(")")
@@ -7665,7 +8386,7 @@ class SyntaxAnalyzer:
                                                     f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
                                         #  single id is followed by a comma, (Static Sun a{1},.....)
                                         elif self.peek_next_token() == ",":
-                                            self.match_param_assign_mult(",")
+                                            self.match_param_assign_mult_prototype(",")
                                             #  close with ')' after assigning value/s
                                             if self.peek_next_token() == ")":
                                                 self.match(")")
@@ -7723,7 +8444,7 @@ class SyntaxAnalyzer:
                                             f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
                                 #  single id is followed by a comma, (Static Sun a{1},.....)
                                 elif self.peek_next_token() == ",":
-                                    self.match_param_assign_mult(",")
+                                    self.match_param_assign_mult_prototype(",")
                                     #  close with ')' after assigning value/s
                                     if self.peek_next_token() == ")":
                                         self.match(")")
@@ -7769,7 +8490,7 @@ class SyntaxAnalyzer:
                                                 f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
                                     #  single id is followed by a comma, (Static Sun a{1},.....)
                                     elif self.peek_next_token() == ",":
-                                        self.match_param_assign_mult(",")
+                                        self.match_param_assign_mult_prototype(",")
                                         #  close with ')' after assigning value/s
                                         if self.peek_next_token() == ")":
                                             self.match(")")
@@ -7799,7 +8520,9 @@ class SyntaxAnalyzer:
                                     self.errors.append(
                                         f"(Line {self.line_number}) | Syntax error: Expected ',', 'Lcurlbraces', but instead got '{self.peek_next_token()}'")
                             else:
-                                return True  # else: last identifier has no following identifiers (comma)
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax error: Expected 'SunLiteral', 'Identifier', 'Rcurlbraces', but instead got '{self.peek_next_token()}'")
+                        #  equals, assign value to the parameter path (static)
                         elif self.peek_next_token() == "=":
                             self.match_param_assign("=")
                             #  close with ')' after assigning value/s
@@ -7808,6 +8531,85 @@ class SyntaxAnalyzer:
                                 #  terminate it
                                 if self.peek_next_token() == "#":
                                     self.match("#")
+                                #  has gotolerate
+                                elif self.peek_next_token() == "Gotolerate":
+                                    self.match("Gotolerate")
+                                    #  terminate it
+                                    if self.peek_next_token() == "#":
+                                        self.match("#")
+                                    # error: not terminated
+                                    else:
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax error: Expected '#', but instead got '{self.peek_next_token()}'")
+                                #  error: not followed by '#'
+                                else:
+                                    self.errors.append(
+                                        f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
+                            #  error: not closed
+                            else:
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
+                        #  check: if closed, single id no value
+                        elif self.peek_next_token() == ")":
+                            self.match(")")
+                            #  terminate it
+                            if self.peek_next_token() == "#":
+                                self.match("#")
+                            #  has gotolerate
+                            elif self.peek_next_token() == "Gotolerate":
+                                self.match("Gotolerate")
+                                #  terminate it
+                                if self.peek_next_token() == "#":
+                                    self.match("#")
+                                # error: not terminated
+                                else:
+                                    self.errors.append(
+                                        f"(Line {self.line_number}) | Syntax error: Expected '#', but instead got '{self.peek_next_token()}'")
+                            #  error: not followed by '#'
+                            else:
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
+                        #  single id is followed by a comma
+                        elif self.peek_next_token() == ",":
+                            self.match_param_assign_mult_prototype(",")
+                            #  close with ')' after assigning value/s
+                            if self.peek_next_token() == ")":
+                                self.match(")")
+                                #  terminate it
+                                if self.peek_next_token() == "#":
+                                    self.match("#")
+                                #  has gotolerate
+                                elif self.peek_next_token() == "Gotolerate":
+                                    self.match("Gotolerate")
+                                    #  terminate it
+                                    if self.peek_next_token() == "#":
+                                        self.match("#")
+                                    # error: not terminated
+                                    else:
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax error: Expected '#', but instead got '{self.peek_next_token()}'")
+                                #  error: not followed by '#'
+                                else:
+                                    self.errors.append(
+                                        f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
+                        elif self.peek_next_token() == "=":
+                            self.match_param_assign("=")
+                            #  close with ')' after assigning value/s
+                            if self.peek_next_token() == ")":
+                                self.match(")")
+                                #  terminate it
+                                if self.peek_next_token() == "#":
+                                    self.match("#")
+                                #  has gotolerate
+                                elif self.peek_next_token() == "Gotolerate":
+                                    self.match("Gotolerate")
+                                    #  must be followed by '#'
+                                    if self.peek_next_token() == "#":
+                                        self.match("#")
+                                    #  error: not terminated
+                                    else:
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax error: Expected '#', but instead got '{self.peek_next_token()}'")
                                 #  error: not terminated
                                 else:
                                     self.errors.append(
@@ -7822,19 +8624,39 @@ class SyntaxAnalyzer:
                             #  terminate it
                             if self.peek_next_token() == "#":
                                 self.match("#")
+                            #  has gotolerate
+                            elif self.peek_next_token() == "Gotolerate":
+                                self.match("Gotolerate")
+                                #  must be followed by '#'
+                                if self.peek_next_token() == "#":
+                                    self.match("#")
+                                #  error: not terminated
+                                else:
+                                    self.errors.append(
+                                        f"(Line {self.line_number}) | Syntax error: Expected '#', but instead got '{self.peek_next_token()}'")
                             #  error: not terminated
                             else:
                                 self.errors.append(
                                     f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
                         #  single id is followed by a comma
                         elif self.peek_next_token() == ",":
-                            self.match_param_assign_mult(",")
+                            self.match_param_assign_mult_prototype(",")
                             #  close with ')' after assigning value/s
                             if self.peek_next_token() == ")":
                                 self.match(")")
                                 #  terminate it
                                 if self.peek_next_token() == "#":
                                     self.match("#")
+                                #  has gotolerate
+                                elif self.peek_next_token() == "Gotolerate":
+                                    self.match("Gotolerate")
+                                    #  must be followed by '#'
+                                    if self.peek_next_token() == "#":
+                                        self.match("#")
+                                    #  error: not terminated
+                                    else:
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax error: Expected '#', but instead got '{self.peek_next_token()}'")
                                 #  error: not terminated
                                 else:
                                     self.errors.append(
@@ -7851,9 +8673,9 @@ class SyntaxAnalyzer:
                 else:
                     self.errors.append(
                         f"(Line {self.line_number}) | Syntax error: Expected 'Sun', 'Luhman', 'Boolean', 'Starsys', but instead got '{self.peek_next_token()}'")
-            # has parameter path
+            # has parameter path (non static)
             elif (self.peek_next_token() == "Sun" or self.peek_next_token() == "Luhman"
-                        or self.peek_next_token() == "Boolean" or self.peek_next_token() ==  "Starsys"):
+                  or self.peek_next_token() == "Boolean" or self.peek_next_token() == "Starsys"):
                 self.match(Resources.Datatype2)
                 if re.match(r'Identifier\d*$', self.peek_next_token()):
                     self.match("Identifier")
@@ -7892,9 +8714,9 @@ class SyntaxAnalyzer:
                                         else:
                                             self.errors.append(
                                                 f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
-                                    #  single id is followed by a comma, (Sun a{1},.....)
+                                    #  single id is followed by a comma, (Static Sun a{1},.....)
                                     elif self.peek_next_token() == ",":
-                                        self.match_param_assign_mult(",")
+                                        self.match_param_assign_mult_prototype(",")
                                         #  close with ')' after assigning value/s
                                         if self.peek_next_token() == ")":
                                             self.match(")")
@@ -7940,7 +8762,7 @@ class SyntaxAnalyzer:
                                                     f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
                                         #  single id is followed by a comma, (Static Sun a{1},.....)
                                         elif self.peek_next_token() == ",":
-                                            self.match_param_assign_mult(",")
+                                            self.match_param_assign_mult_prototype(",")
                                             #  close with ')' after assigning value/s
                                             if self.peek_next_token() == ")":
                                                 self.match(")")
@@ -7998,7 +8820,7 @@ class SyntaxAnalyzer:
                                             f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
                                 #  single id is followed by a comma, (Static Sun a{1},.....)
                                 elif self.peek_next_token() == ",":
-                                    self.match_param_assign_mult(",")
+                                    self.match_param_assign_mult_prototype(",")
                                     #  close with ')' after assigning value/s
                                     if self.peek_next_token() == ")":
                                         self.match(")")
@@ -8044,7 +8866,7 @@ class SyntaxAnalyzer:
                                                 f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
                                     #  single id is followed by a comma, (Static Sun a{1},.....)
                                     elif self.peek_next_token() == ",":
-                                        self.match_param_assign_mult(",")
+                                        self.match_param_assign_mult_prototype(",")
                                         #  close with ')' after assigning value/s
                                         if self.peek_next_token() == ")":
                                             self.match(")")
@@ -8102,7 +8924,7 @@ class SyntaxAnalyzer:
                                         f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
                             #  single id is followed by a comma, (Static Sun a{1},.....)
                             elif self.peek_next_token() == ",":
-                                self.match_param_assign_mult(",")
+                                self.match_param_assign_mult_prototype(",")
                                 #  close with ')' after assigning value/s
                                 if self.peek_next_token() == ")":
                                     self.match(")")
@@ -8148,7 +8970,7 @@ class SyntaxAnalyzer:
                                             f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
                                 #  single id is followed by a comma, (Static Sun a{1},.....)
                                 elif self.peek_next_token() == ",":
-                                    self.match_param_assign_mult(",")
+                                    self.match_param_assign_mult_prototype(",")
                                     #  close with ')' after assigning value/s
                                     if self.peek_next_token() == ")":
                                         self.match(")")
@@ -8178,7 +9000,8 @@ class SyntaxAnalyzer:
                                 self.errors.append(
                                     f"(Line {self.line_number}) | Syntax error: Expected ',', 'Lcurlbraces', but instead got '{self.peek_next_token()}'")
                         else:
-                            return True  # else: last identifier has no following identifiers (comma)
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Syntax error: Expected 'SunLiteral', 'Identifier', 'Rcurlbraces', but instead got '{self.peek_next_token()}'")
                     elif self.peek_next_token() == "=":
                         self.match_param_assign("=")
                         #  close with ')' after assigning value/s
@@ -8187,6 +9010,16 @@ class SyntaxAnalyzer:
                             #  terminate it
                             if self.peek_next_token() == "#":
                                 self.match("#")
+                            #  has gotolerate
+                            elif self.peek_next_token() == "Gotolerate":
+                                self.match("Gotolerate")
+                                #  must be followed by '#'
+                                if self.peek_next_token() == "#":
+                                    self.match("#")
+                                #  error: not terminated
+                                else:
+                                    self.errors.append(
+                                        f"(Line {self.line_number}) | Syntax error: Expected '#', but instead got '{self.peek_next_token()}'")
                             #  error: not terminated
                             else:
                                 self.errors.append(
@@ -8201,19 +9034,39 @@ class SyntaxAnalyzer:
                         #  terminate it
                         if self.peek_next_token() == "#":
                             self.match("#")
+                        #  has gotolerate
+                        elif self.peek_next_token() == "Gotolerate":
+                            self.match("Gotolerate")
+                            #  must be followed by '#'
+                            if self.peek_next_token() == "#":
+                                self.match("#")
+                            #  error: not terminated
+                            else:
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax error: Expected '#', but instead got '{self.peek_next_token()}'")
                         #  error: not terminated
                         else:
                             self.errors.append(
                                 f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
                     #  single id is followed by a comma
                     elif self.peek_next_token() == ",":
-                        self.match_param_assign_mult(",")
+                        self.match_param_assign_mult_prototype(",")
                         #  close with ')' after assigning value/s
                         if self.peek_next_token() == ")":
                             self.match(")")
                             #  terminate it
                             if self.peek_next_token() == "#":
                                 self.match("#")
+                            #  has gotolerate
+                            elif self.peek_next_token() == "Gotolerate":
+                                self.match("Gotolerate")
+                                #  must be followed by '#'
+                                if self.peek_next_token() == "#":
+                                    self.match("#")
+                                #  error: not terminated
+                                else:
+                                    self.errors.append(
+                                        f"(Line {self.line_number}) | Syntax error: Expected '#', but instead got '{self.peek_next_token()}'")
                             #  error: not terminated
                             else:
                                 self.errors.append(
@@ -8229,13 +9082,26 @@ class SyntaxAnalyzer:
             #  no parameter
             elif self.peek_next_token() == ")":
                 self.match(")")
-                if self.peek_next_token() == "#":
+                if self.peek_next_token() == "[":
+                    self.parse_main_function()  # it is a function main??
+                elif self.peek_next_token() == "#":
                     self.match("#")
+                #  has gotolerate
+                elif self.peek_next_token() == "Gotolerate":
+                    self.match("Gotolerate")
+                    #  must be followed by '#'
+                    if self.peek_next_token() == "#":
+                        self.match("#")
+                    #  error: not terminated
+                    else:
+                        self.errors.append(
+                            f"(Line {self.line_number}) | Syntax error: Expected '#', but instead got '{self.peek_next_token()}'")
                 else:
                     self.errors.append(
                         f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
             else:
-                self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected ')', but instead got '{self.peek_next_token()}'")
+                self.errors.append(
+                    f"(Line {self.line_number}) | Syntax Error: Expected ')', but instead got '{self.peek_next_token()}'")
 
     #  method for main function
     def parse_main_function(self):
@@ -8982,7 +9848,8 @@ class SyntaxAnalyzer:
                                         self.errors.append(
                                             f"(Line {self.line_number}) | Syntax error: Expected ',', 'Lcurlbraces', but instead got '{self.peek_next_token()}'")
                                 else:
-                                    return True  # else: last identifier has no following identifiers (comma)
+                                    self.errors.append(
+                                        f"(Line {self.line_number}) | Syntax error: Expected 'SunLiteral', 'Identifier', 'Rcurlbraces', but instead got '{self.peek_next_token()}'")
                             elif self.peek_next_token() == "=":
                                 self.match_param_assign("=")
                                 #  close with ')' after assigning value/s
@@ -9345,7 +10212,8 @@ class SyntaxAnalyzer:
                                     self.errors.append(
                                         f"(Line {self.line_number}) | Syntax error: Expected ',', 'Lcurlbraces', but instead got '{self.peek_next_token()}'")
                             else:
-                                return True  # else: last identifier has no following identifiers (comma)
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax error: Expected 'SunLiteral', 'Identifier', 'Rcurlbraces', but instead got '{self.peek_next_token()}'")
                         elif self.peek_next_token() == "=":
                             self.match_param_assign("=")
                             #  close with ')' after assigning value/s
@@ -10598,7 +11466,8 @@ class SyntaxAnalyzer:
                                                 self.errors.append(
                                                     f"(Line {self.line_number}) | Syntax error: Expected ',', 'Lcurlbraces', but instead got '{self.peek_next_token()}'")
                                         else:
-                                            return True  # else: last identifier has no following identifiers (comma)
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax error: Expected 'SunLiteral', 'Identifier', 'Rcurlbraces', but instead got '{self.peek_next_token()}'")
                                     #  equals path
                                     elif self.peek_next_token() == "=":
                                         self.match_param_assign("=")
@@ -11068,7 +11937,8 @@ class SyntaxAnalyzer:
                                             self.errors.append(
                                                 f"(Line {self.line_number}) | Syntax error: Expected ',', 'Lcurlbraces', but instead got '{self.peek_next_token()}'")
                                     else:
-                                        return True  # else: last identifier has no following identifiers (comma)
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax error: Expected 'SunLiteral', 'Identifier', 'Rcurlbraces', but instead got '{self.peek_next_token()}'")
                                 elif self.peek_next_token() == "=":
                                     self.match_param_assign("=")
                                     #  close with ')' after assigning value/s
@@ -11581,7 +12451,8 @@ class SyntaxAnalyzer:
                                             self.errors.append(
                                                 f"(Line {self.line_number}) | Syntax error: Expected ',', 'Lcurlbraces', but instead got '{self.peek_next_token()}'")
                                     else:
-                                        return True  # else: last identifier has no following identifiers (comma)
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax error: Expected 'SunLiteral', 'Identifier', 'Rcurlbraces', but instead got '{self.peek_next_token()}'")
                                 #  equals path
                                 elif self.peek_next_token() == "=":
                                     self.match_param_assign("=")
@@ -12051,7 +12922,8 @@ class SyntaxAnalyzer:
                                         self.errors.append(
                                             f"(Line {self.line_number}) | Syntax error: Expected ',', 'Lcurlbraces', but instead got '{self.peek_next_token()}'")
                                 else:
-                                    return True  # else: last identifier has no following identifiers (comma)
+                                    self.errors.append(
+                                        f"(Line {self.line_number}) | Syntax error: Expected 'SunLiteral', 'Identifier', 'Rcurlbraces', but instead got '{self.peek_next_token()}'")
                             #  equal path
                             elif self.peek_next_token() == "=":
                                 self.match_param_assign("=")
@@ -12662,7 +13534,8 @@ class SyntaxAnalyzer:
                                             self.errors.append(
                                                 f"(Line {self.line_number}) | Syntax error: Expected ',', 'Lcurlbraces', but instead got '{self.peek_next_token()}'")
                                     else:
-                                        return True  # else: last identifier has no following identifiers (comma)
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax error: Expected 'SunLiteral', 'Identifier', 'Rcurlbraces', but instead got '{self.peek_next_token()}'")
                                 elif self.peek_next_token() == "=":
                                     self.match_param_assign("=")
                                     #  close with ')' after assigning value/s
@@ -13251,7 +14124,8 @@ class SyntaxAnalyzer:
                                         self.errors.append(
                                             f"(Line {self.line_number}) | Syntax error: Expected ',', 'Lcurlbraces', but instead got '{self.peek_next_token()}'")
                                 else:
-                                    return True  # else: last identifier has no following identifiers (comma)
+                                    self.errors.append(
+                                        f"(Line {self.line_number}) | Syntax error: Expected 'SunLiteral', 'Identifier', 'Rcurlbraces', but instead got '{self.peek_next_token()}'")
                             elif self.peek_next_token() == "=":
                                 self.match_param_assign("=")
                                 #  close with ')' after assigning value/s
@@ -13888,7 +14762,8 @@ class SyntaxAnalyzer:
                                     self.errors.append(
                                         f"(Line {self.line_number}) | Syntax error: Expected ',', 'Lcurlbraces', but instead got '{self.peek_next_token()}'")
                             else:
-                                return True  # else: last identifier has no following identifiers (comma)
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax error: Expected 'SunLiteral', 'Identifier', 'Rcurlbraces', but instead got '{self.peek_next_token()}'")
                         #  equals, assign value to the parameter path (static)
                         elif self.peek_next_token() == "=":
                             self.match_param_assign("=")
@@ -14478,7 +15353,8 @@ class SyntaxAnalyzer:
                                 self.errors.append(
                                     f"(Line {self.line_number}) | Syntax error: Expected ',', 'Lcurlbraces', but instead got '{self.peek_next_token()}'")
                         else:
-                            return True  # else: last identifier has no following identifiers (comma)
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Syntax error: Expected 'SunLiteral', 'Identifier', 'Rcurlbraces', but instead got '{self.peek_next_token()}'")
                     elif self.peek_next_token() == "=":
                         self.match_param_assign("=")
                         #  close with ')' after assigning value/s
@@ -15384,11 +16260,12 @@ class SyntaxAnalyzer:
                                                         f"(Line {self.line_number}) | Syntax error: Expected '#', but instead got '{self.peek_next_token()}'")
                                             #  error: not followed by '#'
                                             else:
+
                                                 self.errors.append(
                                                     f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
                                         #  single id is followed by a comma, (Static Sun a{1},.....)
                                         elif self.peek_next_token() == ",":
-                                            self.match_param_assign_mult(",")
+                                            self.match_param_assign_mult_prototype(",")
                                             #  close with ')' after assigning value/s
                                             if self.peek_next_token() == ")":
                                                 self.match(")")
@@ -15434,7 +16311,7 @@ class SyntaxAnalyzer:
                                                         f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
                                             #  single id is followed by a comma, (Static Sun a{1},.....)
                                             elif self.peek_next_token() == ",":
-                                                self.match_param_assign_mult(",")
+                                                self.match_param_assign_mult_prototype(",")
                                                 #  close with ')' after assigning value/s
                                                 if self.peek_next_token() == ")":
                                                     self.match(")")
@@ -15492,7 +16369,7 @@ class SyntaxAnalyzer:
                                                 f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
                                     #  single id is followed by a comma, (Static Sun a{1},.....)
                                     elif self.peek_next_token() == ",":
-                                        self.match_param_assign_mult(",")
+                                        self.match_param_assign_mult_prototype(",")
                                         #  close with ')' after assigning value/s
                                         if self.peek_next_token() == ")":
                                             self.match(")")
@@ -15538,7 +16415,7 @@ class SyntaxAnalyzer:
                                                     f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
                                         #  single id is followed by a comma, (Static Sun a{1},.....)
                                         elif self.peek_next_token() == ",":
-                                            self.match_param_assign_mult(",")
+                                            self.match_param_assign_mult_prototype(",")
                                             #  close with ')' after assigning value/s
                                             if self.peek_next_token() == ")":
                                                 self.match(")")
@@ -15596,7 +16473,7 @@ class SyntaxAnalyzer:
                                             f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
                                 #  single id is followed by a comma, (Static Sun a{1},.....)
                                 elif self.peek_next_token() == ",":
-                                    self.match_param_assign_mult(",")
+                                    self.match_param_assign_mult_prototype(",")
                                     #  close with ')' after assigning value/s
                                     if self.peek_next_token() == ")":
                                         self.match(")")
@@ -15642,7 +16519,7 @@ class SyntaxAnalyzer:
                                                 f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
                                     #  single id is followed by a comma, (Static Sun a{1},.....)
                                     elif self.peek_next_token() == ",":
-                                        self.match_param_assign_mult(",")
+                                        self.match_param_assign_mult_prototype(",")
                                         #  close with ')' after assigning value/s
                                         if self.peek_next_token() == ")":
                                             self.match(")")
@@ -15672,7 +16549,8 @@ class SyntaxAnalyzer:
                                     self.errors.append(
                                         f"(Line {self.line_number}) | Syntax error: Expected ',', 'Lcurlbraces', but instead got '{self.peek_next_token()}'")
                             else:
-                                return True  # else: last identifier has no following identifiers (comma)
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax error: Expected 'SunLiteral', 'Identifier', 'Rcurlbraces', but instead got '{self.peek_next_token()}'")
                         #  equals, assign value to the parameter path (static)
                         elif self.peek_next_token() == "=":
                             self.match_param_assign("=")
@@ -15722,7 +16600,7 @@ class SyntaxAnalyzer:
                                     f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
                         #  single id is followed by a comma
                         elif self.peek_next_token() == ",":
-                            self.match_param_assign_mult(",")
+                            self.match_param_assign_mult_prototype(",")
                             #  close with ')' after assigning value/s
                             if self.peek_next_token() == ")":
                                 self.match(")")
@@ -15791,7 +16669,7 @@ class SyntaxAnalyzer:
                                     f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
                         #  single id is followed by a comma
                         elif self.peek_next_token() == ",":
-                            self.match_param_assign_mult(",")
+                            self.match_param_assign_mult_prototype(",")
                             #  close with ')' after assigning value/s
                             if self.peek_next_token() == ")":
                                 self.match(")")
@@ -15867,7 +16745,7 @@ class SyntaxAnalyzer:
                                                 f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
                                     #  single id is followed by a comma, (Static Sun a{1},.....)
                                     elif self.peek_next_token() == ",":
-                                        self.match_param_assign_mult(",")
+                                        self.match_param_assign_mult_prototype(",")
                                         #  close with ')' after assigning value/s
                                         if self.peek_next_token() == ")":
                                             self.match(")")
@@ -15913,7 +16791,7 @@ class SyntaxAnalyzer:
                                                     f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
                                         #  single id is followed by a comma, (Static Sun a{1},.....)
                                         elif self.peek_next_token() == ",":
-                                            self.match_param_assign_mult(",")
+                                            self.match_param_assign_mult_prototype(",")
                                             #  close with ')' after assigning value/s
                                             if self.peek_next_token() == ")":
                                                 self.match(")")
@@ -15971,7 +16849,7 @@ class SyntaxAnalyzer:
                                             f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
                                 #  single id is followed by a comma, (Static Sun a{1},.....)
                                 elif self.peek_next_token() == ",":
-                                    self.match_param_assign_mult(",")
+                                    self.match_param_assign_mult_prototype(",")
                                     #  close with ')' after assigning value/s
                                     if self.peek_next_token() == ")":
                                         self.match(")")
@@ -16017,7 +16895,7 @@ class SyntaxAnalyzer:
                                                 f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
                                     #  single id is followed by a comma, (Static Sun a{1},.....)
                                     elif self.peek_next_token() == ",":
-                                        self.match_param_assign_mult(",")
+                                        self.match_param_assign_mult_prototype(",")
                                         #  close with ')' after assigning value/s
                                         if self.peek_next_token() == ")":
                                             self.match(")")
@@ -16075,7 +16953,7 @@ class SyntaxAnalyzer:
                                         f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
                             #  single id is followed by a comma, (Static Sun a{1},.....)
                             elif self.peek_next_token() == ",":
-                                self.match_param_assign_mult(",")
+                                self.match_param_assign_mult_prototype(",")
                                 #  close with ')' after assigning value/s
                                 if self.peek_next_token() == ")":
                                     self.match(")")
@@ -16121,7 +16999,7 @@ class SyntaxAnalyzer:
                                             f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
                                 #  single id is followed by a comma, (Static Sun a{1},.....)
                                 elif self.peek_next_token() == ",":
-                                    self.match_param_assign_mult(",")
+                                    self.match_param_assign_mult_prototype(",")
                                     #  close with ')' after assigning value/s
                                     if self.peek_next_token() == ")":
                                         self.match(")")
@@ -16151,7 +17029,8 @@ class SyntaxAnalyzer:
                                 self.errors.append(
                                     f"(Line {self.line_number}) | Syntax error: Expected ',', 'Lcurlbraces', but instead got '{self.peek_next_token()}'")
                         else:
-                            return True  # else: last identifier has no following identifiers (comma)
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Syntax error: Expected 'SunLiteral', 'Identifier', 'Rcurlbraces', but instead got '{self.peek_next_token()}'")
                     elif self.peek_next_token() == "=":
                         self.match_param_assign("=")
                         #  close with ')' after assigning value/s
@@ -16200,7 +17079,7 @@ class SyntaxAnalyzer:
                                 f"(Line {self.line_number}) | Syntax error: Expected '#', 'Gotolerate', but instead got '{self.peek_next_token()}'")
                     #  single id is followed by a comma
                     elif self.peek_next_token() == ",":
-                        self.match_param_assign_mult(",")
+                        self.match_param_assign_mult_prototype(",")
                         #  close with ')' after assigning value/s
                         if self.peek_next_token() == ")":
                             self.match(")")
