@@ -13,6 +13,7 @@ class SyntaxAnalyzer:
         self.isMultiple = False
         self.parenthError = False
         self.arrayError = False
+        self.notMainError = False
         self.line_number = 1  # Initialize line number to 1
 
     #  method that peeks at the next token after the current_token
@@ -733,8 +734,7 @@ class SyntaxAnalyzer:
                             return True  # else: last identifier has no following '>>' to display
                         #  not closed with '#' or followed by a conditional operator
                         else:
-                            self.errors.append(f"(Line {self.line_number}) | Syntax error: Expected '#', '==', '!=', '<', '>', "
-                                               f"'<=', '>=', '&&', '||', '!', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
+                            return False
                     #  not followed by any of the values expected after a condition operator
                     else:
                         self.errors.append(f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', 'SunLiteral', "
@@ -7501,8 +7501,15 @@ class SyntaxAnalyzer:
                                         self.errors.append(
                                             f"(Line {self.line_number}) | Syntax Error: Expected '#', but instead got '{self.peek_next_token()}'")
                                 #  error if not closed with ']'
-                                else:
-                                    self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected ']', but instead got '{self.peek_next_token()}'")
+                                elif (self.peek_previous_token() == "SunLiteral"
+                                            or self.peek_previous_token() == "LuhmanLiteral"
+                                            or self.peek_previous_token() == "StarsysLiteral"
+                                            or self.peek_previous_token() == "True"
+                                            or self.peek_previous_token() == "False"
+                                            or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                        and (self.peek_next_token() != "]" or self.peek_next_token() != ",")):
+                                    self.arrayError = True
+                                    self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected ']', ',' but instead got '{self.peek_next_token()}'")
                             else:
                                 self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected '[', but instead got '{self.peek_next_token()}'")
                         # add another size to become 2D array
@@ -7541,8 +7548,16 @@ class SyntaxAnalyzer:
                                     self.errors.append(
                                         f"(Line {self.line_number}) | Syntax Error: Expected '#', but instead got '{self.peek_next_token()}'")
                             #  error if not closed with ']'
-                            else:
-                                self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected ']', but instead got '{self.peek_next_token()}'")
+                            elif (self.peek_previous_token() == "SunLiteral"
+                                          or self.peek_previous_token() == "LuhmanLiteral"
+                                          or self.peek_previous_token() == "StarsysLiteral"
+                                          or self.peek_previous_token() == "True"
+                                          or self.peek_previous_token() == "False"
+                                          or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                          and (self.peek_next_token() != "]" or self.peek_next_token() != ",")):
+                                self.arrayError = True
+                                self.errors.append(
+                                        f"(Line {self.line_number}) | Syntax Error: Expected ']', ',' but instead got '{self.peek_next_token()}'")
                         #  not started with '[' after '='
                         else:
                             self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected '[', but instead got '{self.peek_next_token()}'")
@@ -7573,8 +7588,16 @@ class SyntaxAnalyzer:
                             else:
                                 self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected '#', but instead got '{self.peek_next_token()}'")
                         #  error if not closed with ']'
-                        else:
-                            self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected ']', but instead got '{self.peek_next_token()}'")
+                        elif (self.peek_previous_token() == "SunLiteral"
+                                      or self.peek_previous_token() == "LuhmanLiteral"
+                                      or self.peek_previous_token() == "StarsysLiteral"
+                                      or self.peek_previous_token() == "True"
+                                      or self.peek_previous_token() == "False"
+                                      or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                      and (self.peek_next_token() != "]" or self.peek_next_token() != ",")):
+                            self.arrayError = True
+                            self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax Error: Expected ']', ',' but instead got '{self.peek_next_token()}'")
                     else:
                         self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected '[', but instead got '{self.peek_next_token()}'")
                 # add another size to become 2D array
@@ -7625,7 +7648,7 @@ class SyntaxAnalyzer:
                                             f"(Line {self.line_number}) | Syntax Error: Expected '#', but instead got '{self.peek_next_token()}'")
                                 #  error if not closed with ']'
                                 else:
-                                    self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected ']', but instead got '{self.peek_next_token()}'")
+                                    return False
                             else:
                                 self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected '[', but instead got '{self.peek_next_token()}'")
                         #  not terminated with # or followed by an '=' after Rcurl
@@ -7659,7 +7682,7 @@ class SyntaxAnalyzer:
                                         f"(Line {self.line_number}) | Syntax Error: Expected '#', but instead got '{self.peek_next_token()}'")
                             #  error if not closed with ']'
                             else:
-                                self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected ']', but instead got '{self.peek_next_token()}'")
+                                return False
                         #  not started with '[' after '='
                         else:
                             self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected '[', but instead got '{self.peek_next_token()}'")
@@ -7694,11 +7717,15 @@ class SyntaxAnalyzer:
                         return True # no more values next so next should be closing with ']'
                     # error no ']' found
                     else:
-                        self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected ']', but instead got '{self.peek_next_token()}'")
+                        return False
                 else:
                     return True  # single value
-            else:
+            elif self.peek_next_token() == "]":
                 return True  # empty value
+            else:
+                self.arrayError = True
+                self.errors.append(
+                    f"(Line {self.line_number}) | Syntax Error: Expected ']', 'SunLiteral', 'LuhmanLiteral', 'StarsysLiteral', 'Identifier', 'True', 'False', but instead got '{self.peek_next_token()}'")
 
     def match_arr_value2d(self, expected_token):
         self.get_next_token()
@@ -7718,16 +7745,17 @@ class SyntaxAnalyzer:
                         self.match_mult_arr2d_val(",")
                         if self.peek_next_token() == "]":
                             return True # multiple array 2D value is done
-                        else:
-                            self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected ']', but instead got '{self.peek_next_token()}'")
+                        elif self.peek_previous_token() == "]" and self.peek_next_token() != "]":
+                            self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected ']', ',', but instead got '{self.peek_next_token()}'")
                     # unexpected next, should be ']' or ','
                     else:
                         self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected ']', ',', but instead got '{self.peek_next_token()}'")
                 #  error: not closed with ']'
                 else:
-                    self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected ']', but instead got '{self.peek_next_token()}'")
+                    self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected ']', ',', but instead got '{self.peek_next_token()}'")
             #  syntax: [[value]] not followed
             else:
+                self.arrayError = True
                 self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected '[', but instead got '{self.peek_next_token()}'")
 
     # method for array multiple values
@@ -7738,12 +7766,17 @@ class SyntaxAnalyzer:
 
         if expected_token == ",":
             if (re.match(r'Identifier\d*$', self.peek_next_token())
-                    or "SunLiteral" or "LuhmanLiteral" or "StarsysLiteral" or "True" or "False"):
+                    or self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral"
+                    or self.peek_next_token() == "StarsysLiteral" or self.peek_next_token() == "True"
+                    or self.peek_next_token() == "False"):
                 self.match(Resources.Value1)
                 if self.peek_next_token() == ",":
                     self.match_mult_arr_val(",")  # more values
                 else:
                     return True  # else: last value has no following values (comma)
+            else:
+                self.arrayError = True
+                self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected 'SunLiteral', 'LuhmanLiteral', 'StarsysLiteral', 'Identifier', 'True', 'False', but instead got '{self.peek_next_token()}'")
 
     def match_mult_arr2d_val(self, expected_token):
         self.get_next_token()
@@ -7754,7 +7787,9 @@ class SyntaxAnalyzer:
             if self.peek_next_token() == "[":
                 self.match("[")
                 if (re.match(r'Identifier\d*$', self.peek_next_token())
-                        or "SunLiteral" or "LuhmanLiteral" or "StarsysLiteral" or "True" or "False"):
+                        or self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral"
+                        or self.peek_next_token() == "StarsysLiteral" or self.peek_next_token() == "True"
+                        or self.peek_next_token() == "False"):
                     self.match(Resources.Value1)
                     if self.peek_next_token() == ",":
                         self.match_mult_arr_val(",")
@@ -7764,8 +7799,15 @@ class SyntaxAnalyzer:
                                 self.match_mult_arr2d_val(",") # more 2D values
                             else:
                                 return True # no more 2D values to add
-                        else:
-                            self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected ']', but instead got '{self.peek_next_token()}'")
+                        #  error: not followed by ] or ,
+                        elif (self.peek_previous_token() == "SunLiteral"
+                                      or self.peek_previous_token() == "LuhmanLiteral"
+                                      or self.peek_previous_token() == "StarsysLiteral"
+                                      or self.peek_previous_token() == "True"
+                                      or self.peek_previous_token() == "False"
+                                      or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                      and (self.peek_next_token() != "]" or self.peek_next_token() != ",")):
+                            self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected ']', ',' but instead got '{self.peek_next_token()}'")
                     #  single value
                     elif self.peek_next_token() == "]":
                         self.match("]")
@@ -7774,7 +7816,7 @@ class SyntaxAnalyzer:
                         else:
                             return True  # no more 2D values to add
                     else:
-                        self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected ']', but instead got '{self.peek_next_token()}'")
+                        self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected ']', ',', but instead got '{self.peek_next_token()}'")
                 #  empty value
                 elif self.peek_next_token() == "]":
                     self.match("]")
@@ -7784,7 +7826,11 @@ class SyntaxAnalyzer:
                         return True  # no more 2D values to add
                 # unexpected end, expected ']'
                 else:
-                    self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected ']', but instead got '{self.peek_next_token()}'")
+                    self.arrayError = True
+                    self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected ']', 'SunLiteral', 'LuhmanLiteral', 'StarsysLiteral', 'Identifier', 'True', 'False' but instead got '{self.peek_next_token()}'")
+            else:
+                self.errors.append(
+                    f"(Line {self.line_number}) | Syntax Error: Expected '[', but instead got '{self.peek_next_token()}'")
 
     #  method that parse the import statement
     def parse_import_statement(self):
@@ -9146,7 +9192,7 @@ class SyntaxAnalyzer:
                     else:
                         return False
                 #  no Disintegrate
-                else:
+                elif not self.notMainError:
                     self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected 'Disintegrate', 'Class', 'Void', 'Sun', 'Luhman',"
                                        f" 'Starsys', 'Boolean', but instead got '{self.peek_next_token()}'")
             else:
@@ -10388,8 +10434,14 @@ class SyntaxAnalyzer:
                         if self.peek_next_token() == "#":
                             self.match("#")
                         #  error: not terminated
-                        else:
-                            self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
+                        elif (
+                                self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                and (self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                     or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                     or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%' but instead got '{self.peek_next_token()}'")
                     #  subtract it?
                     elif self.peek_next_token() == "-":
                         self.match_mathop2("-")
@@ -10397,8 +10449,14 @@ class SyntaxAnalyzer:
                         if self.peek_next_token() == "#":
                             self.match("#")
                         #  error: not terminated
-                        else:
-                            self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
+                        elif (
+                                self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                and (self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                     or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                     or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
                     #  multiply it?
                     elif self.peek_next_token() == "*":
                         self.match_mathop2("*")
@@ -10406,8 +10464,14 @@ class SyntaxAnalyzer:
                         if self.peek_next_token() == "#":
                             self.match("#")
                         #  error: not terminated
-                        else:
-                            self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
+                        elif (
+                                self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                and (self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                     or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                     or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
                     #  divide it?
                     elif self.peek_next_token() == "/":
                         self.match_mathop2("/")
@@ -10415,8 +10479,14 @@ class SyntaxAnalyzer:
                         if self.peek_next_token() == "#":
                             self.match("#")
                         #  error: not terminated
-                        else:
-                            self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
+                        elif (
+                                self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                and (self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                     or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                     or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
                     #  modulo it?
                     elif self.peek_next_token() == "%":
                         self.match_mathop2("%")
@@ -10424,8 +10494,14 @@ class SyntaxAnalyzer:
                         if self.peek_next_token() == "#":
                             self.match("#")
                         #  error: not terminated
-                        else:
-                            self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
+                        elif (
+                                self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                and (self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                     or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                     or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
                     #  exponentiate it?
                     elif self.peek_next_token() == "**":
                         self.match_exponent2("**")
@@ -10433,8 +10509,14 @@ class SyntaxAnalyzer:
                         if self.peek_next_token() == "#":
                             self.match("#")
                         #  error: not terminated
-                        else:
-                            self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
+                        elif (
+                                self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                and (self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                     or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                     or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
                     #  error: not terminated
                     else:
                         self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected '(', '#', '+', '-', '*', '/', '%', '**', but instead got '{self.peek_next_token()}'")
@@ -10558,8 +10640,12 @@ class SyntaxAnalyzer:
                         if self.peek_next_token() == "#":
                             self.match("#")
                         #  error: not terminated
-                        else:
-                            self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
+                        elif (self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                              or re.match(r'Identifier\d*$', self.peek_previous_token())
+                              and (self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                   or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                   or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                            self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%' but instead got '{self.peek_next_token()}'")
                     #  subtract it?
                     elif self.peek_next_token() == "-":
                         self.match_mathop2("-")
@@ -10567,8 +10653,14 @@ class SyntaxAnalyzer:
                         if self.peek_next_token() == "#":
                             self.match("#")
                         #  error: not terminated
-                        else:
-                            self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
+                        elif (
+                                        self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                        or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                        and (self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                             or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                             or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
                     #  multiply it?
                     elif self.peek_next_token() == "*":
                         self.match_mathop2("*")
@@ -10576,8 +10668,14 @@ class SyntaxAnalyzer:
                         if self.peek_next_token() == "#":
                             self.match("#")
                         #  error: not terminated
-                        else:
-                            self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
+                        elif (
+                                        self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                        or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                        and (self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                             or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                             or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
                     #  divide it?
                     elif self.peek_next_token() == "/":
                         self.match_mathop2("/")
@@ -10585,8 +10683,14 @@ class SyntaxAnalyzer:
                         if self.peek_next_token() == "#":
                             self.match("#")
                         #  error: not terminated
-                        else:
-                            self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
+                        elif (
+                                        self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                        or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                        and (self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                             or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                             or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
                     #  modulo it?
                     elif self.peek_next_token() == "%":
                         self.match_mathop2("%")
@@ -10594,8 +10698,14 @@ class SyntaxAnalyzer:
                         if self.peek_next_token() == "#":
                             self.match("#")
                         #  error: not terminated
-                        else:
-                            self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
+                        elif (
+                                        self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                        or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                        and (self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                             or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                             or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
                     #  exponentiate it?
                     elif self.peek_next_token() == "**":
                         self.match_exponent2("**")
@@ -10603,8 +10713,14 @@ class SyntaxAnalyzer:
                         if self.peek_next_token() == "#":
                             self.match("#")
                         #  error: not terminated
-                        else:
-                            self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
+                        elif (
+                                        self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                        or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                        and (self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                             or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                             or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
                     #  error: not terminated
                     else:
                         self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected '(', '#', '+', '-', '*', '/', '%', '**', but instead got '{self.peek_next_token()}'")
@@ -17139,7 +17255,7 @@ class SyntaxAnalyzer:
             if self.peek_next_token() == "]":
                 return True
             #  error: main function is not closed
-            elif self.peek_next_token() != ']' and (self.peek_previous_token() == "#" or self.peek_previous_token() == "["):
+            elif self.peek_next_token() != ']' and (self.peek_previous_token() == "#" or self.peek_previous_token() == "[") and not self.arrayError:
                 self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected ']', 'Sun', 'Luhman', 'Starsys', 'Identifier', 'ISS', 'Class', 'Divert', but instead got '{self.peek_next_token()}'")
         else:
             return
@@ -18014,9 +18130,88 @@ class SyntaxAnalyzer:
                     self.match("[")
                     #  statements in an If condition
                     self.parse_statements1()  # includes possibility of nested If-else
-
-                    #  close if condition (empty)
-                    if self.peek_next_token() == "]":
+                    # Break path (Deviate)
+                    if self.peek_next_token() == "Deviate":
+                        self.match("Deviate")
+                        # terminate break
+                        if self.peek_next_token() == "#":
+                            self.match("#")
+                            #  close if condition
+                            if self.peek_next_token() == "]":
+                                self.match("]")
+                                #  is it followed by an Other/Other-If condition?
+                                if self.peek_next_token() == "Other":
+                                    self.match("Other")
+                                    #  is it an Other-If?
+                                    if self.peek_next_token() == "If":
+                                        self.match("If")
+                                        if self.peek_next_token() == "(":
+                                            self.parse_if_stmnt()
+                                        #  Other-If statement is not followed by '('
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax Error: Expected ')', but instead got '{self.peek_next_token()}'")
+                                    #  is it an Other Condition?
+                                    elif self.peek_next_token() == "[":
+                                        self.parse_else_stmnt()
+                                    #  error: expected '[' or 'If' after 'Other'
+                                    else:
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax Error: Expected '[', 'If', but instead got '{self.peek_next_token()}'")
+                                #  it is not followed by Other keyword
+                                else:
+                                    return True
+                            #  if condition is not closed
+                            else:
+                                self.notMainError = True
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax Error: Expected ']', but instead got '{self.peek_next_token()}'")
+                        # error: not terminated
+                        else:
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Syntax Error: Expected '#', but instead got '{self.peek_next_token()}'")
+                    #  continue path (Proceed)
+                    elif self.peek_next_token() == "Proceed":
+                        self.match("Proceed")
+                        # terminate break
+                        if self.peek_next_token() == "#":
+                            self.match("#")
+                            #  close if condition
+                            if self.peek_next_token() == "]":
+                                self.match("]")
+                                #  is it followed by an Other/Other-If condition?
+                                if self.peek_next_token() == "Other":
+                                    self.match("Other")
+                                    #  is it an Other-If?
+                                    if self.peek_next_token() == "If":
+                                        self.match("If")
+                                        if self.peek_next_token() == "(":
+                                            self.parse_if_stmnt()
+                                        #  Other-If statement is not followed by '('
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax Error: Expected ')', but instead got '{self.peek_next_token()}'")
+                                    #  is it an Other Condition?
+                                    elif self.peek_next_token() == "[":
+                                        self.parse_else_stmnt()
+                                    #  error: expected '[' or 'If' after 'Other'
+                                    else:
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax Error: Expected '[', 'If', but instead got '{self.peek_next_token()}'")
+                                #  it is not followed by Other keyword
+                                else:
+                                    return True
+                            #  if condition is not closed
+                            else:
+                                self.notMainError = True
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax Error: Expected ']', but instead got '{self.peek_next_token()}'")
+                        # error: not terminated
+                        else:
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Syntax Error: Expected '#', but instead got '{self.peek_next_token()}'")
+                    #  close if condition, no deviate and proceed
+                    elif self.peek_next_token() == "]":
                         self.match("]")
                         #  is it followed by an Other/Other-If condition?
                         if self.peek_next_token() == "Other":
@@ -18041,6 +18236,7 @@ class SyntaxAnalyzer:
                             return True
                     #  if condition is not closed
                     else:
+                        self.notMainError = False
                         self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected ']', but instead got '{self.peek_next_token()}'")
                 #  error: not followed by '['
                 else:
@@ -18058,11 +18254,41 @@ class SyntaxAnalyzer:
         if self.peek_next_token() == "[":
             self.match("[")  # consume
             self.parse_statements1()
-            #  close the Other condition
-            if self.peek_next_token() == "]":
+
+            # Break path (Deviate)
+            if self.peek_next_token() == "Deviate":
+                self.match("Deviate")
+                # terminate break
+                if self.peek_next_token() == "#":
+                    self.match("#")
+                    #  close it, and no next if-other bc this is the 'other'
+                    if self.peek_next_token() == "]":
+                        self.match("]")
+                    #  error: not closed
+                    else:
+                        self.notMainError = False
+                        self.errors.append(
+                            f"(Line {self.line_number}) | Syntax Error: Expected ']', but instead got '{self.peek_next_token()}'")
+            #  continue path (Proceed)
+            elif self.peek_next_token() == "Proceed":
+                self.match("Proceed")
+                # terminate break
+                if self.peek_next_token() == "#":
+                    self.match("#")
+                    #  close it, and no next if-other bc this is the 'other'
+                    if self.peek_next_token() == "]":
+                        self.match("]")
+                    #  error: not closed
+                    else:
+                        self.notMainError = False
+                        self.errors.append(
+                            f"(Line {self.line_number}) | Syntax Error: Expected ']', but instead got '{self.peek_next_token()}'")
+            #  close the Other condition, no proceed or deviate
+            elif self.peek_next_token() == "]":
                 self.match("]")
             #  error: not closed
             else:
+                self.notMainError = False
                 self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected ']', but instead got '{self.peek_next_token()}'")
         #  error: expected '[' or 'If' after 'Other'
         else:
@@ -18148,6 +18374,7 @@ class SyntaxAnalyzer:
                                         return True
                                 #  not closed with ']'
                                 else:
+                                    self.notMainError = True
                                     self.errors.append(
                                         f"(Line {self.line_number}) | Syntax Error: Expected ']', but instead got '{self.peek_next_token()}'")
                             #  not terminated
@@ -18202,6 +18429,7 @@ class SyntaxAnalyzer:
                                 self.match("]")
                             #  not closed with ']'
                             else:
+                                self.notMainError = True
                                 self.errors.append(
                                     f"(Line {self.line_number}) | Syntax Error: Expected ']', but instead got '{self.peek_next_token()}'")
                         #  not terminated
@@ -18257,6 +18485,7 @@ class SyntaxAnalyzer:
                                         self.match("]")
                                         #  error: not followed by ']'
                                     else:
+                                        self.notMainError = True
                                         self.errors.append(
                                             f"(Line {self.line_number}) | Syntax Error: Expected ']', but instead got '{self.peek_next_token()}'")
                                 #  error: not terminated
@@ -18297,6 +18526,7 @@ class SyntaxAnalyzer:
                                                 self.match("]")
                                             #  error: not followed by ']'
                                             else:
+                                                self.notMainError = True
                                                 self.errors.append(
                                                     f"(Line {self.line_number}) | Syntax Error: Expected ']', but instead got '{self.peek_next_token()}'")
                                         #  error: not terminated
@@ -18341,6 +18571,7 @@ class SyntaxAnalyzer:
                                             self.match("]")
                                         #  error: not followed by ']'
                                         else:
+                                            self.notMainError = True
                                             self.errors.append(
                                                 f"(Line {self.line_number}) | Syntax Error: Expected ']', but instead got '{self.peek_next_token()}'")
                                     #  error: not terminated
@@ -18689,6 +18920,7 @@ class SyntaxAnalyzer:
                                     self.match("]")
                                 #  error: not followed by ']'
                                 else:
+                                    self.notMainError = True
                                     self.errors.append(
                                         f"(Line {self.line_number}) | Syntax Error: Expected ']', but instead got '{self.peek_next_token()}'")
                             #  error: not terminated
@@ -18715,6 +18947,7 @@ class SyntaxAnalyzer:
                                                 self.match("]")
                                             #  error: not followed by ']'
                                             else:
+                                                self.notMainError = True
                                                 self.errors.append(
                                                     f"(Line {self.line_number}) | Syntax Error: Expected ']', but instead got '{self.peek_next_token()}'")
                                         #  error: not terminated
@@ -18727,7 +18960,7 @@ class SyntaxAnalyzer:
                                     #  error: not followed by ']'
                                     else:
                                         self.errors.append(
-                                             f"(Line {self.line_number}) | Syntax Error: Expected ']', but instead got '{self.peek_next_token()}'")
+                                             f"(Line {self.line_number}) | Syntax Error: Expected ']', 'Deviate', 'Proceed', but instead got '{self.peek_next_token()}'")
                                 # error: not terminated
                                 else:
                                     self.errors.append(
@@ -18753,6 +18986,7 @@ class SyntaxAnalyzer:
                                             self.match("]")
                                         #  error: not followed by ']'
                                         else:
+                                            self.notMainError = True
                                             self.errors.append(
                                                 f"(Line {self.line_number}) | Syntax Error: Expected ']', but instead got '{self.peek_next_token()}'")
                                     #  error: not terminated
@@ -18765,7 +18999,7 @@ class SyntaxAnalyzer:
                                 #  error: not followed by ']'
                                 else:
                                     self.errors.append(
-                                            f"(Line {self.line_number}) | Syntax Error: Expected ']', but instead got '{self.peek_next_token()}'")
+                                            f"(Line {self.line_number}) | Syntax Error: Expected ']', 'Proceed', 'Deviate', but instead got '{self.peek_next_token()}'")
                             # error: not terminated
                             else:
                                 self.errors.append(
@@ -18868,6 +19102,7 @@ class SyntaxAnalyzer:
                                     f"(Line {self.line_number}) | Syntax Error: Expected 'Span', but instead got '{self.peek_next_token()}'")
                         #  error: not followed by ']'
                         else:
+                            self.notMainError = True
                             self.errors.append(
                                 f"(Line {self.line_number}) | Syntax Error: Expected ']', but instead got '{self.peek_next_token()}'")
                     #  error: not terminated
@@ -18922,6 +19157,7 @@ class SyntaxAnalyzer:
                                                 f"(Line {self.line_number}) | Syntax Error: Expected 'Span', but instead got '{self.peek_next_token()}'")
                                     #  error: not followed by ']'
                                     else:
+                                        self.notMainError = True
                                         self.errors.append(
                                             f"(Line {self.line_number}) | Syntax Error: Expected ']', but instead got '{self.peek_next_token()}'")
                                 #  error: not terminated
@@ -18961,6 +19197,7 @@ class SyntaxAnalyzer:
                                         f"(Line {self.line_number}) | Syntax Error: Expected 'Span', but instead got '{self.peek_next_token()}'")
                             #  error: not followed by ']'
                             else:
+                                self.notMainError = True
                                 self.errors.append(
                                         f"(Line {self.line_number}) | Syntax Error: Expected ']', 'Deviate', 'Proceed', but instead got '{self.peek_next_token()}'")
                         # error: not terminated
@@ -19010,12 +19247,13 @@ class SyntaxAnalyzer:
                                         else:
                                             self.errors.append(
                                                 f"(Line {self.line_number}) | Syntax Error: Expected '(', but instead got '{self.peek_next_token()}'")
-                                    #  error: no span in perform-span synatx
+                                    #  error: no span in perform-span syntax
                                     else:
                                         self.errors.append(
                                             f"(Line {self.line_number}) | Syntax Error: Expected 'Span', but instead got '{self.peek_next_token()}'")
                                 #  error: not followed by ']'
                                 else:
+                                    self.notMainError = True
                                     self.errors.append(
                                         f"(Line {self.line_number}) | Syntax Error: Expected ']', but instead got '{self.peek_next_token()}'")
                             #  error: not terminated
@@ -19055,6 +19293,7 @@ class SyntaxAnalyzer:
                                     f"(Line {self.line_number}) | Syntax Error: Expected 'Span', but instead got '{self.peek_next_token()}'")
                         #  error: not followed by ']'
                         else:
+                            self.notMainError = True
                             self.errors.append(
                                     f"(Line {self.line_number}) | Syntax Error: Expected ']', 'Deviate', 'Proceed', but instead got '{self.peek_next_token()}'")
                     # error: not terminated
@@ -19082,20 +19321,81 @@ class SyntaxAnalyzer:
                 self.disintegrate_exist = True
                 self.errors.append(f"Syntax Error: Expected 'Import', 'ISS', 'Static', 'Boolean', 'Autom', 'Luhman', "
                                    f"'Starsys', 'Void', 'Class', 'Sun' after 'Formulate'")
-            #  parse import statement
-            self.parse_import_statement()
-
-            # Parse: is it a Sun global variable declaration or a subfunction prototype?
-            while self.peek_next_token() in ["Static","Sun","Luhman","Starsys","Boolean","Autom","Void", "ISS", "Class"]:
-                #  Parse: is it a constant dec?
-                if self.peek_next_token() == "Static":
-                    self.match("Static")  # consume Static
+            # must be followed by either of the values
+            if (self.peek_next_token() == "Static" or self.peek_next_token() == "Sun"
+                    or self.peek_next_token() == "Luhman" or self.peek_next_token() == "Starsys"
+                    or self.peek_next_token() == "Boolean" or self.peek_next_token() == "Autom"
+                    or self.peek_next_token() == "Void" or self.peek_next_token() == "ISS" or self.peek_next_token() == "Class" or self.peek_next_token() == "Import"):
+                #  parse import statement
+                self.parse_import_statement()
+                # Parse: is it a Sun global variable declaration or a subfunction prototype?
+                while self.peek_next_token() in ["Static","Sun","Luhman","Starsys","Boolean","Autom","Void", "ISS", "Class"]:
+                    #  Parse: is it a constant dec?
+                    if self.peek_next_token() == "Static":
+                        self.match("Static")  # consume Static
+                        # Parse: is it a Sun global variable declaration or a subfunction prototype?
+                        if self.peek_next_token() == "Sun":
+                            self.match("Sun")  # consume Sun
+                            #  check if there is an identifier after the datatype
+                            if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                self.parse_variable_declaration()
+                            #  error: no identifier after datatype
+                            else:
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', but instead got '{self.peek_next_token()}'")
+                        # Parse: is it a Luhman global variable declaration or a subfunction prototype?
+                        elif self.peek_next_token() == "Luhman":
+                            self.match("Luhman")  # consume Luhman
+                            #  check if there is an identifier after the datatype
+                            if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                self.parse_variable_declaration()
+                            #  error: no identifier after datatype
+                            else:
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', but instead got '{self.peek_next_token()}'")
+                        # Parse: is it a Starsys global variable declaration or a subfunction prototype?
+                        elif self.peek_next_token() == "Starsys":
+                            self.match("Starsys")  # consume Starsys
+                            #  check if there is an identifier after the datatype
+                            if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                self.parse_variable_declaration()
+                            else:
+                                #  error: no identifier after datatype
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', but instead got '{self.peek_next_token()}'")
+                        # Parse: is it a Boolean global variable declaration or a subfunction prototype?
+                        elif self.peek_next_token() == "Boolean":
+                            self.match("Boolean")  # consume Bool
+                            #  check if there is an identifier after the datatype
+                            if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                self.parse_boolean()
+                            #  error: no identifier after datatype
+                            else:
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', but instead got '{self.peek_next_token()}'")
+                        #  no data type is next to Static
+                        else:
+                            self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected 'Sun', 'Luhman', 'Starsys', 'Boolean', but instead got '{self.peek_next_token()}'")
+                    # Parse: is it a Void subfunc prototype declaration?
+                    elif self.peek_next_token() == "Void":
+                        self.match("Void")  # consume Void
+                        #  check if there is an identifier after the datatype
+                        if re.match(r'Identifier\d*$', self.peek_next_token()):
+                            self.parse_void_declaration()
+                        #  error: no identifier after datatype
+                        else:
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', but instead got '{self.peek_next_token()}'")
                     # Parse: is it a Sun global variable declaration or a subfunction prototype?
-                    if self.peek_next_token() == "Sun":
+                    elif self.peek_next_token() == "Sun":
                         self.match("Sun")  # consume Sun
                         #  check if there is an identifier after the datatype
                         if re.match(r'Identifier\d*$', self.peek_next_token()):
                             self.parse_variable_declaration()
+                            '''
+                            if self.peek_next_token() == "[":
+                                break
+                            '''
                         #  error: no identifier after datatype
                         else:
                             self.errors.append(
@@ -19130,81 +19430,26 @@ class SyntaxAnalyzer:
                         else:
                             self.errors.append(
                                 f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', but instead got '{self.peek_next_token()}'")
-                    #  no data type is next to Static
-                    else:
-                        self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected 'Sun', 'Luhman', 'Starsys', 'Boolean', but instead got '{self.peek_next_token()}'")
-                # Parse: is it a Void subfunc prototype declaration?
-                elif self.peek_next_token() == "Void":
-                    self.match("Void")  # consume Void
-                    #  check if there is an identifier after the datatype
-                    if re.match(r'Identifier\d*$', self.peek_next_token()):
-                        self.parse_void_declaration()
-                    #  error: no identifier after datatype
-                    else:
-                        self.errors.append(
-                            f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', but instead got '{self.peek_next_token()}'")
-                # Parse: is it a Sun global variable declaration or a subfunction prototype?
-                elif self.peek_next_token() == "Sun":
-                    self.match("Sun")  # consume Sun
-                    #  check if there is an identifier after the datatype
-                    if re.match(r'Identifier\d*$', self.peek_next_token()):
-                        self.parse_variable_declaration()
-                        '''
-                        if self.peek_next_token() == "[":
-                            break
-                        '''
-                    #  error: no identifier after datatype
-                    else:
-                        self.errors.append(
-                            f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', but instead got '{self.peek_next_token()}'")
-                # Parse: is it a Luhman global variable declaration or a subfunction prototype?
-                elif self.peek_next_token() == "Luhman":
-                    self.match("Luhman")  # consume Luhman
-                    #  check if there is an identifier after the datatype
-                    if re.match(r'Identifier\d*$', self.peek_next_token()):
-                        self.parse_variable_declaration()
-                    #  error: no identifier after datatype
-                    else:
-                        self.errors.append(
-                            f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', but instead got '{self.peek_next_token()}'")
-                # Parse: is it a Starsys global variable declaration or a subfunction prototype?
-                elif self.peek_next_token() == "Starsys":
-                    self.match("Starsys")  # consume Starsys
-                    #  check if there is an identifier after the datatype
-                    if re.match(r'Identifier\d*$', self.peek_next_token()):
-                        self.parse_variable_declaration()
-                    else:
+                    # Parse: is it an Autom global variable declaration?
+                    elif self.peek_next_token() == "Autom":
+                        self.match("Autom")  # consume Autom
+                        #  check if there is an identifier after the datatype
+                        if re.match(r'Identifier\d*$', self.peek_next_token()):
+                            self.parse_auto_dec()
                         #  error: no identifier after datatype
-                        self.errors.append(
-                            f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', but instead got '{self.peek_next_token()}'")
-                # Parse: is it a Boolean global variable declaration or a subfunction prototype?
-                elif self.peek_next_token() == "Boolean":
-                    self.match("Boolean")  # consume Bool
-                    #  check if there is an identifier after the datatype
-                    if re.match(r'Identifier\d*$', self.peek_next_token()):
-                        self.parse_boolean()
-                    #  error: no identifier after datatype
+                        else:
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', but instead got '{self.peek_next_token()}'")
+                    #  Parse: is it a globally declared Struct?
+                    elif self.peek_next_token() == "ISS":
+                        self.match_struct("ISS")
+                    #  Parse: is it a globally declared Class?
+                    elif self.peek_next_token() == "Class":
+                        self.match_class_stmnt("Class")
                     else:
-                        self.errors.append(
-                            f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', but instead got '{self.peek_next_token()}'")
-                # Parse: is it an Autom global variable declaration?
-                elif self.peek_next_token() == "Autom":
-                    self.match("Autom")  # consume Autom
-                    #  check if there is an identifier after the datatype
-                    if re.match(r'Identifier\d*$', self.peek_next_token()):
-                        self.parse_auto_dec()
-                    #  error: no identifier after datatype
-                    else:
-                        self.errors.append(
-                            f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', but instead got '{self.peek_next_token()}'")
-                #  Parse: is it a globally declared Struct?
-                elif self.peek_next_token() == "ISS":
-                    self.match_struct("ISS")
-                #  Parse: is it a globally declared Class?
-                elif self.peek_next_token() == "Class":
-                    self.match_class_stmnt("Class")
-                else:
-                    break
+                        break
+            else:
+                self.errors.append(f"Syntax Error: Expected 'Import', 'Sun', 'Luhman', 'Starsys', 'Boolean', 'Autom', 'Static', 'Void', 'Class', 'ISS', but instead got '{self.peek_next_token()}'")
         else:
             self.errors.append(f"Syntax Error: Expected 'Formulate' before '{self.peek_next_token()}'")
             #self.errors.append(f"Syntax Error: Expected 'Import', 'ISS', 'Static', 'Boolean', 'Autom', 'Luhman', "
