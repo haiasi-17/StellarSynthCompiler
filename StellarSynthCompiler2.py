@@ -62,9 +62,9 @@ class App(customtkinter.CTk):
     def scrollwheel(self, event):
         return 'break'
 
-    def populateLineNum(self,linenumber):
+    """def populateLineNum(self,linenumber):
         for i in range (1, 50):
-            linenumber.insert(tk.END, f"{i}\n")
+            linenumber.insert(tk.END, f"{i}\n")"""
 
 class CreateTextEditor(customtkinter.CTkTextbox):
     def __init__(self, master: any, **kwargs):
