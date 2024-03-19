@@ -347,6 +347,7 @@ class CreateButtons(customtkinter.CTkButton):
                 self.console1.console.insert(tk.END,
                                              "StellarSynth -> Lexical Analysis Error. Cannot proceed with Syntax Analysis.\n",
                                              tags="Error")
+                return
             if not tokens:
                 self.console1.console.insert(tk.END, "StellarSynth -> Tokens list is empty.\n")
             else:
