@@ -97,10 +97,10 @@ class CreateTextEditor(customtkinter.CTkTextbox):
 
         self.addlineNumbers()
         self.linenumber.configure(state='disabled')
-        self.texteditor.bind('<BackSpace>',lambda event:  self.HandleBackSpace())
-        self.texteditor.bind('<Return>',lambda event:  self.addlineNumbers())
+        master.after(10, self.addlineNumbers) # Updates every 0.010 seconds.
 
-    def HandleBackSpace(self):
+
+    """def HandleBackSpace(self):
         # This solution is very improvised, does not work properly when moving back a line while still having characters on current line.
         # end-2c It is so that on backspace, instead of calculating the position of cursor. It calculates the position of the last printable character (Not including newline)
         numofline = int(float(self.texteditor.index("end-2c")))
@@ -113,7 +113,7 @@ class CreateTextEditor(customtkinter.CTkTextbox):
         else:
             for i in range(1, numofline + 2):
                 self.linenumber.insert(tk.END, f"{i}\n")
-        self.linenumber.configure(state='disabled')
+        self.linenumber.configure(state='disabled')"""
 
 
     def addlineNumbers(self):
@@ -128,6 +128,7 @@ class CreateTextEditor(customtkinter.CTkTextbox):
             for i in range(1, numofline + 2):
                 self.linenumber.insert(tk.END, f"{i}\n")
         self.linenumber.configure(state='disabled')
+        self.master.after(10, self.addlineNumbers)
 
 
 
