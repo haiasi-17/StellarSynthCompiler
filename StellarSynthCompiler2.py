@@ -62,9 +62,9 @@ class App(customtkinter.CTk):
     def scrollwheel(self, event):
         return 'break'
 
-    def populateLineNum(self,linenumber):
-        for i in range (1, 1000):
-            linenumber.insert(tk.END, f"{i}\n")
+    """def populateLineNum(self,linenumber):
+        for i in range (1, 50):
+            linenumber.insert(tk.END, f"{i}\n")"""
 
 class CreateTextEditor(customtkinter.CTkTextbox):
     def __init__(self, master: any, **kwargs):
@@ -93,10 +93,42 @@ class CreateTextEditor(customtkinter.CTkTextbox):
 
         self.texteditor.configure(yscrollcommand=self.scrollbar1.set, xscrollcommand = self.scrollbar2.set, tabs='0.5i')
         self.linenumber.bind('<MouseWheel>', master.scrollwheel) # Overrides so that scrolling no longer works in linenumbers text widget.
+        self.texteditor.bind('<MouseWheel>', master.scrollwheel) # I Overrode scrolling for texteditor too, since scrolling with mousewheel is currently clunky
 
-        master.populateLineNum(self.linenumber)
+        self.addlineNumbers()
         self.linenumber.configure(state='disabled')
+        master.after(10, self.addlineNumbers) # Updates every 0.010 seconds.
 
+
+    """def HandleBackSpace(self):
+        # This solution is very improvised, does not work properly when moving back a line while still having characters on current line.
+        # end-2c It is so that on backspace, instead of calculating the position of cursor. It calculates the position of the last printable character (Not including newline)
+        numofline = int(float(self.texteditor.index("end-2c")))
+
+        self.linenumber.configure(state='normal')
+        self.linenumber.delete("1.0", tk.END)
+        if numofline < 9:
+            for i in range(1, 11):
+                self.linenumber.insert(tk.END, f"{i}\n")
+        else:
+            for i in range(1, numofline + 2):
+                self.linenumber.insert(tk.END, f"{i}\n")
+        self.linenumber.configure(state='disabled')"""
+
+
+    def addlineNumbers(self):
+        numofline = int(float(self.texteditor.index("end")))
+
+        self.linenumber.configure(state='normal')
+        self.linenumber.delete("1.0", tk.END)
+        if numofline < 9:
+            for i in range(1, 11):
+                self.linenumber.insert(tk.END, f"{i}\n")
+        else:
+            for i in range(1, numofline + 2):
+                self.linenumber.insert(tk.END, f"{i}\n")
+        self.linenumber.configure(state='disabled')
+        self.master.after(10, self.addlineNumbers)
 
 
 
@@ -148,26 +180,12 @@ class CreateConsole(customtkinter.CTkTextbox):
         self.consoleframe.grid_columnconfigure(2, weight=1)
 
         self.console = customtkinter.CTkTextbox(self.consoleframe, font=("Courier", 14), activate_scrollbars=True,
-                                           state='normal',
+                                           state='disabled',
                                            wrap='none', border_width=1, border_color="gray20", corner_radius=0,
-                                           fg_color="gray14")
-        self.console.grid(row=0, column=1, columnspan=3, rowspan=3, sticky='nsew')
-        self.linenumber = customtkinter.CTkTextbox(self.consoleframe, font=("Courier", 14), activate_scrollbars = False, wrap='none'
-                                              ,border_width=1, border_color="gray20", corner_radius=0, fg_color="gray14", width=30)
-        self.linenumber.grid(row=0,column=0,rowspan=3, sticky='nsw')
+                                           fg_color="black", border_spacing=8)
+        self.console.grid(row=0, column=0, columnspan=3, rowspan=3, sticky='nsew')
 
-        self.scrollbar1 = customtkinter.CTkScrollbar(self.console, button_color="gray18",button_hover_color="gray30", command=lambda *args: (self.console.yview(*args), self.linenumber.yview(*args)))
-        self.scrollbar1.grid(row=0, column=1, sticky="ns",padx=(0,5),pady=(5,0))
-        self.scrollbar2 = customtkinter.CTkScrollbar(self.console, command=self.console.xview,orientation="horizontal", button_color="gray18",button_hover_color="gray30")
-        self.scrollbar2.grid(row=1, column=0, sticky="ew", padx=(5, 0), pady=(0, 5))
 
-        self.console.configure(yscrollcommand=self.scrollbar1.set, xscrollcommand = self.scrollbar2.set, tabs='0.5i')
-
-        self.linenumber.bind('<MouseWheel>',
-                             master.scrollwheel)  # Overrides so that scrolling no longer works in linenumbers.
-
-        master.populateLineNum(self.linenumber)
-        self.linenumber.configure(state='disabled')
 
 class CreateLogo(customtkinter.CTkFrame):
     def __init__(self, master: any, **kwargs):
@@ -268,21 +286,24 @@ class CreateButtons(customtkinter.CTkButton):
         button.grid(row=1, column=column, sticky='nsew', padx=(5, 0))
 
     def run_lexical(self):
+        self.console1.console.configure(state="normal")
         tok_count = 0
+        self.console1.console.tag_config("Error", foreground="#d50000")
+        self.console1.console.tag_config("Complete", foreground="green")
         try:
             contents=self.text_editor.texteditor.get("1.0", "end-1c")
             errors, tokens = Lexer.read_text(contents)
             self.console1.console.delete("1.0", tk.END)
 
             if not errors and tokens:
-                self.console1.console.insert(tk.END, "StellarSynth -> No errors found during lexical analysis.")
+                self.console1.console.insert(tk.END, "StellarSynth -> No errors found during lexical analysis.\n", tags="Complete")
             else:
                 for error in errors:
-                    self.console1.console.insert(tk.END, f"StellarSynth -> {error}")
+                    self.console1.console.insert(tk.END, f"StellarSynth -> {error}\n", tags="Error")
 
             self.lexeme_table.Lexeme_Token_Table.delete(*self.lexeme_table.Lexeme_Token_Table.get_children())
             if not tokens:
-                self.console1.console.insert(tk.END, "StellarSynth -> Tokens list is empty.")
+                self.console1.console.insert(tk.END, "StellarSynth -> Tokens list is empty.\n")
             else:
                 tok_count = 0
                 for lexeme, token in tokens:
@@ -303,25 +324,32 @@ class CreateButtons(customtkinter.CTkButton):
                         self.lexeme_table.Lexeme_Token_Table.insert("", tk.END, values=(tok_count,lexeme, token))
 
             self.lexeme_table.tag_rows(self.lexeme_table.Lexeme_Token_Table)
-            self.console1.console.insert(tk.END, "\n\nStellarSynth -> Lexical Analysis Complete.")
+            self.console1.console.insert(tk.END, "\nStellarSynth -> Lexical Analysis Complete.")
             self.console1.console.insert(tk.END, f"\nStellarSynth -> Generated a total of {tok_count} tokens. ")
-            return errors, tokens
 
         except Exception as e:
             print(f"Error: {e}")
 
+        self.console1.console.configure(state='disabled')
+
     def run_syntax(self):
+        self.console1.console.configure(state="normal")
         self.run_lexical()
+        self.console1.console.configure(state="normal")
+
+        self.console1.console.tag_config("Error", foreground="#d50000")
+        self.console1.console.tag_config("Complete", foreground="green")
         contents = self.text_editor.texteditor.get("1.0", "end-1c")
         errors, tokens = Lexer.read_text(contents)
         try:
             self.console1.console.delete("1.0", tk.END)
+            if errors:
+                self.console1.console.insert(tk.END,
+                                             "StellarSynth -> Lexical Analysis Error. Cannot proceed with Syntax Analysis.\n",
+                                             tags="Error")
+                return
             if not tokens:
-                self.console1.console.insert(tk.END, "StellarSynth -> Tokens list is empty.")
-                if errors:
-                    self.console1.console.insert(tk.END,"StellarSynth -> Lexical Analysis Error. Cannot proceed with Syntax Analysis.")
-            elif errors:
-                self.console1.console.insert(tk.END, "StellarSynth -> Lexical Analysis Error. Cannot proceed with Syntax Analysis.")
+                self.console1.console.insert(tk.END, "StellarSynth -> Tokens list is empty.\n")
             else:
                 # Now, you can integrate the SyntaxAnalyzer and call its methods with the tokens list
                 syntax_analyzer = Syntax.SyntaxAnalyzer(tokens)
@@ -330,14 +358,15 @@ class CreateButtons(customtkinter.CTkButton):
 
                 if syntax_analyzer.errors:
                     for error in syntax_analyzer.errors:
-                        self.console1.console.insert(tk.END, f"StellarSynth -> {error}\n")
+                        self.console1.console.insert(tk.END, f"StellarSynth -> {error}\n", tags="Error")
                 else:
-                    self.console1.console.insert(tk.END, "StellarSynth -> Syntax is correct. No Errors Found.")
+                    self.console1.console.insert(tk.END, "StellarSynth -> Syntax is correct. No Errors Found.\n", tags="Complete")
 
-            self.console1.console.insert(tk.END, "")
-            self.console1.console.insert(tk.END, "\n\nStellarSynth -> Syntax Analysis Complete.")
+            self.console1.console.insert(tk.END, "\nStellarSynth -> Syntax Analysis Complete.")
         except Exception as e:
             print(f"Error: {e}")
+
+        self.console1.console.configure(state="disabled")
 
     def run_semantic(self):
         pass
