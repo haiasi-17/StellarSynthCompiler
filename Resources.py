@@ -52,43 +52,43 @@ PrintableChar =         AlphaNum + Space + Comma + Period + ['!', '\"', '#', '$'
                                                              '|', '}', '~']
 
 # Delimiters
-sdelim =                Space + Tab
-delim1 =                Space + Tab + LParenth
-delim2 =                Space + Tab + Terminator
+sdelim =                Space + Tab + Newline
+delim1 =                Space + Tab + Newline + LParenth
+delim2 =                Space + Tab + Newline + Terminator
 delim3 =                [] # Not in use
-delim4 =                Space + Tab + GreaterThan
-delim5 =                Space + Tab + LessThan
-delim6 =                Space + Tab + LSqrBrkt
-delim7 =                Space + Tab + LParenth + AlphaNum
-delim8 =                Space + Tab + Terminator + ComAlpha + RParenth
+delim4 =                Space + Tab + Newline + GreaterThan
+delim5 =                Space + Tab + Newline + LessThan
+delim6 =                Space + Tab + Newline + LSqrBrkt
+delim7 =                Space + Tab + Newline + LParenth + AlphaNum
+delim8 =                Space + Tab + Newline + Terminator + ComAlpha + RParenth
 delim9 =                Space + Tab + Newline
-delim10 =               Space + Tab + LParenth + LSqrBrkt + Terminator
-delim11 =               Space + Tab + ComAlpha
-delim12 =               Space + Tab + LParenth + ComAlpha + AssignOp
-delim13 =               Space + Tab + LParenth + AlphaNum + RParenth + ExclaMark + Minus + RegDblQtMark + RegSglQtMark
-delim14 =               Space + Tab + Terminator + MathOp + LSqrBrkt + Ampersand + VerticalBar + LessThan + GreaterThan + AssignOp + Newline + RParenth + Comma + ["G"]
+delim10 =               Space + Tab + Newline + LParenth + LSqrBrkt + Terminator
+delim11 =               Space + Tab + Newline + ComAlpha
+delim12 =               Space + Tab + Newline + LParenth + ComAlpha + AssignOp
+delim13 =               Space + Tab + Newline + LParenth + AlphaNum + RParenth + ExclaMark + Minus + RegDblQtMark + RegSglQtMark
+delim14 =               Space + Tab + Newline + Terminator + MathOp + LSqrBrkt + Ampersand + VerticalBar + LessThan + GreaterThan + AssignOp + RParenth + Comma + ["G"]
 delim15 =               Space + Tab + Newline + RegSglQtMark + RegDblQtMark + AlphaNum + LSqrBrkt + RSqrBrkt
 delim16 =               Space + Tab + Newline + Terminator + ComAlpha + RSqrBrkt + Comma
-delim17 =               Space + Tab + AlphaNum + RegSglQtMark + RegDblQtMark + LSqrBrkt
+delim17 =               Space + Tab + Newline + AlphaNum + RegSglQtMark + RegDblQtMark + LSqrBrkt
 delim18 =               PrintableChar + Tab + Newline # Unused, Was used for \' and \" delims and $ Delimiter
-delim19 =               Space + Tab + AlphaNum + RCurBrace
-delim20 =               Space + Tab + Terminator + AssignOp + LCurBrace + GreaterThan + LessThan + MathOp + RParenth + Comma
-delim21 =               [x for x in PrintableChar if x not in RegQtMarks and x != 'n'] + Newline + Tab # Formerly used for chars  that come after in string \ except n, ', "
+delim19 =               Space + Tab + Newline + AlphaNum + RCurBrace
+delim20 =               Space + Tab + Newline + Terminator + AssignOp + LCurBrace + GreaterThan + LessThan + MathOp + RParenth + Comma
+delim21 =               [x for x in PrintableChar if x not in RegQtMarks and x != 'n'] + Newline + Tab # Unused, formerly used for chars  that come after in string \ except n, ', "
 delim22 =               Space + Tab + Newline + UpperAlpha + LSqrBrkt
-delim23 =               Space + Tab + RParenth
-delim24 =               Space + Tab + AlphaNum + LParenth + RegSglQtMark + RegDblQtMark
-delim25 =               Space + Tab + Colon
-delim26 =               Space + Tab + ComAlpha + Newline + RSqrBrkt + RParenth
+delim23 =               Space + Tab + Newline + RParenth
+delim24 =               Space + Tab + Newline + AlphaNum + LParenth + RegSglQtMark + RegDblQtMark
+delim25 =               Space + Tab + Newline + Colon
+delim26 =               Space + Tab + Newline + ComAlpha + RSqrBrkt + RParenth
 delim27 =               PrintableChar + Newline + Tab # Not in use
 
-Sun_delim =             (Space + RParenth + RCurBrace + RSqrBrkt + Terminator + Comma +
+Sun_delim =             (Space + Tab + Newline + RParenth + RCurBrace + RSqrBrkt + Terminator + Comma +
                         Ampersand + VerticalBar + ExclaMark + MathOp + AssignOp + GreaterThan + LessThan + Tab + LSqrBrkt + Colon)
-Luhman_delim =          (Space + RParenth + RSqrBrkt + Terminator + Comma + Ampersand + VerticalBar
-                        + ExclaMark + MathOp + AssignOp + GreaterThan + LessThan + Tab)
-Starsys_delim =         Space + RParenth + Comma + Terminator + LessThan + RSqrBrkt + Tab + Colon
-Boolean_delim =         Space + Terminator + RParenth + Ampersand + VerticalBar + ExclaMark + Comma + RSqrBrkt + Tab + Colon
-Identifier_delim =      (Space + Terminator + LParenth + RParenth + LCurBrace + RSqrBrkt + MathOp
-                        + Ampersand + VerticalBar + ExclaMark + AssignOp + GreaterThan + LessThan + Comma + Period + Colon + Tilde + LSqrBrkt + Newline + RCurBrace + Tab)
+Luhman_delim =          (Space + Tab + Newline + RParenth + RSqrBrkt + Terminator + Comma + Ampersand + VerticalBar
+                        + ExclaMark + MathOp + AssignOp + GreaterThan + LessThan)
+Starsys_delim =         Space + Tab + Newline + RParenth + Comma + Terminator + LessThan + RSqrBrkt + Colon
+Boolean_delim =         Space + Tab + Newline + Terminator + RParenth + Ampersand + VerticalBar + ExclaMark + Comma + RSqrBrkt + Colon
+Identifier_delim =      (Space + Tab + Newline + Terminator + LParenth + RParenth + LCurBrace + RSqrBrkt + MathOp
+                        + Ampersand + VerticalBar + ExclaMark + AssignOp + GreaterThan + LessThan + Comma + Period + Colon + Tilde + LSqrBrkt + RCurBrace)
 
 WordSymbolDelims =      {
                         "Autom":        sdelim,
