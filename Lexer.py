@@ -1,4 +1,5 @@
 import Resources
+import os
 
 # Splits the Contents into Lines
 class Lexer:
@@ -1620,11 +1621,16 @@ class Lexer:
 
             
 def read_text(file):
-    contents = open(file, "r").read()
+    if (os.path.isfile(file)):
+        contents = open(file, "r").read() 
+    else:
+        contents = file
     lexer_instance = Lexer(contents)
     errors, tokens = lexer_instance.split_content_into_lines()
     return errors, tokens
 
+
+ 
 
 """
 Algorithm:

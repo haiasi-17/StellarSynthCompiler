@@ -9,7 +9,9 @@ import datetime
 class App(customtkinter.CTk):
     def __init__(self):
         super().__init__()
-        self.geometry("1024x576")
+        width, height = self.winfo_screenwidth(), self.winfo_screenheight()
+
+        self.geometry('%dx%d+0+0' % (width,height))
         self.iconbitmap("Astronaut.ico")
         self.title("StellarSynth Compiler")
         self.configure(background="white")
@@ -257,7 +259,9 @@ class CreateMenu(tk.Menu):
             if self.text_editor.texteditor:
                 self.text_editor.texteditor.delete('1.0', tk.END)
             if self.console1.console:
+                self.console1.console.configure(state="normal")
                 self.console1.console.delete('1.0', tk.END)
+                self.console1.console.configure(state="disabled")
             if self.lexeme_table.Lexeme_Token_Table:
                 self.lexeme_table.Lexeme_Token_Table.delete(*self.lexeme_table.Lexeme_Token_Table.get_children())
             messagebox.showinfo("Success", "Clearing Successful.")
