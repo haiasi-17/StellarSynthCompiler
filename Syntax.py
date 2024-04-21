@@ -660,6 +660,276 @@ class SyntaxAnalyzer:
                 self.errors.append(f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', but instead got '{self.peek_next_token()}'")
                 return False
 
+    def match_parenth_condition(self, expected_token):
+        self.get_next_token()
+        while self.current_token == "Space":
+            self.get_next_token()
+
+        if expected_token == "(":
+            if (re.match(r'Identifier\d*$', self.peek_next_token()) or "SunLiteral" or "LuhmanLiteral"
+                    or "StarsysLiteral" or "True" or "False"):
+                self.match(Resources.Value1)  # consume terms
+                #  if the next is a conditional operator, proceed to check if it is followed by the following values
+                if (self.peek_next_token() == "==" or self.peek_next_token() == "!=" or self.peek_next_token() == "<"
+                        or self.peek_next_token() == ">" or self.peek_next_token() == "<=" or self.peek_next_token() == ">="
+                        or self.peek_next_token() == "||" or self.peek_next_token() == "&&" or self.peek_next_token() == "!"
+                        or self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                        or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                    self.match(Resources.condop)
+                    if (re.match(r'Identifier\d*$', self.peek_next_token()) or "SunLiteral" or "LuhmanLiteral"
+                            or "StarsysLiteral" or "True" or "False"):
+                        self.match(Resources.Value1)
+                        #  more values
+                        #  if the next is a conditional operator, proceed to check if it is followed by the following values
+                        if (
+                                self.peek_next_token() == "==" or self.peek_next_token() == "!=" or self.peek_next_token() == "<"
+                                or self.peek_next_token() == ">" or self.peek_next_token() == "<=" or self.peek_next_token() == ">="
+                                or self.peek_next_token() == "||" or self.peek_next_token() == "&&" or self.peek_next_token() == "!"
+                                or self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                                or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                            self.match(Resources.condop)
+                            #  must be followed by these values
+                            if (re.match(r'Identifier\d*$', self.peek_next_token()) or self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral"
+                                    or self.peek_next_token() == "StarsysLiteral" or self.peek_next_token() == "True" or self.peek_next_token() =="False"):
+                                self.match_mult_condition(Resources.Value1)  # assign multiple values
+                                if self.peek_next_token() == ")":
+                                    self.match(")")
+                                    if self.peek_next_token() == ")":
+                                        return True
+                                        # followed by more condition
+                                    elif (
+                                            self.peek_next_token() == "==" or self.peek_next_token() == "!=" or self.peek_next_token() == "<"
+                                            or self.peek_next_token() == ">" or self.peek_next_token() == "<=" or self.peek_next_token() == ">="
+                                            or self.peek_next_token() == "||" or self.peek_next_token() == "&&" or self.peek_next_token() == "!"
+                                            or self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                                            or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                                        self.match(Resources.condop)
+                                        #  condition next is enclosed with parentheses
+                                        if self.peek_next_token() == "(":
+                                            self.match_parenth_condition("(")  # parenthesis condition path
+                                            if self.peek_next_token() == ")":
+                                                return True
+                                                #  not closed with ')' or followed by a conditional operator
+                                            else:
+                                                return False
+                                        #  normal flow
+                                        elif (re.match(r'Identifier\d*$',
+                                                       self.peek_next_token()) or "SunLiteral" or "LuhmanLiteral"
+                                              or "StarsysLiteral" or "True" or "False"):
+                                            self.match(Resources.Value1)
+                                            #  more values
+                                            #  if the next is a conditional operator, proceed to check if it is followed by the following values
+                                            if (
+                                                    self.peek_next_token() == "==" or self.peek_next_token() == "!=" or self.peek_next_token() == "<"
+                                                    or self.peek_next_token() == ">" or self.peek_next_token() == "<=" or self.peek_next_token() == ">="
+                                                    or self.peek_next_token() == "||" or self.peek_next_token() == "&&" or self.peek_next_token() == "!"
+                                                    or self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                                                    or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                                                self.match(Resources.condop)
+                                                #  must be followed by these values
+                                                if (re.match(r'Identifier\d*$',
+                                                             self.peek_next_token()) or "SunLiteral" or "LuhmanLiteral"
+                                                        or "StarsysLiteral" or "True" or "False"):
+                                                    self.match_mult_condition(
+                                                        Resources.Value1)  # assign multiple values
+                                                    if self.peek_next_token() == ")":
+                                                        return True
+                                                    #  not closed with ')' or followed by a conditional operator
+                                                    else:
+                                                        self.errors.append(
+                                                            f"(Line {self.line_number}) | Syntax error: Expected ')', '==', '!=', '<', '>', "
+                                                            f"'<=', '>=', '&&', '||', '!', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
+                                                #  not followed by any of the values expected after a condition operator
+                                                else:
+                                                    self.errors.append(
+                                                        f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', 'SunLiteral', "
+                                                        f"'LuhmanLiteral', 'True', 'False', but instead got '{self.peek_next_token()}'")
+                                            #  single value
+                                            elif self.peek_next_token() == ")":
+                                                return True  # else: last identifier has no following '>>' to display
+                                            #  not closed with ')' or followed by a conditional operator
+                                            else:
+                                                return False
+                                        #  not followed by any of the values expected after a condition operator
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', 'SunLiteral', "
+                                                f"'LuhmanLiteral', 'True', 'False', but instead got '{self.peek_next_token()}'")
+                                    elif not self.parenthError:
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax error: Expected ')', '==', '!=', '<', '>', "
+                                            f"'<=', '>=', '&&', '||', '!', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
+                                #  not closed with ')' or followed by a conditional operator
+                                else:
+                                    self.errors.append(
+                                        f"(Line {self.line_number}) | Syntax error: Expected ')', '==', '!=', '<', '>', "
+                                        f"'<=', '>=', '&&', '||', '!', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
+                            elif self.peek_next_token() == "(":
+                                self.parse_multCond_parenth()
+                                if self.peek_next_token() == ")":
+                                    self.match(")")
+                                    if self.peek_next_token() == ")":
+                                        return True
+                                    # followed by more condition
+                                    elif (
+                                            self.peek_next_token() == "==" or self.peek_next_token() == "!=" or self.peek_next_token() == "<"
+                                            or self.peek_next_token() == ">" or self.peek_next_token() == "<=" or self.peek_next_token() == ">="
+                                            or self.peek_next_token() == "||" or self.peek_next_token() == "&&" or self.peek_next_token() == "!"
+                                            or self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                                            or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                                        self.match(Resources.condop)
+                                        #  condition next is enclosed with parentheses
+                                        if self.peek_next_token() == "(":
+                                            self.match_parenth_condition("(")  # parenthesis condition path
+                                            if self.peek_next_token() == ")":
+                                                return True
+                                                #  not closed with ')' or followed by a conditional operator
+                                            else:
+                                                return False
+                                        #  normal flow
+                                        elif (re.match(r'Identifier\d*$',
+                                                       self.peek_next_token()) or "SunLiteral" or "LuhmanLiteral"
+                                              or "StarsysLiteral" or "True" or "False"):
+                                            self.match(Resources.Value1)
+                                            #  more values
+                                            #  if the next is a conditional operator, proceed to check if it is followed by the following values
+                                            if (
+                                                    self.peek_next_token() == "==" or self.peek_next_token() == "!=" or self.peek_next_token() == "<"
+                                                    or self.peek_next_token() == ">" or self.peek_next_token() == "<=" or self.peek_next_token() == ">="
+                                                    or self.peek_next_token() == "||" or self.peek_next_token() == "&&" or self.peek_next_token() == "!"
+                                                    or self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                                                    or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                                                self.match(Resources.condop)
+                                                #  must be followed by these values
+                                                if (re.match(r'Identifier\d*$',
+                                                             self.peek_next_token()) or "SunLiteral" or "LuhmanLiteral"
+                                                        or "StarsysLiteral" or "True" or "False"):
+                                                    self.match_mult_condition(
+                                                        Resources.Value1)  # assign multiple values
+                                                    if self.peek_next_token() == ")":
+                                                        return True
+                                                    #  not closed with ')' or followed by a conditional operator
+                                                    else:
+                                                        self.errors.append(
+                                                            f"(Line {self.line_number}) | Syntax error: Expected ')', '==', '!=', '<', '>', "
+                                                            f"'<=', '>=', '&&', '||', '!', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
+                                                #  not followed by any of the values expected after a condition operator
+                                                else:
+                                                    self.errors.append(
+                                                        f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', 'SunLiteral', "
+                                                        f"'LuhmanLiteral', 'True', 'False', but instead got '{self.peek_next_token()}'")
+                                            #  single value
+                                            elif self.peek_next_token() == ")":
+                                                return True  # else: last identifier has no following '>>' to display
+                                            #  not closed with ')' or followed by a conditional operator
+                                            else:
+                                                return False
+                                        #  not followed by any of the values expected after a condition operator
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', 'SunLiteral', "
+                                                f"'LuhmanLiteral', 'True', 'False', but instead got '{self.peek_next_token()}'")
+                                    else:
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax error: Expected ')', '==', '!=', '<', '>', "
+                                            f"'<=', '>=', '&&', '||', '!', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
+                            #  not followed by any of the values expected after a condition operator
+                            else:
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', 'SunLiteral', "
+                                    f"'LuhmanLiteral', 'True', 'False', but instead got '{self.peek_next_token()}'")
+                        #  single value
+                        elif self.peek_next_token() == ")":
+                            self.match(")")
+                            if self.peek_next_token() == ")":
+                                return True
+                            # followed by more condition
+                            elif (
+                                    self.peek_next_token() == "==" or self.peek_next_token() == "!=" or self.peek_next_token() == "<"
+                                    or self.peek_next_token() == ">" or self.peek_next_token() == "<=" or self.peek_next_token() == ">="
+                                    or self.peek_next_token() == "||" or self.peek_next_token() == "&&" or self.peek_next_token() == "!"
+                                    or self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                                    or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                                self.match(Resources.condop)
+                                #  condition next is enclosed with parentheses
+                                if self.peek_next_token() == "(":
+                                    self.match_parenth_condition("(")  # parenthesis condition path
+                                    if self.peek_next_token() == ")":
+                                        return True
+                                        #  not closed with ')' or followed by a conditional operator
+                                    else:
+                                        return False
+                                #  normal flow
+                                elif (re.match(r'Identifier\d*$',
+                                             self.peek_next_token()) or "SunLiteral" or "LuhmanLiteral"
+                                        or "StarsysLiteral" or "True" or "False"):
+                                    self.match(Resources.Value1)
+                                    #  more values
+                                    #  if the next is a conditional operator, proceed to check if it is followed by the following values
+                                    if (
+                                            self.peek_next_token() == "==" or self.peek_next_token() == "!=" or self.peek_next_token() == "<"
+                                            or self.peek_next_token() == ">" or self.peek_next_token() == "<=" or self.peek_next_token() == ">="
+                                            or self.peek_next_token() == "||" or self.peek_next_token() == "&&" or self.peek_next_token() == "!"
+                                            or self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                                            or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                                        self.match(Resources.condop)
+                                        #  must be followed by these values
+                                        if (re.match(r'Identifier\d*$',
+                                                     self.peek_next_token()) or "SunLiteral" or "LuhmanLiteral"
+                                                or "StarsysLiteral" or "True" or "False"):
+                                            self.match_mult_condition(Resources.Value1)  # assign multiple values
+                                            if self.peek_next_token() == ")":
+                                                return True
+                                            #  not closed with ')' or followed by a conditional operator
+                                            else:
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax error: Expected ')', '==', '!=', '<', '>', "
+                                                    f"'<=', '>=', '&&', '||', '!', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
+                                        #  not followed by any of the values expected after a condition operator
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', 'SunLiteral', "
+                                                f"'LuhmanLiteral', 'True', 'False', but instead got '{self.peek_next_token()}'")
+                                    #  single value
+                                    elif self.peek_next_token() == ")":
+                                        return True  # else: last identifier has no following '>>' to display
+                                    #  not closed with ')' or followed by a conditional operator
+                                    else:
+                                        return False
+                                #  not followed by any of the values expected after a condition operator
+                                else:
+                                    self.errors.append(
+                                        f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', 'SunLiteral', "
+                                        f"'LuhmanLiteral', 'True', 'False', but instead got '{self.peek_next_token()}'")
+                            else:
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax error: Expected ')', '==', '!=', '<', '>', "
+                                    f"'<=', '>=', '&&', '||', '!', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
+                        #  not closed with ')' or followed by a conditional operator
+                        else:
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Syntax error: Expected ')', '==', '!=', '<', '>', "
+                                f"'<=', '>=', '&&', '||', '!', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
+                    #  not followed by any of the values expected after a condition operator
+                    else:
+                        self.errors.append(
+                            f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', 'SunLiteral', "
+                            f"'LuhmanLiteral', 'True', 'False', but instead got '{self.peek_next_token()}'")
+                #  not closed with ')' or followed by a conditional operator
+                else:
+                    self.parenthError = True
+                    self.errors.append(f"(Line {self.line_number}) | Syntax error: Expected '==', '!=', '<', '>', "
+                                       f"'<=', '>=', '&&', '||', '!', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
+                # empty condition error
+            else:
+                self.errors.append(
+                    f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral'"
+                    f", 'StarsysLiteral', 'True', 'False', but instead got '{self.peek_next_token()}'")
+                return False
+
+    def match_parenth_condition2(self, expected_token):
+        pass
+
     #  method that handles condition, if-else, while, do-while
     def match_condition(self, expected_token):
         self.get_next_token()
@@ -667,7 +937,14 @@ class SyntaxAnalyzer:
             self.get_next_token()
 
         if expected_token == "(":
-            if (re.match(r'Identifier\d*$', self.peek_next_token()) or "SunLiteral" or "LuhmanLiteral"
+            if self.peek_next_token() == "(":
+                self.match_parenth_condition("(")  # parenthesis condition path
+                if self.peek_next_token() == ")":
+                    return True
+                    #  not closed with ')' or followed by a conditional operator
+                else:
+                    return False
+            elif (re.match(r'Identifier\d*$', self.peek_next_token()) or "SunLiteral" or "LuhmanLiteral"
                   or "StarsysLiteral" or "True" or "False"):
                 self.match(Resources.Value1)  # consume terms
                 #  if the next is a conditional operator, proceed to check if it is followed by the following values
@@ -690,8 +967,8 @@ class SyntaxAnalyzer:
                                 or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
                             self.match(Resources.condop)
                             #  must be followed by these values
-                            if (re.match(r'Identifier\d*$', self.peek_next_token()) or "SunLiteral" or "LuhmanLiteral"
-                                    or "StarsysLiteral" or "True" or "False"):
+                            if (re.match(r'Identifier\d*$', self.peek_next_token()) or self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral"
+                                    or self.peek_next_token() == "StarsysLiteral" or self.peek_next_token() == "True" or self.peek_next_token() == "False"):
                                 self.match_mult_condition(Resources.Value1) #  assign multiple values
                                 if self.peek_next_token() == ")":
                                     return True
@@ -699,6 +976,13 @@ class SyntaxAnalyzer:
                                 else:
                                     self.errors.append(f"(Line {self.line_number}) | Syntax error: Expected ')', '==', '!=', '<', '>', "
                                                        f"'<=', '>=', '&&', '||', '!', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
+                            elif self.peek_next_token() == "(":
+                                self.match_parenth_condition("(")  # parenthesis condition path
+                                if self.peek_next_token() == ")":
+                                    return True
+                                    #  not closed with ')' or followed by a conditional operator
+                                else:
+                                    return False
                             #  not followed by any of the values expected after a condition operator
                             else:
                                 self.errors.append(f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', 'SunLiteral', "
@@ -724,7 +1008,7 @@ class SyntaxAnalyzer:
             # empty condition error
             else:
                 self.errors.append(f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral'"
-                                   f", 'StarsysLiteral', 'True', 'False', but instead got '{self.peek_next_token()}'")
+                                   f", 'StarsysLiteral', 'True', 'False', '(' but instead got '{self.peek_next_token()}'")
                 return False
 
     #  method that handles condition, for loop
@@ -735,8 +1019,8 @@ class SyntaxAnalyzer:
 
         #  expected token could be: id, sunliteral, luhmanliteral, starsysliteral, true, false
         if isinstance(expected_token, list):
-            if (re.match(r'Identifier\d*$', self.current_token) or "SunLiteral" or "LuhmanLiteral"
-                    or "StarsysLiteral" or "True" or "False"):
+            if (re.match(r'Identifier\d*$', self.current_token) or self.current_token == "SunLiteral" or self.current_token == "LuhmanLiteral"
+                    or self.current_token == "StarsysLiteral" or self.current_token == "True" or self.current_token == "False"):
                 #  if the next is a conditional operator, proceed to check if it is followed by the following values
                 if (self.peek_next_token() == "==" or self.peek_next_token() == "!=" or self.peek_next_token() == "<"
                         or self.peek_next_token() == ">" or self.peek_next_token() == "<=" or self.peek_next_token() == ">="
@@ -744,8 +1028,8 @@ class SyntaxAnalyzer:
                         or self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
                         or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
                     self.match(Resources.condop)
-                    if (re.match(r'Identifier\d*$', self.peek_next_token()) or "SunLiteral" or "LuhmanLiteral"
-                            or "StarsysLiteral" or "True" or "False"):
+                    if (re.match(r'Identifier\d*$', self.peek_next_token()) or self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral"
+                            or self.peek_next_token() == "StarsysLiteral" or self.peek_next_token() == "True" or self.peek_next_token() == "False"):
                         self.match(Resources.Value1)
                         #  more values
                         #  if the next is a conditional operator, proceed to check if it is followed by the following values
@@ -757,8 +1041,8 @@ class SyntaxAnalyzer:
                                 or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
                             self.match(Resources.condop)
                             #  must be followed by these values
-                            if (re.match(r'Identifier\d*$', self.peek_next_token()) or "SunLiteral" or "LuhmanLiteral"
-                                    or "StarsysLiteral" or "True" or "False"):
+                            if (re.match(r'Identifier\d*$', self.peek_next_token()) or self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral"
+                                    or self.peek_next_token() == "StarsysLiteral" or self.peek_next_token() == "True" or self.peek_next_token() == "False"):
                                 self.match_mult_condition(Resources.Value1)  # assign multiple values
                                 if self.peek_next_token() == "#":
                                     return True
@@ -766,10 +1050,11 @@ class SyntaxAnalyzer:
                                 else:
                                     self.errors.append(f"(Line {self.line_number}) | Syntax error: Expected '#', '==', '!=', '<', '>', "
                                                        f"'<=', '>=', '&&', '||', '!', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
-                            #  not followed by any of the values expected after a condition operator
+                            #  not followed by a value
                             else:
-                                self.errors.append(f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', 'SunLiteral', "
-                                                   f"'LuhmanLiteral', 'True', 'False', but instead got '{self.peek_next_token()}'")
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral'"
+                                    f", 'StarsysLiteral', 'True', 'False', '(' but instead got '{self.peek_next_token()}'")
                         #  single value
                         elif self.peek_next_token() == "#":
                             return True  # else: last identifier has no following '>>' to display
@@ -800,8 +1085,8 @@ class SyntaxAnalyzer:
             self.get_next_token()
 
         if isinstance(expected_token, list):
-            if (re.match(r'Identifier\d*$', self.current_token) or "SunLiteral" or "LuhmanLiteral"
-                    or "StarsysLiteral" or "True" or "False"):
+            if (re.match(r'Identifier\d*$', self.current_token) or self.current_token == "SunLiteral" or self.current_token == "LuhmanLiteral"
+                    or self.current_token == "StarsysLiteral" or self.current_token == "True" or self.current_token == "False"):
                 #  if the next is a conditional operator, proceed to check if it is followed by the following values
                 if (
                         self.peek_next_token() == "==" or self.peek_next_token() == "!=" or self.peek_next_token() == "<"
@@ -811,17 +1096,38 @@ class SyntaxAnalyzer:
                         or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
                     self.match(Resources.condop)
                     #  another conditional value
-                    if (re.match(r'Identifier\d*$', self.peek_next_token()) or "SunLiteral" or "LuhmanLiteral"
-                            or "StarsysLiteral" or "True" or "False"):
+                    if (re.match(r'Identifier\d*$', self.peek_next_token()) or self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral"
+                            or self.peek_next_token() == "StarsysLiteral" or self.peek_next_token() == "True" or self.peek_next_token() == "False"):
                         self.match_mult_condition(Resources.Value1)
+                    elif self.peek_next_token() == "(":
+                        self.match_parenth_condition("(")  # parenthesis condition path
+                        if self.peek_next_token() == ")":
+                            return True
+                            #  not closed with ')' or followed by a conditional operator
+                        else:
+                            return False
                     #  not followed by a value
                     else:
                         self.errors.append(f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral'"
-                                           f", 'StarsysLiteral', 'True', 'False', but instead got '{self.peek_next_token()}'")
+                                           f", 'StarsysLiteral', 'True', 'False', '(' but instead got '{self.peek_next_token()}'")
                 #  not followed by a conditional operator
                 else:
                     return True
+            else:
+                self.parenthError = True
+                self.errors.append(
+                    f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral'"
+                    f", 'StarsysLiteral', 'True', 'False', but instead got '{self.peek_next_token()}'")
 
+
+    def parse_multCond_parenth(self):
+        if self.peek_next_token() == "(":
+            self.match_parenth_condition("(")  # parenthesis condition path
+            if self.peek_next_token() == ")":
+                return True
+                #  not closed with ')' or followed by a conditional operator
+            else:
+                return False
 
     #  assign multiple values in parameter subfunc definition
     def match_param_assign_mult(self, expected_token):
@@ -18231,8 +18537,329 @@ class SyntaxAnalyzer:
                     self.match("[")
                     #  statements in an If condition
                     self.parse_statements1()  # includes possibility of nested If-else
-                    # Break path (Deviate)
-                    if self.peek_next_token() == "Deviate":
+                    #  loop update path (pre)
+                    if self.peek_next_token() == "++":
+                        self.match("++")
+                        #  must be followed by an identifier
+                        if re.match(r'Identifier\d*$', self.peek_next_token()):
+                            self.match("Identifier")
+                            #  must be terminated
+                            if self.peek_next_token() == "#":
+                                self.match("#")
+                                #  close if condition (no deviate, proceed, return)
+                                if self.peek_next_token() == "]":
+                                    self.match("]")
+                                    #  is it followed by an Other/Other-If condition?
+                                    if self.peek_next_token() == "Other":
+                                        self.match("Other")
+                                        #  is it an Other-If?
+                                        if self.peek_next_token() == "If":
+                                            self.match("If")
+                                            if self.peek_next_token() == "(":
+                                                self.parse_if_stmnt()
+                                            #  Other-If statement is not followed by '('
+                                            else:
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax Error: Expected ')', but instead got '{self.peek_next_token()}'")
+                                        #  is it an Other Condition?
+                                        elif self.peek_next_token() == "[":
+                                            self.parse_else_stmnt()
+                                        #  error: expected '[' or 'If' after 'Other'
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax Error: Expected '[', 'If', but instead got '{self.peek_next_token()}'")
+                                    #  it is not followed by Other keyword
+                                    else:
+                                        return True
+                                # loop update, has Deviate path
+                                elif self.peek_next_token() == "Deviate":
+                                    self.match("Deviate")
+                                    # terminate break
+                                    if self.peek_next_token() == "#":
+                                        self.match("#")
+                                        #  close if condition
+                                        if self.peek_next_token() == "]":
+                                            self.match("]")
+                                            #  is it followed by an Other/Other-If condition?
+                                            if self.peek_next_token() == "Other":
+                                                self.match("Other")
+                                                #  is it an Other-If?
+                                                if self.peek_next_token() == "If":
+                                                    self.match("If")
+                                                    if self.peek_next_token() == "(":
+                                                        self.parse_if_stmnt()
+                                                    #  Other-If statement is not followed by '('
+                                                    else:
+                                                        self.errors.append(
+                                                            f"(Line {self.line_number}) | Syntax Error: Expected ')', but instead got '{self.peek_next_token()}'")
+                                                #  is it an Other Condition?
+                                                elif self.peek_next_token() == "[":
+                                                    self.parse_else_stmnt()
+                                                #  error: expected '[' or 'If' after 'Other'
+                                                else:
+                                                    self.errors.append(
+                                                        f"(Line {self.line_number}) | Syntax Error: Expected '[', 'If', but instead got '{self.peek_next_token()}'")
+                                            #  it is not followed by Other keyword
+                                            else:
+                                                return True
+                                        #  if condition is not closed
+                                        elif (
+                                                self.peek_previous_token() == "#" or self.peek_previous_token() == "[" or self.peek_previous_token() == "]") and self.peek_next_token() != "]":
+                                            self.notMainError = True
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax Error: Expected ']', but instead got '{self.peek_next_token()}'")
+                                    # error: not terminated
+                                    else:
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax Error: Expected '#', but instead got '{self.peek_next_token()}'")
+                                #  loop update, has continue path (Proceed)
+                                elif self.peek_next_token() == "Proceed":
+                                    self.match("Proceed")
+                                    # terminate break
+                                    if self.peek_next_token() == "#":
+                                        self.match("#")
+                                        #  close if condition
+                                        if self.peek_next_token() == "]":
+                                            self.match("]")
+                                            #  is it followed by an Other/Other-If condition?
+                                            if self.peek_next_token() == "Other":
+                                                self.match("Other")
+                                                #  is it an Other-If?
+                                                if self.peek_next_token() == "If":
+                                                    self.match("If")
+                                                    if self.peek_next_token() == "(":
+                                                        self.parse_if_stmnt()
+                                                    #  Other-If statement is not followed by '('
+                                                    else:
+                                                        self.errors.append(
+                                                            f"(Line {self.line_number}) | Syntax Error: Expected ')', but instead got '{self.peek_next_token()}'")
+                                                #  is it an Other Condition?
+                                                elif self.peek_next_token() == "[":
+                                                    self.parse_else_stmnt()
+                                                #  error: expected '[' or 'If' after 'Other'
+                                                else:
+                                                    self.errors.append(
+                                                        f"(Line {self.line_number}) | Syntax Error: Expected '[', 'If', but instead got '{self.peek_next_token()}'")
+                                            #  it is not followed by Other keyword
+                                            else:
+                                                return True
+                                        #  if condition is not closed
+                                        elif (
+                                                self.peek_previous_token() == "#" or self.peek_previous_token() == "[" or self.peek_previous_token() == "]") and self.peek_next_token() != "]":
+                                            self.notMainError = True
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax Error: Expected ']', but instead got '{self.peek_next_token()}'")
+                                    # error: not terminated
+                                    else:
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax Error: Expected '#', but instead got '{self.peek_next_token()}'")
+                                #  loop update, has retrieve path
+                                elif self.peek_next_token() == "Retrieve":
+                                    self.match_return("Retrieve")
+                                    #  close if condition
+                                    if self.peek_next_token() == "]":
+                                        self.match("]")
+                                        #  is it followed by an Other/Other-If condition?
+                                        if self.peek_next_token() == "Other":
+                                            self.match("Other")
+                                            #  is it an Other-If?
+                                            if self.peek_next_token() == "If":
+                                                self.match("If")
+                                                if self.peek_next_token() == "(":
+                                                    self.parse_if_stmnt()
+                                                #  Other-If statement is not followed by '('
+                                                else:
+                                                    self.errors.append(
+                                                        f"(Line {self.line_number}) | Syntax Error: Expected ')', but instead got '{self.peek_next_token()}'")
+                                            #  is it an Other Condition?
+                                            elif self.peek_next_token() == "[":
+                                                self.parse_else_stmnt()
+                                            #  error: expected '[' or 'If' after 'Other'
+                                            else:
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax Error: Expected '[', 'If', but instead got '{self.peek_next_token()}'")
+                                        #  it is not followed by Other keyword
+                                        else:
+                                            return True
+                                    #  if condition is not closed
+                                    elif (
+                                            self.peek_previous_token() == "#" or self.peek_previous_token() == "[" or self.peek_previous_token() == "]") and self.peek_next_token() != "]":
+                                        self.notMainError = True
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax Error: Expected ']', but instead got '{self.peek_next_token()}'")
+                                #  if condition is not closed
+                                elif (
+                                        self.peek_previous_token() == "#" or self.peek_previous_token() == "[" or self.peek_previous_token() == "]") and self.peek_next_token() != "]" and self.peek_next_token() != "Deviate" and self.peek_next_token() != "Retrieve" and self.peek_next_token() != "Proceed":
+                                    self.notMainError = True
+                                    self.errors.append(
+                                        f"(Line {self.line_number}) | Syntax Error: Expected ']', 'Deviate', 'Proceed', 'Retrieve' but instead got '{self.peek_next_token()}'")
+                            # error: not terminated
+                            else:
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', but instead got '{self.peek_next_token()}'")
+                        # error: not followed by an identifier
+                        else:
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Syntax Error: Expected 'Identifier', but instead got '{self.peek_next_token()}'")
+                    #  loop update path (post + expression)
+                    elif re.match(r'Identifier\d*$', self.peek_next_token()):
+                        self.parse_loop_post_up()  # consume 'Identifier'
+                        #  terminate it
+                        if self.peek_next_token() == "#":
+                            self.match("#")
+                            #  close if condition (no deviate, proceed, return)
+                            if self.peek_next_token() == "]":
+                                self.match("]")
+                                #  is it followed by an Other/Other-If condition?
+                                if self.peek_next_token() == "Other":
+                                    self.match("Other")
+                                    #  is it an Other-If?
+                                    if self.peek_next_token() == "If":
+                                        self.match("If")
+                                        if self.peek_next_token() == "(":
+                                            self.parse_if_stmnt()
+                                        #  Other-If statement is not followed by '('
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax Error: Expected ')', but instead got '{self.peek_next_token()}'")
+                                    #  is it an Other Condition?
+                                    elif self.peek_next_token() == "[":
+                                        self.parse_else_stmnt()
+                                    #  error: expected '[' or 'If' after 'Other'
+                                    else:
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax Error: Expected '[', 'If', but instead got '{self.peek_next_token()}'")
+                                #  it is not followed by Other keyword
+                                else:
+                                    return True
+                            # loop update, has Deviate path
+                            elif self.peek_next_token() == "Deviate":
+                                self.match("Deviate")
+                                # terminate break
+                                if self.peek_next_token() == "#":
+                                    self.match("#")
+                                    #  close if condition
+                                    if self.peek_next_token() == "]":
+                                        self.match("]")
+                                        #  is it followed by an Other/Other-If condition?
+                                        if self.peek_next_token() == "Other":
+                                            self.match("Other")
+                                            #  is it an Other-If?
+                                            if self.peek_next_token() == "If":
+                                                self.match("If")
+                                                if self.peek_next_token() == "(":
+                                                    self.parse_if_stmnt()
+                                                #  Other-If statement is not followed by '('
+                                                else:
+                                                    self.errors.append(
+                                                        f"(Line {self.line_number}) | Syntax Error: Expected ')', but instead got '{self.peek_next_token()}'")
+                                            #  is it an Other Condition?
+                                            elif self.peek_next_token() == "[":
+                                                self.parse_else_stmnt()
+                                            #  error: expected '[' or 'If' after 'Other'
+                                            else:
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax Error: Expected '[', 'If', but instead got '{self.peek_next_token()}'")
+                                        #  it is not followed by Other keyword
+                                        else:
+                                            return True
+                                    #  if condition is not closed
+                                    elif (
+                                            self.peek_previous_token() == "#" or self.peek_previous_token() == "[" or self.peek_previous_token() == "]") and self.peek_next_token() != "]":
+                                        self.notMainError = True
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax Error: Expected ']', but instead got '{self.peek_next_token()}'")
+                                # error: not terminated
+                                else:
+                                    self.errors.append(
+                                        f"(Line {self.line_number}) | Syntax Error: Expected '#', but instead got '{self.peek_next_token()}'")
+                            #  loop update, has continue path (Proceed)
+                            elif self.peek_next_token() == "Proceed":
+                                self.match("Proceed")
+                                # terminate break
+                                if self.peek_next_token() == "#":
+                                    self.match("#")
+                                    #  close if condition
+                                    if self.peek_next_token() == "]":
+                                        self.match("]")
+                                        #  is it followed by an Other/Other-If condition?
+                                        if self.peek_next_token() == "Other":
+                                            self.match("Other")
+                                            #  is it an Other-If?
+                                            if self.peek_next_token() == "If":
+                                                self.match("If")
+                                                if self.peek_next_token() == "(":
+                                                    self.parse_if_stmnt()
+                                                #  Other-If statement is not followed by '('
+                                                else:
+                                                    self.errors.append(
+                                                        f"(Line {self.line_number}) | Syntax Error: Expected ')', but instead got '{self.peek_next_token()}'")
+                                            #  is it an Other Condition?
+                                            elif self.peek_next_token() == "[":
+                                                self.parse_else_stmnt()
+                                            #  error: expected '[' or 'If' after 'Other'
+                                            else:
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax Error: Expected '[', 'If', but instead got '{self.peek_next_token()}'")
+                                        #  it is not followed by Other keyword
+                                        else:
+                                            return True
+                                    #  if condition is not closed
+                                    elif (
+                                            self.peek_previous_token() == "#" or self.peek_previous_token() == "[" or self.peek_previous_token() == "]") and self.peek_next_token() != "]":
+                                        self.notMainError = True
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax Error: Expected ']', but instead got '{self.peek_next_token()}'")
+                                # error: not terminated
+                                else:
+                                    self.errors.append(
+                                        f"(Line {self.line_number}) | Syntax Error: Expected '#', but instead got '{self.peek_next_token()}'")
+                            #  loop update, has retrieve path
+                            elif self.peek_next_token() == "Retrieve":
+                                self.match_return("Retrieve")
+                                #  close if condition
+                                if self.peek_next_token() == "]":
+                                    self.match("]")
+                                    #  is it followed by an Other/Other-If condition?
+                                    if self.peek_next_token() == "Other":
+                                        self.match("Other")
+                                        #  is it an Other-If?
+                                        if self.peek_next_token() == "If":
+                                            self.match("If")
+                                            if self.peek_next_token() == "(":
+                                                self.parse_if_stmnt()
+                                            #  Other-If statement is not followed by '('
+                                            else:
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax Error: Expected ')', but instead got '{self.peek_next_token()}'")
+                                        #  is it an Other Condition?
+                                        elif self.peek_next_token() == "[":
+                                            self.parse_else_stmnt()
+                                        #  error: expected '[' or 'If' after 'Other'
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax Error: Expected '[', 'If', but instead got '{self.peek_next_token()}'")
+                                    #  it is not followed by Other keyword
+                                    else:
+                                        return True
+                                #  if condition is not closed
+                                elif (
+                                        self.peek_previous_token() == "#" or self.peek_previous_token() == "[" or self.peek_previous_token() == "]") and self.peek_next_token() != "]":
+                                    self.notMainError = True
+                                    self.errors.append(
+                                        f"(Line {self.line_number}) | Syntax Error: Expected ']', but instead got '{self.peek_next_token()}'")
+                            #  if condition is not closed
+                            elif (
+                                    self.peek_previous_token() == "#" or self.peek_previous_token() == "[" or self.peek_previous_token() == "]") and self.peek_next_token() != "]" and self.peek_next_token() != "Deviate" and self.peek_next_token() != "Retrieve" and self.peek_next_token() != "Proceed":
+                                self.notMainError = True
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax Error: Expected ']', 'Deviate', 'Proceed', 'Retrieve' but instead got '{self.peek_next_token()}'")
+                        # error: not terminated
+                        else:
+                            self.errors.append(
+                            f"(Line {self.line_number}) | Syntax Error: Expected '#', but instead got '{self.peek_next_token()}'")
+                    # no loop update but has Break path (Deviate)
+                    elif self.peek_next_token() == "Deviate":
                         self.match("Deviate")
                         # terminate break
                         if self.peek_next_token() == "#":
@@ -18271,7 +18898,7 @@ class SyntaxAnalyzer:
                         else:
                             self.errors.append(
                                 f"(Line {self.line_number}) | Syntax Error: Expected '#', but instead got '{self.peek_next_token()}'")
-                    #  continue path (Proceed)
+                    #  no loop update but has continue path (Proceed)
                     elif self.peek_next_token() == "Proceed":
                         self.match("Proceed")
                         # terminate break
@@ -18311,6 +18938,40 @@ class SyntaxAnalyzer:
                         else:
                             self.errors.append(
                                 f"(Line {self.line_number}) | Syntax Error: Expected '#', but instead got '{self.peek_next_token()}'")
+                    #  no loop update but has retrieve path
+                    elif self.peek_next_token() == "Retrieve":
+                        self.match_return("Retrieve")
+                        #  close if condition
+                        if self.peek_next_token() == "]":
+                            self.match("]")
+                            #  is it followed by an Other/Other-If condition?
+                            if self.peek_next_token() == "Other":
+                                self.match("Other")
+                                #  is it an Other-If?
+                                if self.peek_next_token() == "If":
+                                    self.match("If")
+                                    if self.peek_next_token() == "(":
+                                        self.parse_if_stmnt()
+                                    #  Other-If statement is not followed by '('
+                                    else:
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax Error: Expected ')', but instead got '{self.peek_next_token()}'")
+                                #  is it an Other Condition?
+                                elif self.peek_next_token() == "[":
+                                    self.parse_else_stmnt()
+                                #  error: expected '[' or 'If' after 'Other'
+                                else:
+                                    self.errors.append(
+                                        f"(Line {self.line_number}) | Syntax Error: Expected '[', 'If', but instead got '{self.peek_next_token()}'")
+                            #  it is not followed by Other keyword
+                            else:
+                                return True
+                        #  if condition is not closed
+                        elif (
+                                self.peek_previous_token() == "#" or self.peek_previous_token() == "[" or self.peek_previous_token() == "]") and self.peek_next_token() != "]":
+                            self.notMainError = True
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Syntax Error: Expected ']', but instead got '{self.peek_next_token()}'")
                     #  close if condition, no deviate and proceed
                     elif self.peek_next_token() == "]":
                         self.match("]")
@@ -18340,10 +19001,15 @@ class SyntaxAnalyzer:
                         self.notMainError = False
                         self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected ']', but instead got '{self.peek_next_token()}'")
                 #  error: not followed by '['
-                else:
+                elif self.peek_next_token() != "[" and not self.parenthError:
                     self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected '[', but instead got '{self.peek_next_token()}'")
             #  not closed with ')'
-            else:
+            elif self.peek_next_token() != ")" and ((re.match(r'Identifier\d*$', self.peek_previous_token())
+                                                     or self.peek_previous_token() == "SunLiteral"
+                                                     or self.peek_previous_token() == "LuhmanLiteral"
+                                                     or self.peek_previous_token() == "StarsysLiteral"
+                                                     or self.peek_previous_token() == "True"
+                                                     or self.peek_previous_token() == "False")):
                 self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected ')', but instead got '{self.peek_next_token()}'")
         #  not followed by '('
         else:
@@ -18356,7 +19022,7 @@ class SyntaxAnalyzer:
             self.match("[")  # consume
             self.parse_statements1()
 
-            # Break path (Deviate)
+            # no loop update but has Break path (Deviate)
             if self.peek_next_token() == "Deviate":
                 self.match("Deviate")
                 # terminate break
@@ -18370,7 +19036,11 @@ class SyntaxAnalyzer:
                         self.notMainError = False
                         self.errors.append(
                             f"(Line {self.line_number}) | Syntax Error: Expected ']', but instead got '{self.peek_next_token()}'")
-            #  continue path (Proceed)
+                # error: not terminated
+                else:
+                    self.errors.append(
+                    f"(Line {self.line_number}) | Syntax Error: Expected '#', but instead got '{self.peek_next_token()}'")
+            #  no loop update but has continue path (Proceed)
             elif self.peek_next_token() == "Proceed":
                 self.match("Proceed")
                 # terminate break
@@ -18384,6 +19054,44 @@ class SyntaxAnalyzer:
                         self.notMainError = False
                         self.errors.append(
                             f"(Line {self.line_number}) | Syntax Error: Expected ']', but instead got '{self.peek_next_token()}'")
+                # error: not terminated
+                else:
+                    self.errors.append(
+                    f"(Line {self.line_number}) | Syntax Error: Expected '#', but instead got '{self.peek_next_token()}'")
+            #  no loop update but has retrieve path
+            elif self.peek_next_token() == "Retrieve":
+                self.match_return("Retrieve")
+            #  close if condition
+            if self.peek_next_token() == "]":
+                self.match("]")
+                #  is it followed by an Other/Other-If condition?
+                if self.peek_next_token() == "Other":
+                    self.match("Other")
+                    #  is it an Other-If?
+                    if self.peek_next_token() == "If":
+                        self.match("If")
+                        if self.peek_next_token() == "(":
+                            self.parse_if_stmnt()
+                        #  Other-If statement is not followed by '('
+                        else:
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Syntax Error: Expected ')', but instead got '{self.peek_next_token()}'")
+                    #  is it an Other Condition?
+                    elif self.peek_next_token() == "[":
+                        self.parse_else_stmnt()
+                    #  error: expected '[' or 'If' after 'Other'
+                    else:
+                        self.errors.append(
+                            f"(Line {self.line_number}) | Syntax Error: Expected '[', 'If', but instead got '{self.peek_next_token()}'")
+                #  it is not followed by Other keyword
+                else:
+                    return True
+            #  if condition is not closed
+            elif (
+                    self.peek_previous_token() == "#" or self.peek_previous_token() == "[" or self.peek_previous_token() == "]") and self.peek_next_token() != "]":
+                self.notMainError = True
+                self.errors.append(
+                    f"(Line {self.line_number}) | Syntax Error: Expected ']', but instead got '{self.peek_next_token()}'")
             #  close the Other condition, no proceed or deviate
             elif self.peek_next_token() == "]":
                 self.match("]")
@@ -18914,10 +19622,11 @@ class SyntaxAnalyzer:
             if self.peek_next_token() == "++" or self.peek_next_token() == "--":
                 self.match(Resources.loopup)
                 if self.peek_next_token() == ")" or self.peek_next_token() == "#":
-                    return True #  close it
+                    return True
                 #  error: not closed with ')'
                 else:
-                    return False
+                    self.errors.append(
+                        f"(Line {self.line_number}) | Syntax Error: Expected ')', '#' but instead got '{self.peek_next_token()}'")
             #  assign value? (=)
             elif self.peek_next_token() == "=":
                 self.match("=")
@@ -18926,13 +19635,13 @@ class SyntaxAnalyzer:
                     self.match(Resources.Value2)  # consume values
                     #  single value
                     if self.peek_next_token() == ")" or self.peek_next_token() == "#":
-                        return True  # close it with ')'
+                        self.match(Resources.loopuppost)  # close it with ')'
                     # add it
                     elif self.peek_next_token() == "+":
                         self.match_mathop2("+")
                         # close it if done
                         if self.peek_next_token() == ")" or self.peek_next_token() == "#":
-                            return True  # proceed to close
+                            return True # proceed to close
                         #  error: not followed by any of the expected characters
                         else:
                             self.errors.append(
