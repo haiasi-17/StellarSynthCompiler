@@ -1620,11 +1620,11 @@ class Lexer:
 
 
             
-def read_text(file):
-    if (os.path.isfile(file)):
-        contents = open(file, "r").read() 
+def read_text(source):
+    if (os.path.isfile(source)):
+        contents = open(source, "r").read() 
     else:
-        contents = file
+        contents = source
     lexer_instance = Lexer(contents)
     errors, tokens = lexer_instance.split_content_into_lines()
     return errors, tokens
