@@ -1,3 +1,6 @@
+
+# Lexer
+
 # Regular Definitions
 LowerAlpha =            [chr(x) for x in range(97, 123)] #a-z String List
 UpperAlpha =            [chr(x) for x in range(65, 91)] #A-Z String List
@@ -164,6 +167,8 @@ WordSymbolDelims =      {
                         "Comment":      Newline
                     }
 
+# Syntax
+
 Datatype = ["Sun", "Luhman", "Starsys"]
 Datatype1 = "Boolean"
 Datatype2 = ["Sun", "Luhman", "Starsys","Boolean"]
@@ -183,3 +188,15 @@ loopup = ["++", "--"]
 loopbrkcont = ["Deviate", "Proceed"]
 ret_str_bool = ["StarsysLiteral", "True", "False"]
 access_specifier = ["Public", "Private", "Protected"]
+
+
+# Semantic
+dataTypes = ["Sun", "Luhman", "Boolean", "Void", "Starsys"]
+dataTypes_var = ["Sun", "Luhman", "Boolean", "Starsys"]
+assignable_values = ["SunLiteral", "LuhmanLiteral", "StarsysLiteral", "Identifier", "True", "False"]
+variableAcceptedValues = {
+    "Sun"       : ["SunLiteral", "Identifier"],
+    "Luhman"    : ["LuhmanLiteral", "Identifier"],
+    "Starsys"    : ["StarsysLiteral", "Identifier"],
+    "Boolean"    : ["True", "False", "Identifier"],
+}

@@ -1,1 +1,11 @@
-adad
+Formulate 
+
+Sun x = 2.01#
+
+Sun Universe()[
+	Sun x = 2#
+	Disp << x#
+
+]
+
+Disintegrate

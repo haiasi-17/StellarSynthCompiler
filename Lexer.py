@@ -1630,7 +1630,9 @@ def read_text(source):
     return errors, tokens
 
 
- 
+if __name__ == "__main__":
+    errors, tokens = read_text('StellarSynth')
+    print(errors, tokens)
 
 """
 Algorithm:
