@@ -1,5 +1,13 @@
 import re
 import Resources
+import Lexer
+
+# Type Mismatch - Assignment, Expressions
+# Variable declared in scope checking
+# Negative array index
+# function declared? checking
+# function declared? but no definition?
+# function no statements inside?
 
 class SemanticAnalyzer:
     def __init__(self, tokens):
