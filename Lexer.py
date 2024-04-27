@@ -1464,6 +1464,16 @@ class Lexer:
                 self.current_lexeme = sign + self.current_lexeme
                 if self.current_char in Resources.Luhman_delim:
                     if self.current_lexeme[-1] == '0':
+                        self.retreat()
+                        self.retreat()
+                        if self.current_char in Resources.Period:
+                            self.Tokens.append([self.current_lexeme, "LuhmanLiteral"])
+                            self.current_lexeme = ""
+                            self.advance()
+                            return
+                        else:
+                            self.advance()
+                            self.advance()
                         self.Errors.append(
                             f"(Line {self.line_num}, Column {self.column_num}) | Lexical Error: {repr(sign + self.current_lexeme)} has invalid delimiter {repr(self.current_char)}.")
                         self.current_lexeme = ""

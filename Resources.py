@@ -200,3 +200,14 @@ variableAcceptedValues = {
     "Starsys"    : ["StarsysLiteral", "Identifier"],
     "Boolean"    : ["True", "False", "Identifier"],
 }
+
+# Three Address Code
+whitespace = ["Space", "\t", "\n"]
+conditionalStart = ["If", "Else", "Else If"]
+iterativeStart = ["Fore", "Span", "Perform"]
+
+defaultvalueDict= {"Sun"    : 0,
+                   "Luhman" : 0.0,
+                   "Boolean": False,
+                   "Starsys": ""}
+

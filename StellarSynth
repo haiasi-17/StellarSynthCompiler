@@ -1,11 +1,7 @@
-Formulate 
+Formulate
+Sun y = 3**3+5*5%2-2#
 
-Sun x = 2.01#
-
-Sun Universe()[
-	Sun x = 2#
-	Disp << x#
+Sun Universe()[ 
 
 ]
-
 Disintegrate
