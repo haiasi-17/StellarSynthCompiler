@@ -1,8 +1,12 @@
 Formulate
 
-Sun y = (a+(3))#
-Sun Universe()[ 
+Import module1 ~ func1, var1, class1, struct1#
+Sun func2(Sun x, Sun y)#
 
+Sun x = -(3)#
+
+Sun Universe()[ 
+    
 ]
 
 Disintegrate

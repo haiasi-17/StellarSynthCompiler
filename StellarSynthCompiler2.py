@@ -1,8 +1,7 @@
 import tkinter as tk
 from tkinter import filedialog, ttk, messagebox
 from PIL import ImageTk, Image
-import Syntax
-import Lexer
+import Syntax, Lexer, Semantic
 import customtkinter
 import datetime
 
@@ -280,10 +279,11 @@ class CreateButtons(customtkinter.CTkButton):
 
         self.ButtonFrame = customtkinter.CTkFrame(master.mainframe, fg_color='transparent')
         self.ButtonFrame.grid(row=0, column=2, columnspan=3, padx=(5,0), pady=(10,0))
-        master.ConfigureRowColumn(self.ButtonFrame, 3)
+        master.ConfigureRowColumn(self.ButtonFrame, 4)
         self.createbutton("Lexer",0, self.run_lexical)
         self.createbutton("Syntax", 1, self.run_syntax)
         self.createbutton("Semantic", 2, self.run_semantic)
+        self.createbutton("Run", 3, self.run_semantic)
 
     def createbutton(self, text, column, command):
         button = customtkinter.CTkButton(self.ButtonFrame, text=text, font=("terminal", 17), fg_color='#381456', hover_color="#4b1a73", border_width=1, border_color="#1a1631", height=40,width=200, command=command)
@@ -338,8 +338,6 @@ class CreateButtons(customtkinter.CTkButton):
 
     def run_syntax(self):
         self.console1.console.configure(state="normal")
-        self.run_lexical()
-        self.console1.console.configure(state="normal")
 
         self.console1.console.tag_config("Error", foreground="#d50000")
         self.console1.console.tag_config("Complete", foreground="green")
@@ -373,7 +371,48 @@ class CreateButtons(customtkinter.CTkButton):
         self.console1.console.configure(state="disabled")
 
     def run_semantic(self):
-        pass
+        self.console1.console.configure(state="normal")
+
+        self.console1.console.tag_config("Error", foreground="#d50000")
+        self.console1.console.tag_config("Complete", foreground="green")
+        contents = self.text_editor.texteditor.get("1.0", "end-1c")
+        errors, tokens = Lexer.read_text(contents)
+        try:
+            self.console1.console.delete("1.0", tk.END)
+            if errors:
+                self.console1.console.insert(tk.END,
+                                             "StellarSynth -> Lexical Analysis Error. Cannot proceed with Syntax Analysis.\n",
+                                             tags="Error")
+                return
+            if not tokens:
+                self.console1.console.insert(tk.END, "StellarSynth -> Tokens list is empty.\n")
+            else:
+                # Now, you can integrate the SyntaxAnalyzer and call its methods with the tokens list
+                syntax_analyzer = Syntax.SyntaxAnalyzer(tokens)
+                syntax_analyzer.parse_top_program()
+                #  syntax_analyzer.parse_main_program()
+
+                if syntax_analyzer.errors:
+                    self.console1.console.insert(tk.END, f"StellarSynth -> Syntax Analysis Error. Cannot proceed with Semantic Analysis.\n", tags="Error")
+                else:
+                    # Now, you can integrate the SyntaxAnalyzer and call its methods with the tokens list
+                    semantic_analyzer = Semantic.SemanticAnalyzer(tokens)
+                    semantic_analyzer.parse_top_program()
+
+                    if semantic_analyzer.errors:
+                        for error in semantic_analyzer.errors:
+                            self.console1.console.insert(tk.END, f"StellarSynth -> {error}\n", tags="Error")
+                    else:
+                        self.console1.console.insert(tk.END, "StellarSynth -> Syntax is Semantically Correct. No Semantic Errors Found.\n",
+                                                     tags="Complete")
+
+            self.console1.console.insert(tk.END, "\nStellarSynth -> Semantic Analysis Complete.")
+        except Exception as e:
+            print(f"Error: {e}")
+
+        self.console1.console.configure(state="disabled")
+            
+        
 
 class CreateTimer(customtkinter.CTkFrame):
     def __init__(self, master: any, **kwargs):
@@ -384,7 +423,7 @@ class CreateTimer(customtkinter.CTkFrame):
         master.ConfigureRowColumn(self.Textbox, 3)
 
         self.Textcreate(f"Today is:\n{datetime.datetime.today().strftime('%b %d, %Y (%a)\n%I:%M:%S %p')}", 0, ("arial",13))
-        self.Textcreate(f"The Travellers' Syndicate",1, ("terminal",13))
+        self.Textcreate(f"The Travellers'\n Syndicate",1, ("terminal",13))
         self.Textcreate(f"Compiler Design\nA.Y 2023-2024", 2, ("arial",13))
 
         master.after(1000,self.update_date)

@@ -211,3 +211,38 @@ defaultvalueDict= {"Sun"    : 0,
                    "Boolean": False,
                    "Starsys": ""}
 
+# Transpiler
+StellarCPLusPlusDict = {
+    "Autom"         : "auto",
+    "Boolean"       : "bool",
+    "Deviate"       : "break",
+    "Scenario"      : "case",
+    "Latch"         : "catch",
+    "Class"         : "class", 
+    "Static"        : "const",
+    "Proceed"       : "continue",
+    "Nominal"       : "default",
+    "Perform"       : "do",
+    "Other"         : "else",
+    "False"         : "false",
+    "Luhman"        : "float",
+    "Fore"          : "for",
+    "If"            : "if",
+    "Import"        : "import", # Python style import not c++
+    "Sun"           : "int",
+    "Gotolerate"    : "noexcept",
+    "Private"       : "private",
+    "Protected"     : "protected",
+    "Public"        : "public",
+    "Retrieve"      : "return",
+    "ISS"           : "struct", # 
+    "Divert"        : "switch",
+    "Launch"        : "throw", # Exceptions thrown is class of c++ std
+    "True"          : "true",
+    "Test"          : "try",
+    "Void"          : "void",
+    "Span"          : "span",
+    "Starsys"       : "string", # STD Library
+    "Capt"          : "cin", # STD Library
+    "Disp"          : "cout", # STD Library
+}
