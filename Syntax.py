@@ -20303,6 +20303,9 @@ if __name__ == "__main__":
     errors, tokens = Lexer.read_text('StellarSynth')
     syntax_analyzer = SyntaxAnalyzer(tokens)
     syntax_analyzer.parse_top_program()
-    print(syntax_analyzer.errors, syntax_analyzer.tokens)Remarks:
+    print(syntax_analyzer.errors, syntax_analyzer.tokens)
+    
+'''
+Remarks:
 Some Bugs still.
 '''
