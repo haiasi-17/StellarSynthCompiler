@@ -5,4 +5,4 @@ Customtkinter:
 https://customtkinter.tomschimansky.com/
 
 GCC Compiler:
-https://winlibs.com/
+[https://winlibs.com/](https://sourceforge.net/projects/mingw/files/Installer/mingw-get/)
