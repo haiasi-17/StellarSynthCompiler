@@ -1,15 +1,18 @@
 Formulate
 
 Import module1 ~ func1, var1, class1, struct1#
-Sun func2(Sun a, Sun b)#
+
 
 Luhman x= 200*5#
 Sun y = 0, l=45#
 Luhman pi = 3.14#
 Boolean truthstatus = True#
+Starsys name = "Jhack"#
 
 Sun Universe()[ 
-    Disp << Starsys(truthstatus)#
+    Disp << "Hello " << name << "You hate the number "<< x#
 ]
 
 Disintegrate
+
+

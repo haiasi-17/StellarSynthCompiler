@@ -88,7 +88,7 @@ Sun_delim =             (Space + Tab + Newline + RParenth + RCurBrace + RSqrBrkt
                         Ampersand + VerticalBar + ExclaMark + MathOp + AssignOp + GreaterThan + LessThan + Tab + LSqrBrkt + Colon)
 Luhman_delim =          (Space + Tab + Newline + RParenth + RSqrBrkt + Terminator + Comma + Ampersand + VerticalBar
                         + ExclaMark + MathOp + AssignOp + GreaterThan + LessThan)
-Starsys_delim =         Space + Tab + Newline + RParenth + Comma + Terminator + LessThan + RSqrBrkt + Colon + LParenth
+Starsys_delim =         Space + Tab + Newline + RParenth + Comma + Terminator + LessThan + RSqrBrkt + Colon
 Boolean_delim =         Space + Tab + Newline + Terminator + RParenth + Ampersand + VerticalBar + ExclaMark + Comma + RSqrBrkt + Colon
 Identifier_delim =      (Space + Tab + Newline + Terminator + LParenth + RParenth + LCurBrace + RSqrBrkt + MathOp
                         + Ampersand + VerticalBar + ExclaMark + AssignOp + GreaterThan + LessThan + Comma + Period + Colon + Tilde + LSqrBrkt + RCurBrace)

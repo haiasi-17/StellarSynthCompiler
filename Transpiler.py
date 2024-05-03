@@ -15,7 +15,6 @@ class Transpiler:
         
     def stellarTranslator(self):
         self.currentToken = self.tokens[self.tokenIndex][0]
-        print(self.tokens)
         while self.tokenIndex < (len(self.tokens)-1):
         # Remove Formulate from the beginning of the program.
             if self.currentToken == "Formulate" or self.currentToken == "Disintegrate":
@@ -38,6 +37,13 @@ class Transpiler:
                         self.go_back_token()
                         
                         self.tokens[self.tokenIndex][0] = self.tokens[self.tokenIndex][1] = "to_string" 
+                        self.translatedTokens.append(self.tokens[self.tokenIndex])
+                        self.go_next_token()
+                        continue
+                    # If it isn't just the translated counterpart to translated tokens.
+                    else:
+                        self.go_back_token()
+                        self.tokens[self.tokenIndex][0] = self.tokens[self.tokenIndex][1] = Resources.StellarCPlusPlusDict[self.currentToken] 
                         self.translatedTokens.append(self.tokens[self.tokenIndex])
                         self.go_next_token()
                         continue
@@ -162,15 +168,16 @@ class Transpiler:
         #p.stdin.flush()
 
         # Read the output from stdout and stderr
-        output, error = p.communicate()
+        error, output = p.communicate()
 
-        # Display the output in the console
-        if output:
-            print("Output:")
-            print(output.decode())
-        if error:
-            print("Error:")
-            print(error.decode())
+        # Decode output to readable string
+        error = error.decode()
+        output = output.decode()
+        
+        convertedcppCode = '#include <iostream>\n#include <string>\nusing namespace std;'
+        
+        # Return output to Compiler
+        return output, error
         
 
 if __name__ == "__main__":
@@ -181,7 +188,7 @@ if __name__ == "__main__":
 
 """ 
 Features that differ in the C++ Language:
-    Exponentiation Operator -> No Solution yet.
+    Exponentiation Operator -> No Solution yet. May define a separate header c++ to implement it.
     Importation -> Temporary Solution. Removed from Program.
     Type Conversion -> Currently utilizing implicit type conversion of c++, no idea how to modify it. Explicit is covered na. However, there might be inconsistencies with c++ type conversion with our rules.
     Default Value -> Implemented rules in our language

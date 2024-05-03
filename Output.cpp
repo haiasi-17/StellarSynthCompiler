@@ -3,13 +3,19 @@
 using namespace std;
 
 
-int func2(int a, int b);
+
 
 float x= 200*5;
 int y = 0, l=45;
 float pi = 3.14;
 bool truthstatus = true;
+string name = "Jhack";
 
 int main(){ 
-    cout << to_string(truthstatus);
+    cout << "Hello " << name << " You hate the number " << x << "\n";
+cout << x + y + pi << "\n";
+float bro = x + y + pi;
+cout << bro - 3.14;
 }
+
+

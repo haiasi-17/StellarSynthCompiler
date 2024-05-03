@@ -4,6 +4,8 @@ from PIL import ImageTk, Image
 import Syntax, Lexer, Semantic
 import customtkinter
 import datetime
+import subprocess
+import Transpiler
 
 class App(customtkinter.CTk):
     def __init__(self):
@@ -276,6 +278,7 @@ class CreateButtons(customtkinter.CTkButton):
         self.lexeme_table = lexeme_table
         self.text_editor = text_editor
         self.console1 = console
+        self.LexSynSemPass = False
 
         self.ButtonFrame = customtkinter.CTkFrame(master.mainframe, fg_color='transparent')
         self.ButtonFrame.grid(row=0, column=2, columnspan=3, padx=(5,0), pady=(10,0))
@@ -283,7 +286,7 @@ class CreateButtons(customtkinter.CTkButton):
         self.createbutton("Lexer",0, self.run_lexical)
         self.createbutton("Syntax", 1, self.run_syntax)
         self.createbutton("Semantic", 2, self.run_semantic)
-        self.createbutton("Run", 3, self.run_semantic)
+        self.createbutton("Run", 3, self.run_Compile)
 
     def createbutton(self, text, column, command):
         button = customtkinter.CTkButton(self.ButtonFrame, text=text, font=("terminal", 17), fg_color='#381456', hover_color="#4b1a73", border_width=1, border_color="#1a1631", height=40,width=200, command=command)
@@ -342,9 +345,9 @@ class CreateButtons(customtkinter.CTkButton):
         self.console1.console.tag_config("Error", foreground="#d50000")
         self.console1.console.tag_config("Complete", foreground="green")
         contents = self.text_editor.texteditor.get("1.0", "end-1c")
-        errors, tokens = Lexer.read_text(contents)
         try:
             self.console1.console.delete("1.0", tk.END)
+            errors, tokens = Lexer.read_text(contents)
             if errors:
                 self.console1.console.insert(tk.END,
                                              "StellarSynth -> Lexical Analysis Error. Cannot proceed with Syntax Analysis.\n",
@@ -353,10 +356,8 @@ class CreateButtons(customtkinter.CTkButton):
             if not tokens:
                 self.console1.console.insert(tk.END, "StellarSynth -> Tokens list is empty.\n")
             else:
-                # Now, you can integrate the SyntaxAnalyzer and call its methods with the tokens list
                 syntax_analyzer = Syntax.SyntaxAnalyzer(tokens)
                 syntax_analyzer.parse_top_program()
-                #  syntax_analyzer.parse_main_program()
 
                 if syntax_analyzer.errors:
                     for error in syntax_analyzer.errors:
@@ -376,9 +377,9 @@ class CreateButtons(customtkinter.CTkButton):
         self.console1.console.tag_config("Error", foreground="#d50000")
         self.console1.console.tag_config("Complete", foreground="green")
         contents = self.text_editor.texteditor.get("1.0", "end-1c")
-        errors, tokens = Lexer.read_text(contents)
         try:
             self.console1.console.delete("1.0", tk.END)
+            errors, tokens = Lexer.read_text(contents)
             if errors:
                 self.console1.console.insert(tk.END,
                                              "StellarSynth -> Lexical Analysis Error. Cannot proceed with Syntax Analysis.\n",
@@ -387,15 +388,12 @@ class CreateButtons(customtkinter.CTkButton):
             if not tokens:
                 self.console1.console.insert(tk.END, "StellarSynth -> Tokens list is empty.\n")
             else:
-                # Now, you can integrate the SyntaxAnalyzer and call its methods with the tokens list
                 syntax_analyzer = Syntax.SyntaxAnalyzer(tokens)
                 syntax_analyzer.parse_top_program()
-                #  syntax_analyzer.parse_main_program()
 
                 if syntax_analyzer.errors:
                     self.console1.console.insert(tk.END, f"StellarSynth -> Syntax Analysis Error. Cannot proceed with Semantic Analysis.\n", tags="Error")
                 else:
-                    # Now, you can integrate the SyntaxAnalyzer and call its methods with the tokens list
                     semantic_analyzer = Semantic.SemanticAnalyzer(tokens)
                     semantic_analyzer.parse_top_program()
 
@@ -411,8 +409,49 @@ class CreateButtons(customtkinter.CTkButton):
             print(f"Error: {e}")
 
         self.console1.console.configure(state="disabled")
-            
         
+    def run_Compile(self):
+        self.console1.console.configure(state="normal")
+        self.console1.console.tag_config("Error", foreground="#d50000")
+        self.console1.console.tag_config("Complete", foreground="green")
+        contents = self.text_editor.texteditor.get("1.0", "end-1c")
+        try:
+            self.console1.console.delete("1.0", tk.END)
+            errors, tokens = Lexer.read_text(contents)
+            if errors:
+                self.console1.console.insert(tk.END,
+                                             "StellarSynth -> Lexical Analysis Error. Cannot proceed with Syntax Analysis.\n",
+                                             tags="Error")
+                return
+            if not tokens:
+                self.console1.console.insert(tk.END, "StellarSynth -> Tokens list is empty.\n")
+            else:
+                syntax_analyzer = Syntax.SyntaxAnalyzer(tokens)
+                syntax_analyzer.parse_top_program()
+
+                if syntax_analyzer.errors:
+                    self.console1.console.insert(tk.END, f"StellarSynth -> Syntax Analysis Error. Cannot proceed with Semantic Analysis.\n", tags="Error")
+                else:
+                    semantic_analyzer = Semantic.SemanticAnalyzer(tokens)
+                    semantic_analyzer.parse_top_program()
+
+                    if semantic_analyzer.errors:
+                        self.console1.console.insert(tk.END, f"StellarSynth -> Semantic Analysis Error. Cannot proceed with compilation.\n", tags="Error")
+                    else:
+                        transpilerInstance = Transpiler.Transpiler(tokens)
+                        transpilerInstance.stellarTranslator()
+                        transerrors, transoutput = transpilerInstance.writetoCPPFile()
+                        if errors:
+                            self.console1.console.insert(tk.END, f"StellarSynth -> {transerrors}\n", tags="Error")
+                        else:
+                            self.console1.console.insert(tk.END, f"\n\n {transoutput}\n")
+                    self.console1.console.insert(tk.END, "\nStellarSynth -> Compilation Complete.")
+            
+        except Exception as e:
+            print(f"Error: {e}")
+            
+        self.console1.console.configure(state="disabled")
+
 
 class CreateTimer(customtkinter.CTkFrame):
     def __init__(self, master: any, **kwargs):
