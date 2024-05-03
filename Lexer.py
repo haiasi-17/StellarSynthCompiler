@@ -1631,8 +1631,10 @@ class Lexer:
 
             
 def read_text(source):
+    # Checks if passed argument is a file, if it is, read it.
     if (os.path.isfile(source)):
         contents = open(source, "r").read() 
+    # else passed contents are string. This if else is needed to accommodate the if name below of passing a file, and the passing of string arguments from the .get of inputext in the widget texteditor in the compiler tkinter ui.
     else:
         contents = source
     lexer_instance = Lexer(contents)
@@ -1645,6 +1647,9 @@ if __name__ == "__main__":
     print(errors, tokens)
 
 """
+Remarks:
+100% Bug Free!
+
 Algorithm:
 
 Split Content into Lines

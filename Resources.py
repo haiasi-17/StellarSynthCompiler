@@ -202,17 +202,17 @@ variableAcceptedValues = {
 }
 
 # Three Address Code
-whitespace = ["Space", "\t", "\n"]
+whitespaceStellar = ["Space", "\t", "\n"]
 conditionalStart = ["If", "Else", "Else If"]
 iterativeStart = ["Fore", "Span", "Perform"]
 
-defaultvalueDict= {"Sun"    : 0,
-                   "Luhman" : 0.0,
-                   "Boolean": False,
-                   "Starsys": ""}
+defaultvalueDict= {"Sun"    : '0',
+                   "Luhman" : '0.0',
+                   "Boolean": 'False',
+                   "Starsys": "\"\""}
 
 # Transpiler
-StellarCPLusPlusDict = {
+StellarCPlusPlusDict = {
     "Autom"         : "auto",
     "Boolean"       : "bool",
     "Deviate"       : "break",
@@ -241,8 +241,23 @@ StellarCPLusPlusDict = {
     "True"          : "true",
     "Test"          : "try",
     "Void"          : "void",
-    "Span"          : "span",
+    "Span"          : "while",
     "Starsys"       : "string", # STD Library
     "Capt"          : "cin", # STD Library
     "Disp"          : "cout", # STD Library
+    '{'             : "[",
+    '}'             : "]",
+    '['             : '{',
+    ']'             : '}',
+    '#'             : ';',
+    'Space'         : ' ',
+    'Universe'      : 'main',
+    "\'"            : "\"",
 }
+
+transdefaultvalueDict= {"int"        : '0',
+                        "float"      : '0.0',
+                        "bool"       : 'false',
+                        "string"     : "\"\""}
+
+whitespaces = [" ", "\t", "\n"]

@@ -1,12 +1,12 @@
 Formulate
 
-Import module1 ~ func1, var1, class1, struct1#
-Sun func2(Sun x, Sun y)#
+Sun i = 0 #
 
-Sun x = -(3)#
+Sun Universe()[
 
-Sun Universe()[ 
-    
+Fore(Sun i=0# i<5# i++)[
+	Disp << i << "\n"#
+]
 ]
 
 Disintegrate
