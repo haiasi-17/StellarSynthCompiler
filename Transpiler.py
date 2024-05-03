@@ -140,6 +140,7 @@ class Transpiler:
                             stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE)
 
+        # Everything from line 144 to 161 is temporary, as the inputting and outputting haven't been finalized yet. This method only accepts input once and runs the program after.
         # Read input from console
         input_variables = input("Enter input variables: ")
 
