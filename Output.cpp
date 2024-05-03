@@ -12,6 +12,6 @@ int y = 0;
 
 int main(){ 
     cout << x + 4 - 2 << "\n";
-    int y = 4;
-    cout << y << "need \n for every line";
+    cin >> y;
+    cout << y << "need \n for every line\n";
 }

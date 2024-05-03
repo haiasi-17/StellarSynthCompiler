@@ -10,8 +10,8 @@ Sun y = 0#
 
 Sun Universe()[ 
     Disp << x + 4 - 2 << "\n"#
-    Sun y = 4#
-    Disp << y << "need \n for every line"#
+    Capt >> y#
+    Disp << y << "need \n for every line\n"#
 ]
 
 Disintegrate

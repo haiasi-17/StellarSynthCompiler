@@ -118,18 +118,45 @@ class Transpiler:
     def writetoCPPFile(self):
         # Initialize with some needed headers.
         convertedcppCode = '#include <iostream>\n#include <string>\nusing namespace std;'
-        
+             
         # Concatenate all translatedtokens to the cppCode string
         while self.translatedTokensIndex < (len(self.translatedTokens)-1):
             convertedcppCode += self.translatedTokens[self.translatedTokensIndex][0]
             self.translatedTokensIndex +=1
         
-        print(convertedcppCode)
-        
         # Write the convertedCppCode to a cpp file named Output
         self.f_cpp = "Output.cpp"
         with open(self.f_cpp, 'w') as fout:
             fout.write(convertedcppCode)
+            
+        # Compile the program
+        f_exec = "Output.exe"
+        compile_cmd = "g++ {} -o {}".format(self.f_cpp, f_exec)
+        subprocess.call(compile_cmd, shell=True)
+
+        # Run the program
+        p = subprocess.Popen(f_exec, shell=True,
+                            stdin=subprocess.PIPE, 
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE)
+
+        # Read input from console
+        input_variables = input("Enter input variables: ")
+
+        # Provide input to the process
+        p.stdin.write(input_variables.encode())
+        p.stdin.flush()
+
+        # Read the output from stdout and stderr
+        output, error = p.communicate()
+
+        # Display the output in the console
+        if output:
+            print("Output:")
+            print(output.decode())
+        if error:
+            print("Error:")
+            print(error.decode())
         
 
 if __name__ == "__main__":
