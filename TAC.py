@@ -124,7 +124,8 @@ class ThreeAddressCode:
                     # If it is a expression with parentheses, find the innermost parentheses to be executed as per PEMDAS
                     elif  '(' in self.expression:
                         self.vardecParenthExpressionHandler()
-
+                        
+                # Check if it is an array declaration
                 elif self.currentToken in Resources.LSqrBrkt:
                     pass
                         
@@ -715,7 +716,7 @@ if __name__ == "__main__":
     errors, tokens = Lexer.read_text('StellarSynth')
     tacInstance = ThreeAddressCode(tokens)
     tacOutput = tacInstance.generate_TAC()
-    print(tacOutput)
+    print(f"\nTAC OUTPUT:\n{tacOutput}")
 
 
 
@@ -724,6 +725,8 @@ if __name__ == "__main__":
 # vardec with parenth check
 
 # arrdec assign?
+# arrdec int value
+# arrdec expression
 # unary minus?
 # decrementation? pre and post
 # incrementation? pre and post
