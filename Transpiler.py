@@ -174,8 +174,6 @@ class Transpiler:
         error = error.decode()
         output = output.decode()
         
-        convertedcppCode = '#include <iostream>\n#include <string>\nusing namespace std;'
-        
         # Return output to Compiler
         return output, error
         
@@ -187,6 +185,10 @@ if __name__ == "__main__":
     transpilerInstance.writetoCPPFile()
 
 """ 
+Issues:
+1. Currently does not accept input in the compiler ui.
+2. Currently does not accept multiple input in exe running.
+
 Features that differ in the C++ Language:
     Exponentiation Operator -> No Solution yet. May define a separate header c++ to implement it.
     Importation -> Temporary Solution. Removed from Program.
