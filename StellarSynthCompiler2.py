@@ -444,7 +444,9 @@ class CreateButtons(customtkinter.CTkButton):
                         if errors:
                             self.console1.console.insert(tk.END, f"StellarSynth -> {transerrors}\n", tags="Error")
                         else:
+                            self.console1.console.insert(tk.END, f"-"*40)
                             self.console1.console.insert(tk.END, f"\n{transoutput}\n")
+                            self.console1.console.insert(tk.END, f"-"*40)
                     self.console1.console.insert(tk.END, "\nStellarSynth -> Compilation Complete.")
             
         except Exception as e:
