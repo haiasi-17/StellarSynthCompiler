@@ -23,9 +23,22 @@ class SemanticAnalyzer:
         self.current_scope = None
         # assignment cecking
         self.assignment_variable = None
-        # array checking
+        # array checking 1D
         self.array_variable = None
+        self.array_size = None
+        self.array_size_error = False
+        self.array_count_table = {}
+        self.array_value_count = None
         self.array_variable_table = {}
+        # array checking 2D
+        self.array2_size = None
+        self.array2_row_count = None
+        self.is2DValue = False
+        self.array2_count_row_table = {}
+        self.array2_count_column_table = {}
+        self.array2_value_count_row = None
+        self.array2_value_count_column = None
+        self.array2_variable_table = {}
         # Function Definition checking
         self.parameter_table = {}
         self.isParameterVariable = False
@@ -49,6 +62,21 @@ class SemanticAnalyzer:
         self.prototype_parameter_datatype= None
         self.prototype_parameter_var_name = None
         self.prototype_parameter_current_scope = None
+        # Class declaration checking
+        self.class_table = {}
+        self.class_name = None
+        self.class_scope = None
+        self.class_current_scope = None
+        # ISS declaration checking
+        self.struct_table = {}
+        self.struct_name = None
+        self.struct_scope = None
+        self.struct_current_scope = None
+        # For loop checking
+        self.fore_table = {}
+        self.fore_id = 1
+        self.fore_datatype = None
+        self.fore_var_name = None
 
     #  method that peeks at the next token after the current_token
     def peek_next_token(self):
@@ -603,6 +631,8 @@ class SemanticAnalyzer:
                     self.match_mathop3(Resources.mathop1)  # size is a math expr
                     #  close it with "}" if size is fulfilled
                     if self.peek_next_token() == "}":
+                        # SEMANTIC CHECK
+                        self.check_array2_size()
                         self.match("}")
                         # equal it
                         if self.peek_next_token() == "=":
@@ -616,6 +646,8 @@ class SemanticAnalyzer:
                             f"(Line {self.line_number}) | Syntax Error: Expected 'Rcurlbrace', but instead got '{self.peek_next_token()}'")
                 #  size is single value
                 elif self.peek_next_token() == "}":
+                    # SEMANTIC CHECK
+                    self.check_array2_size()
                     self.match("}")
                     # equal it
                     if self.peek_next_token() == "=":
@@ -629,6 +661,8 @@ class SemanticAnalyzer:
                         f"(Line {self.line_number}) | Syntax Error: Expected 'Rcurlbraces', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
             #  empty size, proceed to close it with '}'
             elif self.peek_next_token() == "}":
+                # SEMANTIC CHECK
+                self.check_array2_size()
                 self.match("}")
                 # equal it
                 if self.peek_next_token() == "=":
@@ -7949,7 +7983,7 @@ class SemanticAnalyzer:
     def match_arr_dec(self, expected_token):
         # SEMANTIC CHECK
         self.array_variable = self.peek_previous_lexeme()
-        self.declare_array(self.array_variable)
+
         self.get_next_token()
         while self.current_token == "Space":
             self.get_next_token()
@@ -7963,6 +7997,9 @@ class SemanticAnalyzer:
                     self.match_mathop3(Resources.mathop1)  # size is a math expr
                     #  close it with "}" if size is fulfilled
                     if self.peek_next_token() == "}":
+                        # SEMANTIC CHECK
+                        self.array_size = self.peek_previous_lexeme()
+                        self.declare_array(self.array_variable, self.array_size)
                         self.match("}")
                         # declare an array only
                         if self.peek_next_token() == "#":
@@ -7999,6 +8036,7 @@ class SemanticAnalyzer:
                         # add another size to become 2D array
                         elif self.peek_next_token() == "{":
                             self.match_arr_dec2d("{")
+                            self.is2DValue = True
                         #  not terminated with # or followed by an '=' after Rcurl
                         else:
                             self.errors.append(
@@ -8009,12 +8047,16 @@ class SemanticAnalyzer:
                             f"(Line {self.line_number}) | Syntax Error: Expected 'Rcurlbrace', but instead got '{self.peek_next_token()}'")
                 #  size is single value
                 elif self.peek_next_token() == "}":
+                    # SEMANTIC CHECK
+                    self.array_size = self.peek_previous_lexeme()
+                    self.declare_array(self.array_variable, self.array_size)
                     self.match("}")
                     if self.peek_next_token() == "#":
                         self.match("#")
                     # add another size to become 2D array
                     elif self.peek_next_token() == "{":
                         self.match_arr_dec2d("{")
+                        self.is2DValue = True
                     # assign a value syntax for 1D array if followed by an equal after '}'
                     elif self.peek_next_token() == "=":
                         self.match("=")
@@ -8055,6 +8097,9 @@ class SemanticAnalyzer:
                         f"(Line {self.line_number}) | Syntax Error: Expected 'Rcurlbraces', '#', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
             #  empty size, proceed to close it with '}'
             elif self.peek_next_token() == "}":
+                # SEMANTIC CHECK
+                self.array_size = None
+                self.declare_array(self.array_variable, self.array_size)
                 self.match("}")
                 # assign a value syntax for 1D array (empty size)
                 if self.peek_next_token() == "=":
@@ -8087,6 +8132,7 @@ class SemanticAnalyzer:
                 # add another size to become 2D array
                 elif self.peek_next_token() == "{":
                     self.match_arr_dec2d("{")
+                    self.is2DValue = True
                 # if it is terminated with '#'
                 # or followed by anything other than '=' while being an empty size, it says an error
                 else:
@@ -8110,6 +8156,9 @@ class SemanticAnalyzer:
                     self.match_mathop3(Resources.mathop1)  # size is a math expr
                     #  close it with "}" if size is fulfilled
                     if self.peek_next_token() == "}":
+                        # SEMANTIC CHECK
+                        self.array2_size = self.peek_previous_lexeme()
+                        self.declare_array2(self.array_variable, self.array2_size)
                         self.match("}")
                         if self.peek_next_token() == "#":
                             self.match("#")  # declare an array only
@@ -8145,6 +8194,9 @@ class SemanticAnalyzer:
                             f"(Line {self.line_number}) | Syntax Error: Expected 'Rcurlbrace', but instead got '{self.peek_next_token()}'")
                 #  size is single value
                 elif self.peek_next_token() == "}":
+                    # SEMANTIC CHECK
+                    self.array2_size = self.peek_previous_lexeme()
+                    self.declare_array2(self.array_variable, self.array2_size)
                     self.match("}")
                     if self.peek_next_token() == "#":
                         self.match("#")
@@ -8197,9 +8249,14 @@ class SemanticAnalyzer:
                 # SEMANTIC CHECK
                 self.check_array_type()
                 self.match(Resources.Value1)
+                self.array_value_count = 1
+                self.array2_value_count_column = 1
                 if self.peek_next_token() == ",":
                     self.match_mult_arr_val(",")
                     if self.peek_next_token() == "]":
+                        #SEMANTIC CHECK
+                        self.array_count(self.array_variable, self.array_value_count)
+                        self.check_array_value()
                         return True # no more values next so next should be closing with ']'
                     # error no ']' found
                     else:
@@ -8223,13 +8280,29 @@ class SemanticAnalyzer:
             if self.peek_next_token() == "[":
                 self.match_arr_value("[") # assign values in that inner sqr brkt
                 if self.peek_next_token() == "]":
+                    # SEMANTIC CHECK
                     self.match("]")   # close it if done assigning 1st 2D values
+                    self.array2_row_count = 1
+                    #SEMANTIC CHECK
+                    self.array2_value_count_row = 1
+
                     if self.peek_next_token() == "]":
+                        # SEMANTIC CHECK
+                        self.array_count_row(self.array_variable, self.array2_value_count_row)
+                        self.array_count_column(self.array_variable, self.array2_value_count_column, self.array2_row_count)
+                        # SEMANTIC CHECK
+                        self.check_array2_value()
                         return True  # terminate it, no more 2D values next
                     # multiple 2D array values
                     elif self.peek_next_token() == ",":
                         self.match_mult_arr2d_val(",")
                         if self.peek_next_token() == "]":
+                            # SEMANTIC CHECK
+                            self.array_count_row(self.array_variable, self.array2_value_count_row)
+                            self.array_count_column(self.array_variable, self.array2_value_count_column,
+                                                    self.array2_row_count)
+                            # SEMANTIC CHECK
+                            self.check_array2_value()
                             return True # multiple array 2D value is done
                         elif self.peek_previous_token() == "]" and self.peek_next_token() != "]":
                             self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected ']', ',', but instead got '{self.peek_next_token()}'")
@@ -8258,6 +8331,8 @@ class SemanticAnalyzer:
                 # SEMANTIC CHECK
                 self.check_array_type()
                 self.match(Resources.Value1)
+                self.array_value_count += 1
+                self.array2_value_count_column += 1
                 if self.peek_next_token() == ",":
                     self.match_mult_arr_val(",")  # more values
                 else:
@@ -8281,10 +8356,14 @@ class SemanticAnalyzer:
                     # SEMANTIC CHECK
                     self.check_array_type()
                     self.match(Resources.Value1)
+                    self.array2_value_count_column += 1
                     if self.peek_next_token() == ",":
                         self.match_mult_arr_val(",")
                         if self.peek_next_token() == "]":
                             self.match("]")
+                            # SEMANTIC CHECK
+                            self.array2_value_count_row += 1
+                            self.array2_row_count += 1
                             if self.peek_next_token() == ",":
                                 self.match_mult_arr2d_val(",") # more 2D values
                             else:
@@ -8301,6 +8380,9 @@ class SemanticAnalyzer:
                     #  single value
                     elif self.peek_next_token() == "]":
                         self.match("]")
+                        # SEMANTIC CHECK
+                        self.array2_value_count_row += 1
+                        self.array2_row_count += 1
                         if self.peek_next_token() == ",":
                             self.match_mult_arr2d_val(",")  # more 2D values
                         else:
@@ -8310,6 +8392,9 @@ class SemanticAnalyzer:
                 #  empty value
                 elif self.peek_next_token() == "]":
                     self.match("]")
+                    # SEMANTIC CHECK
+                    self.array2_value_count_row += 1
+                    self.array2_row_count += 1
                     if self.peek_next_token() == ",":
                         self.match_mult_arr2d_val(",")  # more 2D values
                     else:
@@ -8865,9 +8950,11 @@ class SemanticAnalyzer:
                         # SEMANTIC CHECK
                         self.prototype_function_parameter_var = self.peek_previous_lexeme()
                         self.prototype_parameter_var_name = self.peek_previous_lexeme()
-                        self.declare_prototype_parameter_variable(self.prototype_function_datatype, self.prototype_function_name,
-                                                                  self.prototype_parameter_datatype,
-                                                                  self.prototype_parameter_var_name)
+                        if not self.prototype_function_exist:
+                            self.declare_prototype_parameter_variable(self.prototype_function_datatype,
+                                                                      self.prototype_function_name,
+                                                                      self.prototype_parameter_datatype,
+                                                                      self.prototype_parameter_var_name)
 
                         #  parameter is an array index path (static)
                         if self.peek_next_token() == "{":
@@ -9765,6 +9852,16 @@ class SemanticAnalyzer:
             #  no parameter
             elif self.peek_next_token() == ")":
                 self.match(")")
+                # SEMANTIC CHECK
+                self.prototype_parameter_datatype = "null"
+                # SEMANTIC CHECK
+                self.prototype_function_parameter_var = "null"
+                self.prototype_parameter_var_name = "null"
+                if not self.prototype_function_exist:
+                    self.declare_prototype_parameter_variable(self.prototype_function_datatype,
+                                                              self.prototype_function_name,
+                                                              self.prototype_parameter_datatype,
+                                                              self.prototype_parameter_var_name)
                 if self.peek_next_token() == "[":
                     self.parse_main_function()  # it is a function main??
                 elif self.peek_next_token() == "#":
@@ -9848,6 +9945,13 @@ class SemanticAnalyzer:
             #  must be followed by an identifier
             if re.match(r'Identifier\d*$', self.peek_next_token()):
                 self.match("Identifier")
+
+                # SEMANTIC CHECK
+                self.class_scope = "global"
+                self.class_current_scope = self.class_scope
+                self.class_name = self.peek_previous_lexeme()
+                self.declare_class(self.class_name, self.class_scope)
+
                 #  access specifier path derived: Class MyClass : Private BaseClass
                 if self.peek_next_token() == ":":
                     self.match(":")  # consume ':'
@@ -9925,7 +10029,7 @@ class SemanticAnalyzer:
                 self.errors.append(
                     f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', but instead got '{self.peek_next_token()}'")
 
-    #  class method (inside functions, main, struct)
+    #  class method (inside functions, main, struct, global)
     def match_class_stmnt(self, expected_token):
         self.get_next_token()
         while self.current_token == "Space":
@@ -9935,6 +10039,10 @@ class SemanticAnalyzer:
             #  must be followed by an identifier
             if re.match(r'Identifier\d*$', self.peek_next_token()):
                 self.match("Identifier")
+                # SEMANTIC CHECK
+                self.class_name = self.peek_previous_lexeme()
+                self.declare_class(self.class_name, self.class_scope)
+
                 #  access specifier path derived: Class MyClass : Private BaseClass
                 if self.peek_next_token() == ":":
                     self.match(":")  # consume ':'
@@ -10087,6 +10195,10 @@ class SemanticAnalyzer:
             #  must be followed by an identifier
             if re.match(r'Identifier\d*$', self.peek_next_token()):
                 self.match("Identifier")
+                # SEMANTIC CHECK
+                self.struct_name = self.peek_previous_lexeme()
+                self.declare_struct(self.struct_name, self.struct_scope)
+
                 #  access specifier path derived: ISS MyStruct : Private BaseStruct
                 if self.peek_next_token() == ":":
                     self.match(":")  # consume ':'
@@ -11010,21 +11122,29 @@ class SemanticAnalyzer:
             #  assignment path
             elif self.peek_next_token() == "=":
                 #  SEMANTIC CHECK
-                if self.peek_previous_lexeme() in self.array_variable_table:
+                self.function_parameter_variable()  # is it from a parameter
+                if self.peek_previous_lexeme() in self.array_variable_table and not self.isParameterVariable:
                     self.errors.append(
                         f"(Line {self.line_number}) | Semantic Error: (Assignment Mismatch) Variable '{self.peek_previous_lexeme()}' is declared as an array.")
-                elif self.peek_previous_lexeme() not in self.symbol_table:
+                elif self.peek_previous_lexeme() not in self.symbol_table and not self.isParameterVariable and self.peek_previous_lexeme() not in [
+                    entry['var_name'] for entry in self.fore_table.values()]:
                     self.errors.append(
                         f"(Line {self.line_number}) | Semantic Error: (Undeclared Variable) Variable '{self.peek_previous_lexeme()}' is not declared.")
-                else:
+                elif not self.isParameterVariable:
                     self.check_variable_usage()
                     self.assignment_variable = self.peek_previous_lexeme()  # store variable
+                elif self.isParameterVariable:
+                    self.function_assignment_variable = self.peek_previous_lexeme()  # store variable
+
                 self.match("=")  # consume =
                 #  must be followed by these values
                 if (self.peek_next_token() == "StarsysLiteral" or self.peek_next_token() == "True"
                         or self.peek_next_token() == "False" ):
                     #  SEMANTIC CHECK
-                    self.check_assignment_type()
+                    if self.isParameterVariable:
+                        self.check_function_assignment_type()
+                    else:
+                        self.check_assignment_type()
                     self.match(Resources.Value6) # consume values
                     # must be terminated
                     if self.peek_next_token() == "#":
@@ -11036,7 +11156,10 @@ class SemanticAnalyzer:
                 elif (self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral"
                         or re.match(r'Identifier\d*$',self.peek_next_token())):
                     #  SEMANTIC CHECK
-                    self.check_assignment_type()
+                    if self.isParameterVariable:
+                        self.check_function_assignment_type()
+                    else:
+                        self.check_assignment_type()
                     self.match(Resources.Value2) # consume values
                     # terminate it?
                     if self.peek_next_token() == "#":
@@ -11181,7 +11304,7 @@ class SemanticAnalyzer:
             #  assign value to an array index path
             elif self.peek_next_token() == "{":
                 #  SEMANTIC CHECK
-                if self.peek_previous_lexeme() in self.symbol_table and self.peek_previous_lexeme() not in self.array_variable_table:
+                if self.peek_previous_lexeme() in self.symbol_table and self.peek_previous_lexeme() not in self.array_variable_table and not self.isParameterVariable:
                     self.errors.append(
                         f"(Line {self.line_number}) | Semantic Error: (Assignment Mismatch) Variable '{self.peek_previous_lexeme()}' is not declared as an array.")
                 elif self.peek_previous_lexeme() not in self.array_variable_table:
@@ -11243,7 +11366,7 @@ class SemanticAnalyzer:
                 if self.peek_previous_lexeme() in self.array_variable_table and not self.isParameterVariable:
                     self.errors.append(
                         f"(Line {self.line_number}) | Semantic Error: (Assignment Mismatch) Variable '{self.peek_previous_lexeme()}' is declared as an array.")
-                elif self.peek_previous_lexeme() not in self.symbol_table and not self.isParameterVariable:
+                elif self.peek_previous_lexeme() not in self.symbol_table and not self.isParameterVariable and self.peek_previous_lexeme() not in [entry['var_name'] for entry in self.fore_table.values()]:
                     self.errors.append(
                         f"(Line {self.line_number}) | Semantic Error: (Undeclared Variable) Variable '{self.peek_previous_lexeme()}' is not declared.")
                 elif not self.isParameterVariable:
@@ -11253,7 +11376,6 @@ class SemanticAnalyzer:
                     self.function_assignment_variable = self.peek_previous_lexeme()  # store variable
 
                 self.match("=")
-
                 if self.peek_next_token() == "(":
                     self.match_parenth("(")
                     if self.peek_previous_token() == ")":
@@ -11441,7 +11563,7 @@ class SemanticAnalyzer:
             #  assign value to an array index path
             elif self.peek_next_token() == "{":
                 #  SEMANTIC CHECK
-                if self.peek_previous_lexeme() in self.symbol_table and self.peek_previous_lexeme() not in self.array_variable_table:
+                if self.peek_previous_lexeme() in self.symbol_table and self.peek_previous_lexeme() not in self.array_variable_table and not self.isParameterVariable:
                     self.errors.append(
                         f"(Line {self.line_number}) | Semantic Error: (Assignment Mismatch) Variable '{self.peek_previous_lexeme()}' is not declared as an array.")
                 elif self.peek_previous_lexeme() not in self.array_variable_table:
@@ -11478,10 +11600,19 @@ class SemanticAnalyzer:
                     self.match_mathop3(Resources.mathop1)  # size is a math expr
                     #  close it with "}" if size is fulfilled
                     if self.peek_next_token() == "}":
+                        # SEMANTIC CHECK
+                        self.check_array_size()
                         self.match("}")
+
                         #  must be followed by an '='
                         if self.peek_next_token() == "=":
                             self.match("=")
+
+                            #SEMANTIC CHECK
+                            if self.array_variable in self.array2_variable_table and not self.isParameterVariable:
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Semantic Error: (Assignment Mismatch) Variable '{self.array_variable}' is declared as a 2D array.")
+
                             #  must be followed by these values
                             if (self.peek_next_token() == "StarsysLiteral" or self.peek_next_token() == "True" or self.peek_next_token() == "False"
                                     or self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral" or self.peek_next_token() == "Identifier"):
@@ -11506,6 +11637,12 @@ class SemanticAnalyzer:
                             #  must be followed by an '='
                             if self.peek_next_token() == "=":
                                 self.match("=")
+
+                                # SEMANTIC CHECK
+                                if self.array_variable not in self.array2_variable_table and not self.isParameterVariable:
+                                    self.errors.append(
+                                        f"(Line {self.line_number}) | Semantic Error: (Assignment Mismatch) Variable '{self.array_variable}' is declared as a 1D array.")
+
                                 #  must be followed by these values
                                 if (
                                         self.peek_next_token() == "StarsysLiteral" or self.peek_next_token() == "True" or self.peek_next_token() == "False"
@@ -11539,10 +11676,18 @@ class SemanticAnalyzer:
                             f"(Line {self.line_number}) | Syntax Error: Expected 'Rcurlbrace', but instead got '{self.peek_next_token()}'")
                 #  size is single value
                 elif self.peek_next_token() == "}":
+                    # SEMANTIC CHECK
+                    self.check_array_size()
                     self.match("}")
                     #  must be followed by an '='
                     if self.peek_next_token() == "=":
                         self.match("=")
+
+                        # SEMANTIC CHECK
+                        if self.array_variable in self.array2_variable_table and not self.isParameterVariable:
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Semantic Error: (Assignment Mismatch) Variable '{self.array_variable}' is declared as a 2D array.")
+
                         # must be followed by these values
                         if (
                                 self.peek_next_token() == "StarsysLiteral" or self.peek_next_token() == "True" or self.peek_next_token() == "False"
@@ -11568,6 +11713,12 @@ class SemanticAnalyzer:
                         #  must be followed by an '='
                         if self.peek_next_token() == "=":
                             self.match("=")
+
+                            # SEMANTIC CHECK
+                            if self.array_variable not in self.array2_variable_table and not self.isParameterVariable:
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Semantic Error: (Assignment Mismatch) Variable '{self.array_variable}' is declared as a 1D array.")
+
                             # must be followed by these values
                             if (self.peek_next_token() == "StarsysLiteral" or self.peek_next_token() == "True" or self.peek_next_token() == "False"
                                     or self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral" or self.peek_next_token() == "Identifier"):
@@ -11600,10 +11751,18 @@ class SemanticAnalyzer:
                         f"(Line {self.line_number}) | Syntax Error: Expected 'Rcurlbraces', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
             #  empty size, proceed to close it with '}'
             elif self.peek_next_token() == "}":
+                # SEMANTIC CHECK
+                self.check_array_size()
                 self.match("}")
                 #  must be followed by an '='
                 if self.peek_next_token() == "=":
                     self.match("=")
+
+                    # SEMANTIC CHECK
+                    if self.array_variable in self.array2_variable_table and not self.isParameterVariable:
+                        self.errors.append(
+                            f"(Line {self.line_number}) | Semantic Error: (Assignment Mismatch) Variable '{self.array_variable}' is declared as a 2D array.")
+
                     # must be followed by these values
                     if (
                             self.peek_next_token() == "StarsysLiteral" or self.peek_next_token() == "True" or self.peek_next_token() == "False"
@@ -11629,6 +11788,12 @@ class SemanticAnalyzer:
                     #  must be followed by an '='
                     if self.peek_next_token() == "=":
                         self.match("=")
+
+                        # SEMANTIC CHECK
+                        if self.array_variable not in self.array2_variable_table and not self.isParameterVariable:
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Semantic Error: (Assignment Mismatch) Variable '{self.array_variable}' is declared as a 1D array.")
+
                         # must be followed by these values
                         if (
                                 self.peek_next_token() == "StarsysLiteral" or self.peek_next_token() == "True" or self.peek_next_token() == "False"
@@ -11997,8 +12162,10 @@ class SemanticAnalyzer:
                                     self.match("Identifier")
                                     # SEMANTIC CHECK
                                     self.parameter_var_name = self.peek_previous_lexeme()
-                                    self.declare_parameter_variable(self.function_datatype, self.function_name, self.parameter_datatype,
-                                                                    self.parameter_var_name)
+                                    if not self.function_exist:
+                                        self.declare_parameter_variable(self.function_datatype, self.function_name,
+                                                                        self.parameter_datatype,
+                                                                        self.parameter_var_name)
 
                                     #  parameter is an array index path (static)
                                     if self.peek_next_token() == "{":
@@ -12943,9 +13110,13 @@ class SemanticAnalyzer:
                         #  no parameter
                         elif self.peek_next_token() == ")":
                             self.match(")")
-                            #  SEMANTIC CHECK
-                            self.declare_parameter_variable(self.function_datatype, self.function_name, self.parameter_datatype,
-                                                            self.parameter_var_name)
+                            # SEMANTIC CHECK
+                            self.parameter_datatype = "null"
+                            # SEMANTIC CHECK
+                            self.parameter_var_name = "null"
+                            if not self.function_exist:
+                                self.declare_parameter_variable(self.function_datatype, self.function_name,
+                                                                self.parameter_datatype, self.parameter_var_name)
                             self.compare_function_parameters(self.function_name)
 
                             #  must be followed by '['
@@ -13015,8 +13186,9 @@ class SemanticAnalyzer:
                                 self.match("Identifier")
                                 # SEMANTIC CHECK
                                 self.parameter_var_name = self.peek_previous_lexeme()
-                                self.declare_parameter_variable(self.function_datatype, self.function_name, self.parameter_datatype,
-                                                                self.parameter_var_name)
+                                if not self.function_exist:
+                                    self.declare_parameter_variable(self.function_datatype, self.function_name,
+                                                                    self.parameter_datatype, self.parameter_var_name)
 
                                 #  parameter is an array index path (static)
                                 if self.peek_next_token() == "{":
@@ -13962,9 +14134,12 @@ class SemanticAnalyzer:
                     elif self.peek_next_token() == ")":
                         self.match(")")
                         # SEMANTIC CHECK
-                        self.declare_parameter_variable(self.function_datatype, self.function_name,
-                                                        self.parameter_datatype,
-                                                        self.parameter_var_name)
+                        self.parameter_datatype = "null"
+                        # SEMANTIC CHECK
+                        self.parameter_var_name = "null"
+                        if not self.function_exist:
+                            self.declare_parameter_variable(self.function_datatype, self.function_name,
+                                                            self.parameter_datatype, self.parameter_var_name)
                         self.compare_function_parameters(self.function_name)
 
                         #  must be followed by '['
@@ -14034,8 +14209,10 @@ class SemanticAnalyzer:
                                 self.match("Identifier")
                                 # SEMANTIC CHECK
                                 self.parameter_var_name = self.peek_previous_lexeme()
-                                self.declare_parameter_variable(self.function_datatype, self.function_name, self.parameter_datatype,
-                                                                self.parameter_var_name)
+                                if not self.function_exist:
+                                    self.declare_parameter_variable(self.function_datatype, self.function_name,
+                                                                    self.parameter_datatype,
+                                                                    self.parameter_var_name)
 
                                 #  parameter is an array index path (static)
                                 if self.peek_next_token() == "{":
@@ -15219,9 +15396,12 @@ class SemanticAnalyzer:
                     elif self.peek_next_token() == ")":
                         self.match(")")
                         # SEMANTIC CHECK
-                        self.declare_parameter_variable(self.function_datatype, self.function_name,
-                                                        self.parameter_datatype,
-                                                        self.parameter_var_name)
+                        self.parameter_datatype = "null"
+                        # SEMANTIC CHECK
+                        self.parameter_var_name = "null"
+                        if not self.function_exist:
+                            self.declare_parameter_variable(self.function_datatype, self.function_name,
+                                                            self.parameter_datatype, self.parameter_var_name)
                         self.compare_function_parameters(self.function_name)
 
                         #  must be followed by '['
@@ -15292,8 +15472,10 @@ class SemanticAnalyzer:
                         self.match("Identifier")
                         # SEMANTIC CHECK
                         self.parameter_var_name = self.peek_previous_lexeme()
-                        self.declare_parameter_variable(self.function_datatype, self.function_name, self.parameter_datatype,
-                                                        self.parameter_var_name)
+                        if not self.function_exist:
+                            self.declare_parameter_variable(self.function_datatype, self.function_name,
+                                                            self.parameter_datatype,
+                                                            self.parameter_var_name)
 
                         #  parameter is an array index path (static)
                         if self.peek_next_token() == "{":
@@ -16479,8 +16661,12 @@ class SemanticAnalyzer:
             elif self.peek_next_token() == ")":
                 self.match(")")
                 # SEMANTIC CHECK
-                self.declare_parameter_variable(self.function_datatype, self.function_name, self.parameter_datatype,
-                                                self.parameter_var_name)
+                self.parameter_datatype = "null"
+                # SEMANTIC CHECK
+                self.parameter_var_name = "null"
+                if not self.function_exist:
+                    self.declare_parameter_variable(self.function_datatype, self.function_name,
+                                                    self.parameter_datatype, self.parameter_var_name)
                 self.compare_function_parameters(self.function_name)
 
                 #  must be followed by '['
@@ -17253,8 +17439,11 @@ class SemanticAnalyzer:
                         # SEMANTIC CHECK
                         self.prototype_function_parameter_var = self.peek_previous_lexeme()
                         self.prototype_parameter_var_name = self.peek_previous_lexeme()
-                        self.declare_prototype_parameter_variable(self.prototype_function_datatype,self.prototype_function_name, self.prototype_parameter_datatype,
-                                                        self.prototype_parameter_var_name)
+                        if not self.prototype_function_exist:
+                            self.declare_prototype_parameter_variable(self.prototype_function_datatype,
+                                                                      self.prototype_function_name,
+                                                                      self.prototype_parameter_datatype,
+                                                                      self.prototype_parameter_var_name)
                         
                         #  parameter is an array index path
                         if self.peek_next_token() == "{":
@@ -18153,6 +18342,16 @@ class SemanticAnalyzer:
             #  no parameter
             elif self.peek_next_token() == ")":
                 self.match(")")
+                # SEMANTIC CHECK
+                self.prototype_parameter_datatype = "null"
+                # SEMANTIC CHECK
+                self.prototype_function_parameter_var = "null"
+                self.prototype_parameter_var_name = "null"
+                if not self.prototype_function_exist:
+                    self.declare_prototype_parameter_variable(self.prototype_function_datatype,
+                                                              self.prototype_function_name,
+                                                              self.prototype_parameter_datatype,
+                                                              self.prototype_parameter_var_name)
                 if self.peek_next_token() == "[":
                     self.parse_main_function()  # it is a function main??
                 elif self.peek_next_token() == "#":
@@ -18349,9 +18548,14 @@ class SemanticAnalyzer:
                 self.parse_trycatch()
             #  Parse: is it a Struct?
             elif self.peek_next_token() == "ISS":
+                self.struct_scope = "main"
+                self.struct_current_scope = self.struct_scope
                 self.match_struct("ISS")
             #  Parse: is it a globally declared Class?
             elif self.peek_next_token() == "Class":
+                # SEMANTIC CHECK
+                self.class_scope = "main"
+                self.class_current_scope = self.class_scope
                 self.match_class_stmnt("Class")
             #  is it am assignment, or function call, or module access? (a = a#
             #  a(value)# : mod.mod1.mod2#/s.func()#)
@@ -18527,9 +18731,13 @@ class SemanticAnalyzer:
                 self.parse_trycatch()
             #  Parse: is it a Struct?
             elif self.peek_next_token() == "ISS":
+                self.struct_scope = "function"
+                self.struct_current_scope = self.struct_scope
                 self.match_struct("ISS")
             #  Parse: is it a globally declared Class?
             elif self.peek_next_token() == "Class":
+                self.class_scope = "function"
+                self.class_current_scope = self.class_scope
                 self.match_class_stmnt("Class")
             #  is it am assignment, or function call, or module access? (a = a#
             #  a(value)# : mod.mod1.mod2#/s.func()#)
@@ -18552,7 +18760,7 @@ class SemanticAnalyzer:
                     self.match("Sun")  # consume Sun
                     #  check if there is an identifier after the datatype
                     if re.match(r'Identifier\d*$', self.peek_next_token()):
-                        self.parse_variable_declaration_func()
+                        self.parse_variable_declaration_main()
                     #  error: no identifier after datatype
                     else:
                         self.errors.append(
@@ -18562,7 +18770,7 @@ class SemanticAnalyzer:
                     self.match("Luhman")  # consume Luhman
                     #  check if there is an identifier after the datatype
                     if re.match(r'Identifier\d*$', self.peek_next_token()):
-                        self.parse_variable_declaration_func()
+                        self.parse_variable_declaration_main()
                     #  error: no identifier after datatype
                     else:
                         self.errors.append(
@@ -18572,7 +18780,7 @@ class SemanticAnalyzer:
                     self.match("Starsys")  # consume Starsys
                     #  check if there is an identifier after the datatype
                     if re.match(r'Identifier\d*$', self.peek_next_token()):
-                        self.parse_variable_declaration_func()
+                        self.parse_variable_declaration_main()
                     else:
                         #  error: no identifier after datatype
                         self.errors.append(
@@ -18582,7 +18790,7 @@ class SemanticAnalyzer:
                     self.match("Boolean")  # consume Bool
                     #  check if there is an identifier after the datatype
                     if re.match(r'Identifier\d*$', self.peek_next_token()):
-                        self.parse_boolean_func()
+                        self.parse_boolean_main()
                     #  error: no identifier after datatype
                     else:
                         self.errors.append(
@@ -18595,7 +18803,7 @@ class SemanticAnalyzer:
                 self.match("Sun")  # consume Sun
                 #  check if there is an identifier after the datatype
                 if re.match(r'Identifier\d*$', self.peek_next_token()):
-                    self.parse_variable_declaration_func()
+                    self.parse_variable_declaration_main()
                 #  error: no identifier after datatype
                 else:
                     self.errors.append(
@@ -18605,7 +18813,7 @@ class SemanticAnalyzer:
                 self.match("Luhman")  # consume Luhman
                 #  check if there is an identifier after the datatype
                 if re.match(r'Identifier\d*$', self.peek_next_token()):
-                    self.parse_variable_declaration_func()
+                    self.parse_variable_declaration_main()
                 #  error: no identifier after datatype
                 else:
                     self.errors.append(
@@ -18615,7 +18823,7 @@ class SemanticAnalyzer:
                 self.match("Starsys")  # consume Starsys
                 #  check if there is an identifier after the datatype
                 if re.match(r'Identifier\d*$', self.peek_next_token()):
-                    self.parse_variable_declaration_func()
+                    self.parse_variable_declaration_main()
                 else:
                     #  error: no identifier after datatype
                     self.errors.append(
@@ -18625,7 +18833,7 @@ class SemanticAnalyzer:
                 self.match("Boolean")  # consume Bool
                 #  check if there is an identifier after the datatype
                 if re.match(r'Identifier\d*$', self.peek_next_token()):
-                    self.parse_boolean_func()
+                    self.parse_boolean_main()
                 #  error: no identifier after datatype
                 else:
                     self.errors.append(
@@ -18873,9 +19081,11 @@ class SemanticAnalyzer:
                 self.parse_trycatch()
             #  Parse: is it a Struct?
             elif self.peek_next_token() == "ISS":
+                self.struct_scope = self.struct_current_scope
                 self.match_struct("ISS")
             #  Parse: is it a globally declared Class?
             elif self.peek_next_token() == "Class":
+                self.class_scope = self.class_current_scope
                 self.match_class_stmnt("Class")
             #  is it am assignment, constructor, or function call, or module access? (a = a#
             #  : a(Sun a)[  ] : a(value)# : mod.mod1.mod2#/s.func()#)
@@ -19843,6 +20053,10 @@ class SemanticAnalyzer:
                         #  must be followed by an Identifier
                         if (re.match(r'Identifier\d*$', self.peek_next_token())):
                             self.match("Identifier")  # consume Identifier
+                            # SEMANTIC CHECK
+                            if re.match(r'Identifier\d*$', self.peek_previous_token()):
+                                self.check_variable_usage()
+
                             #  must close it with ')'
                             if self.peek_next_token() == ")":
                                 self.match(")")
@@ -19948,13 +20162,17 @@ class SemanticAnalyzer:
             self.match(Resources.Datatype3)  # consume datatypes
             # SEMANTIC CHECK
             if self.peek_previous_token() == "Sun" or self.peek_previous_token() == "Luhman":
-                pass
+                self.fore_datatype = self.peek_previous_token()
             else:
                 self.errors.append(
-                    f"(Line {self.line_number}) | Semantic Error: (Datatype Mismatch) Dataype {self.peek_previous_token()} cannot be used as a loop variable initial datatype.)")
+                    f"(Line {self.line_number}) | Semantic Error: (Datatype Mismatch) Datatype {self.peek_previous_token()} cannot be used as a loop variable initial datatype.)")
             #  must be followed by an identifier
             if re.match(r'Identifier\d*$', self.peek_next_token()):
                 self.match("Identifier")
+                # SEMANTIC CHECK
+                self.fore_var_name = self.peek_previous_lexeme()
+                self.check_fore_loop_initial(self.fore_datatype, self.fore_var_name)
+
                 #  must be followed by an (=)
                 if self.peek_next_token() == "=":
                     self.match("=")
@@ -19962,6 +20180,8 @@ class SemanticAnalyzer:
                     if (re.match(r'Identifier\d*$', self.peek_next_token())
                             or self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral"):
                         self.match(Resources.Value2)  # consume values
+                        # SEMANTIC CHECK
+
                         #  single value path, close it with terminator
                         if self.peek_next_token() == "#":
                             self.match("#")
@@ -20051,6 +20271,9 @@ class SemanticAnalyzer:
         #  loop initial is initialized somewhere: a = 12, a = 12.5, a = a
         elif re.match(r'Identifier\d*$', self.peek_next_token()):
             self.match("Identifier")  # consume Identifier
+            # SEMANTIC CHECK
+            if re.match(r'Identifier\d*$', self.peek_previous_token()):
+                self.check_variable_usage()
             #  must be followed by an (=)
             if self.peek_next_token() == "=":
                 self.match("=")
@@ -20148,6 +20371,10 @@ class SemanticAnalyzer:
     def parse_loop_post_up(self):
         if re.match(r'Identifier\d*$', self.peek_next_token()):
             self.match("Identifier")
+            # SEMANTIC CHECK
+            if re.match(r'Identifier\d*$', self.peek_previous_token()):
+                self.check_variable_usage()
+
             #  usage of ++ and --?
             if self.peek_next_token() == "++" or self.peek_next_token() == "--":
                 self.match(Resources.loopup)
@@ -20788,9 +21015,13 @@ class SemanticAnalyzer:
                                 f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', but instead got '{self.peek_next_token()}'")
                     #  Parse: is it a globally declared Struct?
                     elif self.peek_next_token() == "ISS":
+                        self.struct_scope = "global"
+                        self.struct_current_scope = self.struct_scope
                         self.match_struct("ISS")
                     #  Parse: is it a globally declared Class?
                     elif self.peek_next_token() == "Class":
+                        self.class_scope = "global"
+                        self.class_current_scope = self.class_scope
                         self.match_class_stmnt("Class")
                     else:
                         break
@@ -20831,9 +21062,6 @@ class SemanticAnalyzer:
                 if (not self.function_exist and not self.prototype_function_exist
                         and (self.symbol_table[var_name]['count'] > 2)):
                     # Variable is declared more than once in the same scope, report error
-                    print("declare_variable")
-                    print(self.function_exist)
-                    print(self.prototype_function_exist)
                     self.errors.append(
                         f"(Line {self.line_number}) | Semantic Error: (Redeclaration Error) Variable '{var_name}' is already declared in the same scope")
             else:
@@ -20850,7 +21078,6 @@ class SemanticAnalyzer:
             for variable_info in variables_in_function:
                 if variable_info['var_name'] == var_name and not self.prototype_function_exist:
                     # Variable with the same name already exists in this function, report an error
-                    print("declare_prototype_parameter_variable")
                     self.errors.append(
                         f"(Line {self.line_number}) | Semantic Error: (Redeclaration Error) Variable '{var_name}' is already declared in the same scope")
                     return
@@ -20869,9 +21096,8 @@ class SemanticAnalyzer:
             for variable_info in variables_in_function:
                 if variable_info['var_name'] == var_name and not self.function_exist:
                     # Variable with the same name already exists in this function, report an error
-                    print("declare_parameter_variable")
                     self.errors.append(
-                        f"(Line {self.line_number}) | Semantic Error: (Redeclaration Error) Variable '{var_name}' is already declared in the same scope")
+                        f"(Line {self.line_number}) | Semantic Error: (Redeclaration Error) Variable '{var_name}' is already declared as a parameter")
                     return
 
             # If the variable doesn't exist in this function, append it to the list
@@ -20881,9 +21107,72 @@ class SemanticAnalyzer:
             self.parameter_table[function_name] = [{'function_datatype' : function_datatype, 'datatype': datatype, 'var_name': var_name}]
         self.current_function_name = function_name
 
-    # Store array variable in the table
-    def declare_array(self, array_variable):
-        self.array_variable_table[array_variable] = array_variable
+    # store class
+    def declare_class(self, class_name, class_scope):
+        # check if the variable is a function prototype name
+        if class_name in self.prototype_parameter_table:
+            self.prototype_function_exist = True
+        if class_name in self.class_table:
+            if self.class_table[class_name]['scope'] == class_scope:
+                # Class is already declared in the same scope, increment the count
+                self.class_table[class_name]['count'] += 1
+                if (not self.function_exist and not self.prototype_function_exist
+                        and (self.class_table[class_name]['count'] > 1)):
+                    # Class is declared more than once in the same scope, report error
+                    self.errors.append(
+                        f"(Line {self.line_number}) | Semantic Error: (Redeclaration Error) Class '{class_name}' is already declared in the same scope")
+            else:
+                # Class is declared in a different scope, update scope and reset count
+                self.class_table[class_name] = {'scope': class_scope, 'count': 1}
+        else:
+            # Class is not yet declared, add it to the symbol table with count 1
+            self.class_table[class_name] = {'scope': class_scope, 'count': 1}
+
+    # store ISS (struct)
+    def declare_struct(self, struct_name, struct_scope):
+        # check if the variable is a function prototype name
+        if struct_name in self.prototype_parameter_table:
+            self.prototype_function_exist = True
+        if struct_name in self.struct_table:
+            if self.struct_table[struct_name]['scope'] == struct_scope:
+                # Class is already declared in the same scope, increment the count
+                self.struct_table[struct_name]['count'] += 1
+                if (not self.function_exist and not self.prototype_function_exist
+                        and (self.struct_table[struct_name]['count'] > 1)):
+                    # Class is declared more than once in the same scope, report error
+                    self.errors.append(
+                        f"(Line {self.line_number}) | Semantic Error: (Redeclaration Error) ISS '{struct_name}' is already declared in the same scope")
+            else:
+                # Class is declared in a different scope, update scope and reset count
+                self.struct_table[struct_name] = {'scope': struct_scope, 'count': 1}
+        else:
+            # Class is not yet declared, add it to the symbol table with count 1
+            self.struct_table[struct_name] = {'scope': struct_scope, 'count': 1}
+
+    # Store array variable in the table, 1D
+    def declare_array(self, array_variable, array_size):
+        self.array_variable_table[array_variable] = {'array_size': array_size}
+
+    # ARRAY VALUE COUNT 1D
+    def array_count(self, array_variable, array_count):
+        self.array_count_table[array_variable] = {'array_count': array_count}
+
+    # Store array variable in the table, 2D
+    def declare_array2(self, array_variable, array_size):
+        self.array2_variable_table[array_variable] = {'array_size2': array_size}
+
+    # ARRAY VALUE COUNT 2D (ROW)
+    def array_count_row(self, array_variable, array_count):
+        self.array2_count_row_table[array_variable] = {'array_count_row': array_count}
+
+    # ARRAY VALUE COUNT 2D (COLUMN)
+    def array_count_column(self, array_variable, array_count, array_row):
+        self.array2_count_column_table[array_variable] = {'array_count_column': array_count, 'row': array_row}
+
+    def check_fore_loop_initial(self, datatype, var_name):
+        # populate the fore_table, and have a unique id everytime it creates it
+        self.fore_table[self.fore_id] = {'datatype' : datatype, 'var_name' : var_name}
+        self.fore_id += 1  # increment fore_id by one every time this method is used to populate the fore_table
 
     #SEMANIC CHECKS
 
@@ -20904,7 +21193,8 @@ class SemanticAnalyzer:
                     return
 
             # Check if all parameters in prototype are present in defined
-            if not all(param_proto in parameters_defined for param_proto in parameters_prototype) and not self.function_exist and not self.prototype_function_exist:
+            if not all(param_proto in parameters_defined for param_proto in
+                         parameters_prototype) and not self.function_exist and not self.prototype_function_exist:
                 self.errors.append(
                     f"(Line {self.line_number}) | Semantic Error: (Parameter Mismatch) Defined function '{function_name}' is missing a parameter")
                 return
@@ -20920,7 +21210,7 @@ class SemanticAnalyzer:
     # Check if the function prototype is defined
     def check_undefined_functions(self):
         for function_name in self.prototype_parameter_table:
-            if function_name not in self.parameter_table:
+            if function_name not in self.parameter_table and function_name != "Universe":
                 self.errors.append(
                     f"Semantic Error: (Undefined Function) Function '{function_name}' is not defined"
                 )
@@ -20963,6 +21253,17 @@ class SemanticAnalyzer:
                     f"(Line {self.line_number}) | Semantic Error: (Undeclared Variable) Variable '{var_name}' is not accessible from the current scope")
                 return None, False
         else:
+            # Check if the variable is in the fore_table
+            for key in self.fore_table:
+                if var_name == self.fore_table[key]['var_name']:
+                    return True
+
+            # Check if the variable is in the function parameter
+            for param in self.parameter_table.get(self.current_function_name, {}):
+                if param.get('var_name') == var_name:
+                    return True
+
+            # If the variable is not found in any fore_table entry
             self.errors.append(
                 f"(Line {self.line_number}) | Semantic Error: (Undeclared Variable) Variable '{var_name}' is not declared")
             return None, False
@@ -21186,6 +21487,74 @@ class SemanticAnalyzer:
         # Check if variable_entry is None
         elif variable_entry is None:
             return True  # no variable assigned yet
+
+    # check array size, 1D
+    def check_array_size(self):
+        if self.peek_previous_lexeme() == "{":
+            self.errors.append(
+                f"(Line {self.line_number}) | Semantic Error: (Invalid Indices) Attempting to assign a single value to all elements of the array without specifying individual indices for variable '{self.array_variable}'"
+            )
+        else:
+            array_size = int(self.peek_previous_lexeme())  # Convert array_size to integer
+
+            if self.array_variable in self.array_variable_table:
+                table_size = int(self.array_variable_table[self.array_variable]['array_size'])  # Get size from table
+                if array_size >= table_size:
+                    self.array_size_error = True
+                    self.errors.append(
+                        f"(Line {self.line_number}) | Semantic Error: (Out of Bounds) Array index out of bounds for variable '{self.array_variable}'"
+                    )
+
+    # check array values if it matches array size, 1D
+    def check_array_value(self):
+        if self.array_variable in self.array_variable_table:
+            table_size = int(self.array_variable_table[self.array_variable]['array_size'])  # Get size from table
+            value_count = int(self.array_count_table[self.array_variable]['array_count'])  # Get count of assigned values
+            if value_count > table_size and not self.is2DValue:
+                self.errors.append(
+                    f"(Line {self.line_number}) | Semantic Error: (Out of Bounds) Array variable '{self.array_variable}' exceeds the amount of values its size can keep"
+                )
+            else:
+                return True
+
+    # check array size, 2D
+    def check_array2_size(self):
+        if self.peek_previous_lexeme() == "{":
+            self.errors.append(
+                f"(Line {self.line_number}) | Semantic Error: (Invalid Indices) Attempting to assign a single value to all elements of the array without specifying individual indices for variable '{self.array_variable}'"
+            )
+        else:
+            array2_size = int(self.peek_previous_lexeme())  # Convert array_size to integer
+
+            if self.array_variable in self.array2_variable_table:
+                table_size = int(self.array2_variable_table[self.array_variable]['array_size2'])  # Get size from table
+                if array2_size >= table_size and not self.array_size_error:
+                    self.errors.append(
+                        f"(Line {self.line_number}) | Semantic Error: (Out of Bounds) Array index out of bounds for variable '{self.array_variable}'"
+                    )
+
+    # check array values if it matches array size, 2D
+    def check_array2_value(self):
+        if self.array_variable in self.array2_variable_table:
+            row_size = int(self.array_variable_table[self.array_variable]['array_size'])  # Get size from table (ROW)
+            column_size = int(self.array2_variable_table[self.array_variable]['array_size2'])  # Get size from table (COLUMN)
+            row_value_count = int(self.array2_count_row_table[self.array_variable]['array_count_row'])  # Get count of assigned values (ROW)
+            column_value_count = int(self.array2_count_column_table[self.array_variable]['array_count_column'])  # Get count of assigned values (COLUMN)
+            row_count = int(self.array2_count_column_table[self.array_variable]['row'])  # Get count of rows in 2D array values
+            print(column_value_count)
+            if row_value_count > row_size:
+                self.errors.append(
+                    f"(Line {self.line_number}) | Semantic Error: (Out of Bounds) Array variable '{self.array_variable}' exceeds the amount of values its row size can keep"
+                )
+            elif column_value_count/row_count > column_size:
+                self.errors.append(
+                    f"(Line {self.line_number}) | Semantic Error: (Out of Bounds) Array variable '{self.array_variable}' exceeds the amount of values its column size can keep"
+                )
+            else:
+                return True
+
+
+
     #  array value checking
     def check_array_type(self):
         # Retrieve the scope from the symbol table for the variable
