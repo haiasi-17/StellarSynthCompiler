@@ -4,16 +4,12 @@ Import module1 ~ func1, var1, class1, struct1#
 Sun func2(Sun a, Sun b)#
 
 Luhman x= 200*5#
-Starsys z = 'I AM MR. WORLD WIDE!'#
-Boolean w#
-Sun y = 0, l=2#
+Sun y = 0, l=45#
+Luhman pi = 3.14#
+Boolean truthstatus = True#
 
 Sun Universe()[ 
-    Disp << x + 4 - 2 << "\n"#
-    Capt >> y#
-    Disp << y << "need \n for every line\n"#
-    Capt >> l#
-    Disp << l#
+    Disp << Starsys(truthstatus)#
 ]
 
 Disintegrate

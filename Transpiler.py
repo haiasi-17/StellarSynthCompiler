@@ -15,6 +15,7 @@ class Transpiler:
         
     def stellarTranslator(self):
         self.currentToken = self.tokens[self.tokenIndex][0]
+        print(self.tokens)
         while self.tokenIndex < (len(self.tokens)-1):
         # Remove Formulate from the beginning of the program.
             if self.currentToken == "Formulate" or self.currentToken == "Disintegrate":
@@ -30,10 +31,21 @@ class Transpiler:
                 continue 
             # Replace StellarSynth Token with its C++ Counterpart.
             elif self.currentToken in Resources.StellarCPlusPlusDict:
-                self.tokens[self.tokenIndex][0] = self.tokens[self.tokenIndex][1] = Resources.StellarCPlusPlusDict[self.currentToken] 
-                self.translatedTokens.append(self.tokens[self.tokenIndex])
-                self.go_next_token()
-                continue
+                # If it is a string typecast operator, convert datatype Starsys to to_string then append to translated tokens.
+                if self.currentToken == "Starsys":
+                    self.go_next_token()
+                    if self.currentToken == "(":
+                        self.go_back_token()
+                        
+                        self.tokens[self.tokenIndex][0] = self.tokens[self.tokenIndex][1] = "to_string" 
+                        self.translatedTokens.append(self.tokens[self.tokenIndex])
+                        self.go_next_token()
+                        continue
+                else:
+                    self.tokens[self.tokenIndex][0] = self.tokens[self.tokenIndex][1] = Resources.StellarCPlusPlusDict[self.currentToken] 
+                    self.translatedTokens.append(self.tokens[self.tokenIndex])
+                    self.go_next_token()
+                    continue
             # If it is a Starsys literal, either replace it with double quotes if it uses single quotes then append, or just append.
             elif self.tokens[self.tokenIndex][1] == "StarsysLiteral":
                 tempvar = "\""
@@ -140,13 +152,14 @@ class Transpiler:
                             stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE)
 
-        # Everything from line 144 to 161 is temporary, as the inputting and outputting haven't been finalized yet. This method only accepts input once and runs the program after.
+        # Everything from line 158 to 173 is temporary, as the inputting and outputting haven't been finalized yet. This method only accepts input once and runs the program after.
+        # If no input, comment lines 158 - 162 and run.
         # Read input from console
-        input_variables = input("Enter input variables: ")
+        #input_variables = input("Enter input variables: ") 
 
         # Provide input to the process
-        p.stdin.write(input_variables.encode())
-        p.stdin.flush()
+        #p.stdin.write(input_variables.encode())
+        #p.stdin.flush()
 
         # Read the output from stdout and stderr
         output, error = p.communicate()
