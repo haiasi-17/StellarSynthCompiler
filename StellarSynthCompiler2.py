@@ -100,7 +100,7 @@ class CreateTextEditor(customtkinter.CTkTextbox):
 
         self.addlineNumbers()
         self.linenumber.configure(state='disabled')
-        master.after(10, self.addlineNumbers) # Updates every 0.010 seconds.
+        master.after(10, self.addlineNumbers) # Updates every 0.010 seconds. Very Inefficient but does the job.
 
 
     """def HandleBackSpace(self):

@@ -4,7 +4,7 @@ Sun i = 0 #
 
 Sun Universe()[
 
-Fore(Sun i=0# i>5# i++)[
+Fore(Sun i=0# i<5# i++)[
 	Disp << i << "\n"#
 ]
 ]
