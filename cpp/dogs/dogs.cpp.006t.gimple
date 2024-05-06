@@ -1,0 +1,11 @@
+int main ()
+{
+  int D.64161;
+
+  dogs.0_1 = dogs;
+  std::basic_ostream<char>::operator<< (&cout, dogs.0_1);
+  D.64161 = 0;
+  return D.64161;
+}
+
+

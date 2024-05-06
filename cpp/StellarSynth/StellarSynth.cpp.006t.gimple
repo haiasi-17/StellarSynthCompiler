@@ -1,0 +1,12 @@
+int main ()
+{
+  int D.64161;
+
+  a.0_1 = a;
+  _2 = a.0_1 + 4;
+  std::basic_ostream<char>::operator<< (&cout, _2);
+  D.64161 = 0;
+  return D.64161;
+}
+
+

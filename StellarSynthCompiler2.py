@@ -6,6 +6,7 @@ import customtkinter
 import datetime
 import subprocess
 import Transpiler
+import os.path
 
 class App(customtkinter.CTk):
     def __init__(self):
@@ -32,15 +33,17 @@ class App(customtkinter.CTk):
 
         # Logo
         self.StellarLogo = CreateLogo(self)
+        
+        # Main Menu
+        self.Menu = CreateMenu(self, self.LexemeTable, self.TextEditor, self.Console)
 
         # Buttons
-        self.Buttons = CreateButtons(self, self.LexemeTable, self.TextEditor, self.Console)
+        self.Buttons = CreateButtons(self, self.LexemeTable, self.TextEditor, self.Console, self.Menu)
 
         # Date
         self.TimeDate = CreateTimer(self)
 
-        # Main Menu
-        self.Menu = CreateMenu(self, self.LexemeTable, self.TextEditor, self.Console)
+        
 
     def ConfigureRowColumn(self, Name, n):
         for i in range (0,n):
@@ -215,6 +218,7 @@ class CreateMenu(tk.Menu):
         self.lexeme_table = lexeme_table
         self.text_editor = text_editor
         self.console1 = console
+        self.filename = None
 
         filemenu = tk.Menu(self.mainmenu, tearoff=0, foreground='gray14', activeforeground= "gray84", activebackground="gray20")
         self.mainmenu.add_cascade(label="File", menu=filemenu)
@@ -224,9 +228,7 @@ class CreateMenu(tk.Menu):
         filemenu.add_command(label="Save", command=self.save_file)
         filemenu.add_separator()
         filemenu.add_command(label="Exit", command=quit)
-
-        clear = tk.Menu(self.mainmenu, tearoff=0, foreground='gray14', activeforeground="gray84",
-                        activebackground="gray20")
+        
         self.mainmenu.add_command(label="Clear All Windows", command=self.clear)
 
         master.config(menu=self.mainmenu)
@@ -238,6 +240,8 @@ class CreateMenu(tk.Menu):
             self.text_editor.texteditor.delete('1.0', tk.END)
             file_path = filedialog.askopenfilename(defaultextension=".txt", filetypes=[("All Files", "*.*")])
             if file_path:
+                file_name = os.path.basename(file_path)
+                self.filename = file_name
                 with open(f'{file_path}', 'r') as f:
                     input_text = f.read()
                     self.text_editor.texteditor.insert(tk.END, input_text)
@@ -247,8 +251,10 @@ class CreateMenu(tk.Menu):
 
     def save_file(self):
         try:
-            file_path = filedialog.asksaveasfilename(defaultextension=".txt", filetypes=[("All Files", "*.*")])
+            file_path = filedialog.asksaveasfilename(filetypes=[("All Files", "*.*")])
             if file_path:
+                file_name = os.path.basename(file_path)
+                self.filename = file_name
                 with open(file_path, 'w') as f:
                     f.write(self.text_editor.texteditor.get("1.0", "end-1c"))
                 f.close()
@@ -271,14 +277,14 @@ class CreateMenu(tk.Menu):
 
 
 class CreateButtons(customtkinter.CTkButton):
-    def __init__(self, master: any, lexeme_table: CreateTable, text_editor: CreateTextEditor, console: CreateConsole,
+    def __init__(self, master: any, lexeme_table: CreateTable, text_editor: CreateTextEditor, console: CreateConsole, menu: CreateMenu,
                  **kwargs):
         super().__init__(master, **kwargs)
 
         self.lexeme_table = lexeme_table
         self.text_editor = text_editor
         self.console1 = console
-        self.LexSynSemPass = False
+        self.menu = menu
 
         self.ButtonFrame = customtkinter.CTkFrame(master.mainframe, fg_color='transparent')
         self.ButtonFrame.grid(row=0, column=2, columnspan=3, padx=(5,0), pady=(10,0))
@@ -438,7 +444,7 @@ class CreateButtons(customtkinter.CTkButton):
                     if semantic_analyzer.errors:
                         self.console1.console.insert(tk.END, f"StellarSynth -> Semantic Analysis Error. Cannot proceed with compilation.\n", tags="Error")
                     else:
-                        transpilerInstance = Transpiler.Transpiler(tokens)
+                        transpilerInstance = Transpiler.Transpiler(tokens, self.menu.filename)
                         transpilerInstance.stellarTranslator()
                         transerrors, transoutput = transpilerInstance.writetoCPPFile()
                         if errors:

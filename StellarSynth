@@ -1,12 +1,12 @@
 Formulate
 
-Sun i = 0 #
+Import dogs#
 
 Sun Universe()[
-
-Fore(Sun i=0# i<5# i++)[
-	Disp << i << "\n"#
-]
+    Sun a = 2#
+    Sun b#
+    b = 1+(3+(b-(2-10))**(a+(4-2)))#
+    Disp << b#
 ]
 
 Disintegrate

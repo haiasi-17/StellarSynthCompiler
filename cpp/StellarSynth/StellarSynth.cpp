@@ -1,12 +1,11 @@
 #include <iostream>
 #include <string>
+#include <math.h>
 using namespace std;
 
-int i = 0 ;
+int a = 3;
 
 int main(){
+	cout << a+4;
 
-for(int i=0; i<5; i++){
-	cout << i << "\n";
-}
 }

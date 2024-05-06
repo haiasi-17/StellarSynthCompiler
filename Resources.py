@@ -261,3 +261,5 @@ transdefaultvalueDict= {"int"        : '0',
                         "string"     : "\"\""}
 
 whitespaces = [" ", "\t", "\n"]
+
+headerInclude = ["#include <iostream>\n","#include <string>\n", "#include <math.h>\n", "using namespace std;"]
