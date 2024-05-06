@@ -35,7 +35,7 @@ class Transpiler:
                 self.tokens.pop(self.tokenIndex)
                 self.currentToken = self.tokens[self.tokenIndex][0] # Do not increment as the number of tokens decreases because of the removed element.
                 continue 
-            # Import with no '~ Ident1, Ident2' is functional.
+            # Import with no '~ Ident1, Ident2' is functional theoretically, but errors because it can't find the module.
             elif self.currentToken == "Import":
                 self.tokens[self.tokenIndex][0] = self.tokens[self.tokenIndex][1] = Resources.StellarCPlusPlusDict[self.currentToken] 
                 self.translatedTokens.append(self.tokens[self.tokenIndex])
@@ -461,12 +461,18 @@ class Transpiler:
         gimple_cmd = "g++ -fdump-tree-gimple -c {} -o {}".format(file_path, gimple_file_path)
         subprocess.call(gimple_cmd, shell=True)
         
+        return f_exec
+    
+        """
+        This part of the program does not accept input, only outputs. If you want this, Remove return f_exec. and modify lines 450-464 in compiler2.
+        
         # Run the program
         try:
             p = subprocess.Popen(f_exec, shell=True,
                                 stdin=subprocess.PIPE, 
                                 stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE)
+                                stderr=subprocess.PIPE,
+                                 text=True, bufsize=1)
         except Exception as e:
             print("Error executing subprocess:", e)
 
@@ -490,7 +496,7 @@ class Transpiler:
             print("Error communicating with subprocess:", e)
         
         # Return output to Compiler
-        return output, error
+        return output, error"""
         
 
 if __name__ == "__main__":

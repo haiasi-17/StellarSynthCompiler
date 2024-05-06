@@ -1,12 +1,25 @@
 int main ()
 {
-  int D.64161;
+  int D.64162;
 
-  a.0_1 = a;
-  _2 = a.0_1 + 4;
-  std::basic_ostream<char>::operator<< (&cout, _2);
-  D.64161 = 0;
-  return D.64161;
+  {
+    int a;
+    int b;
+
+    try
+      {
+        a = 2;
+        b = 0;
+        std::basic_istream<char>::operator>> (&cin, &a);
+        std::basic_ostream<char>::operator<< (&cout, b);
+      }
+    finally
+      {
+        a = {CLOBBER(eol)};
+      }
+  }
+  D.64162 = 0;
+  return D.64162;
 }
 
 

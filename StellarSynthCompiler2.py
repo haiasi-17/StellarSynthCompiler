@@ -7,6 +7,7 @@ import datetime
 import subprocess
 import Transpiler
 import os.path
+import threading
 
 class App(customtkinter.CTk):
     def __init__(self):
@@ -104,6 +105,7 @@ class CreateTextEditor(customtkinter.CTkTextbox):
         self.addlineNumbers()
         self.linenumber.configure(state='disabled')
         master.after(10, self.addlineNumbers) # Updates every 0.010 seconds. Very Inefficient but does the job.
+        
 
 
     """def HandleBackSpace(self):
@@ -446,19 +448,66 @@ class CreateButtons(customtkinter.CTkButton):
                     else:
                         transpilerInstance = Transpiler.Transpiler(tokens, self.menu.filename)
                         transpilerInstance.stellarTranslator()
-                        transerrors, transoutput = transpilerInstance.writetoCPPFile()
+                        executableFile = transpilerInstance.writetoCPPFile()
+                        
+                        try:
+                            threading.Thread(target=self.run_cpp_executable, args=(executableFile,), daemon=True).start()
+                        except Exception as e:
+                            print("Error executing subprocess:", e)
+                        
+                        """
                         if errors:
                             self.console1.console.insert(tk.END, f"StellarSynth -> {transerrors}\n", tags="Error")
                         else:
                             self.console1.console.insert(tk.END, f"-"*40)
                             self.console1.console.insert(tk.END, f"\n{transoutput}\n")
                             self.console1.console.insert(tk.END, f"-"*40)
-                    self.console1.console.insert(tk.END, "\nStellarSynth -> Compilation Complete.")
+                        """
             
         except Exception as e:
             print(f"Error: {e}")
             
         self.console1.console.configure(state="disabled")
+    
+    def run_cpp_executable(self, executable_path):
+        process = subprocess.Popen(executable_path, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        
+        def update_console(output):
+            # Ensure GUI changes happen in the main thread
+            self.console1.console.configure(state="normal")
+            self.console1.console.insert(tk.END, output)
+            
+        def read_process_output():
+            def send_input(input_data):
+                process.stdin.write(input_data + "\n")
+                process.stdin.flush()
+
+            def request_input():
+                # Get the index of the third character (>> ^starts here) of the last line in the console
+                input_start = self.console1.console.index("end-1c linestart + 3 chars")
+                
+                # Get the text from the start of the last line to the end
+                input_data = self.console1.console.get(input_start, "end-1c")
+                # Send the input to the stream.
+                send_input(input_data)
+                
+            for line in process.stdout:
+                self.console1.console.bind("<Escape>", lambda event: process.kill())
+                output = line
+                if output:
+                    # Update GUI in the main thread
+                    update_console(output)
+                    # Check if the output ends with a colon or question mark indicating an input request (This is a problem as it depends on the disp ending in : or ?)
+                    if output[-2] in [':', '?']:
+                        # Request user input indicator
+                        self.console1.console.insert(tk.END, "\n>> ")
+                        # User presses enter, and the data will be sent to the program.
+                        self.console1.console.bind("<Return>", lambda event: request_input())
+
+        # Start a thread to read the process output to avoid freezing the GUI
+        output_thread = threading.Thread(target=read_process_output)
+        output_thread.daemon = True
+        output_thread.start()
 
 
 class CreateTimer(customtkinter.CTkFrame):
