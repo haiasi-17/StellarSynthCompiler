@@ -507,8 +507,8 @@ if __name__ == "__main__":
 
 """ 
 Issues:
-1. Currently does not accept input in the compiler ui.
-2. Currently does not accept multiple input in exe running.
+1. Currently does accept input in the ui but only on set conditions (Is followed by a disp statement that outputs something that ends in : or ?). 
+2. We need to find a way that knows definitely when a cin is called during runtime. this way we can call the necessary method to accept and send input.
 
 Features that differ in the C++ Language:
     Exponentiation Operator -> Functional

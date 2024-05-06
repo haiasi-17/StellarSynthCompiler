@@ -4,12 +4,11 @@
 using namespace std;
 
 int main(){
-	int a,b;
-	cout << "Enter b:" << "\n";
-	cin >> a;
-	cout << a << "\n";
-	cout << "Enter b:" << "\n";
-	cin >> b;
-	cout << b << "\n";
+	string cats="";
+	cout << "Enter cats:" << "\n";
+	cin >> cats;
+	cout << cats << "\n";
+
 }
+
 
