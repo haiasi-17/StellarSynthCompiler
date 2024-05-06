@@ -1,6 +1,6 @@
 __typein ()
 {
-  int D.64158;
+  int D.64179;
 
   {
     int a;
@@ -12,22 +12,24 @@ __typein ()
     _2 = b + 8;
     _3 = std::pow<int, int> (_2, _1);
     _4 = _3 + 3.0e+0;
-    b = (int) _4;
+    _5 = _4 + 1.0e+0;
+    b = (int) _5;
+    std::basic_ostream<char>::operator<< (&cout, b);
   }
-  D.64158 = 0;
-  return D.64158;
+  D.64179 = 0;
+  return D.64179;
 }
 
 
  std::pow<int, int> (int __x, int __y)
 {
-  __type D.64160;
+  __type D.64181;
   typedef __type __type;
 
   _1 = (double) __y;
   _2 = (double) __x;
-  D.64160 = pow (_2, _1);
-  return D.64160;
+  D.64181 = pow (_2, _1);
+  return D.64181;
 }
 
 
