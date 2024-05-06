@@ -1,6 +1,5 @@
 import re
 import Resources
-import Lexer, Syntax
 
 class SemanticAnalyzer:
     def __init__(self, tokens):
@@ -348,6 +347,9 @@ class SemanticAnalyzer:
 
     #  outputting array indexes
     def match_arrID_output(self, expected_token):
+        # SEMANTIC CHECK
+        self.array_variable = self.peek_previous_lexeme()
+
         self.get_next_token()
         while self.current_token == "Space":
             self.get_next_token()
@@ -361,12 +363,14 @@ class SemanticAnalyzer:
                     self.match_mathop3(Resources.mathop1)  # size is a math expr
                     #  close it with "}" if size is fulfilled
                     if self.peek_next_token() == "}":
+                        # SEMANTIC CHECK
+                        self.check_array_size()
                         self.match("}")
                         # Terminate it
                         if self.peek_next_token() == "#":
                             return True
                         # add another size to become 2D array
-                        if self.peek_next_token() == "{":
+                        elif self.peek_next_token() == "{":
                             self.match_arrID2D_output("{")
                             # Terminate it
                             if self.peek_next_token() == "#":
@@ -389,12 +393,14 @@ class SemanticAnalyzer:
                             f"(Line {self.line_number}) | Syntax Error: Expected 'Rcurlbrace', but instead got '{self.peek_next_token()}'")
                 #  size is single value
                 elif self.peek_next_token() == "}":
+                    # SEMANTIC CHECK
+                    self.check_array_size()
                     self.match("}")
                     #  terminate it
                     if self.peek_next_token() == "#":
                         return True
                     # add another size to become 2D array
-                    if self.peek_next_token() == "{":
+                    elif self.peek_next_token() == "{":
                         self.match_arrID2D_output("{")
                         # Terminate it
                         if self.peek_next_token() == "#":
@@ -417,6 +423,8 @@ class SemanticAnalyzer:
                         f"(Line {self.line_number}) | Syntax Error: Expected 'Rcurlbraces', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
             #  empty size, proceed to close it with '}'
             elif self.peek_next_token() == "}":
+                # SEMANTIC CHECK
+                self.check_array_size()
                 self.match("}")
                 # add another size to become 2D array
                 if self.peek_next_token() == "{":
@@ -3219,6 +3227,9 @@ class SemanticAnalyzer:
             #  function assign value path
             elif re.match(r'Identifier\d*$', self.peek_next_token()):
                 self.match("Identifier") # consume
+                # SEMANTIC CHECK
+                if re.match(r'Identifier\d*$', self.peek_previous_token()):
+                    self.check_variable_usage()
                 #  is '(' next?
                 if self.peek_next_token() == "(":
                     self.match("(")
@@ -3276,6 +3287,12 @@ class SemanticAnalyzer:
                     self.match_mathop("%")
                 #  array index assign path
                 elif self.peek_next_token() == "{":
+                    #  SEMANTIC CHECK
+                    if self.peek_previous_lexeme() in self.symbol_table and (self.peek_previous_lexeme() not in self.array_variable_table or self.array_variable_table is None) and not self.isParameterVariable:
+                        self.errors.append(
+                            f"(Line {self.line_number}) | Semantic Error: (Assignment Mismatch) Variable '{self.peek_previous_lexeme()}' is not declared as an array.")
+                    else:
+                        self.array_variable = self.peek_previous_lexeme()
                     self.arrayError = True
                     self.match("{")
                     #  array index assign path
@@ -3288,6 +3305,8 @@ class SemanticAnalyzer:
                             self.match_mathop3(Resources.mathop1)  # size is a math expr
                             #  close it with "}" if size is fulfilled
                             if self.peek_next_token() == "}":
+                                # SEMANTIC CHECK
+                                self.check_array_size()
                                 self.match("}")
                                 # Terminate it
                                 if self.peek_next_token() == "#":
@@ -3374,6 +3393,8 @@ class SemanticAnalyzer:
                                     f"(Line {self.line_number}) | Syntax Error: Expected 'Rcurlbrace', but instead got '{self.peek_next_token()}'")
                         #  size is single value
                         elif self.peek_next_token() == "}":
+                            # SEMANTIC CHECK
+                            self.check_array_size()
                             self.match("}")
                             # Terminate it
                             if self.peek_next_token() == "#":
@@ -3460,6 +3481,8 @@ class SemanticAnalyzer:
                                 f"(Line {self.line_number}) | Syntax Error: Expected 'Rcurlbraces', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
                     #  empty size, proceed to close it with '}'
                     elif self.peek_next_token() == "}":
+                        # SEMANTIC CHECK
+                        self.check_array_size()
                         self.match("}")
                         # add another size to become 2D array
                         if self.peek_next_token() == "{":
@@ -4708,8 +4731,18 @@ class SemanticAnalyzer:
                     or self.peek_next_token() == "SunLiteral"
                     or self.peek_next_token() == "LuhmanLiteral"):
                 self.match(Resources.Value2)  # consume
+                # SEMANTIC CHECK
+                if re.match(r'Identifier\d*$', self.peek_previous_token()):
+                    self.check_variable_usage()
                 #  is it an array index?
                 if self.peek_next_token() == "{" and (re.match(r'Identifier\d*$', self.peek_previous_token())):
+                    #  SEMANTIC CHECK
+                    if self.peek_previous_lexeme() in self.symbol_table and (
+                            self.peek_previous_lexeme() not in self.array_variable_table or self.array_variable_table is None) and not self.isParameterVariable:
+                        self.errors.append(
+                            f"(Line {self.line_number}) | Semantic Error: (Assignment Mismatch) Variable '{self.peek_previous_lexeme()}' is not declared as an array.")
+                    else:
+                        self.array_variable = self.peek_previous_lexeme()
                     self.match("{")
                     #  array index assign path
                     if (re.match(r'Identifier\d*$', self.peek_next_token())
@@ -4722,6 +4755,8 @@ class SemanticAnalyzer:
                             self.match_mathop3(Resources.mathop1)  # size is a math expr
                             #  close it with "}" if size is fulfilled
                             if self.peek_next_token() == "}":
+                                # SEMANTIC CHECK
+                                self.check_array_size()
                                 self.match("}")
                                 # Terminate it
                                 if self.peek_next_token() == "#":
@@ -4804,6 +4839,8 @@ class SemanticAnalyzer:
                                     f"(Line {self.line_number}) | Syntax Error: Expected 'Rcurlbrace', but instead got '{self.peek_next_token()}'")
                         #  size is single value
                         elif self.peek_next_token() == "}":
+                            # SEMANTIC CHECK
+                            self.check_array_size()
                             self.match("}")
                             # Terminate it
                             if self.peek_next_token() == "#":
@@ -4887,6 +4924,8 @@ class SemanticAnalyzer:
                                 f"(Line {self.line_number}) | Syntax Error: Expected 'Rcurlbraces', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
                     #  empty size, proceed to close it with '}'
                     elif self.peek_next_token() == "}":
+                        # SEMANTIC CHECK
+                        self.check_array_size()
                         self.match("}")
                         # add another size to become 2D array
                         if self.peek_next_token() == "{":
@@ -5025,8 +5064,18 @@ class SemanticAnalyzer:
             elif (re.match(r'Identifier\d*$', self.peek_next_token())
                     or "SunLiteral" or "LuhmanLiteral"):
                 self.match(Resources.Value2)  # consume
+                # SEMANTIC CHECK
+                if re.match(r'Identifier\d*$', self.peek_previous_token()):
+                    self.check_variable_usage()
                 #  is it an array index?
                 if self.peek_next_token() == "{" and (re.match(r'Identifier\d*$', self.peek_previous_token())):
+                    #  SEMANTIC CHECK
+                    if self.peek_previous_lexeme() in self.symbol_table and (
+                            self.peek_previous_lexeme() not in self.array_variable_table or self.array_variable_table is None) and not self.isParameterVariable:
+                        self.errors.append(
+                            f"(Line {self.line_number}) | Semantic Error: (Assignment Mismatch) Variable '{self.peek_previous_lexeme()}' is not declared as an array.")
+                    else:
+                        self.array_variable = self.peek_previous_lexeme()
                     self.match("{")
                     #  array index assign path
                     if (re.match(r'Identifier\d*$', self.peek_next_token())
@@ -5039,6 +5088,8 @@ class SemanticAnalyzer:
                             self.match_mathop3(Resources.mathop1)  # size is a math expr
                             #  close it with "}" if size is fulfilled
                             if self.peek_next_token() == "}":
+                                # SEMANTIC CHECK
+                                self.check_array_size()
                                 self.match("}")
                                 # Terminate it
                                 if self.peek_next_token() == "#":
@@ -5097,6 +5148,8 @@ class SemanticAnalyzer:
                                     f"(Line {self.line_number}) | Syntax Error: Expected 'Rcurlbrace', but instead got '{self.peek_next_token()}'")
                         #  size is single value
                         elif self.peek_next_token() == "}":
+                            # SEMANTIC CHECK
+                            self.check_array_size()
                             self.match("}")
                             # Terminate it
                             if self.peek_next_token() == "#":
@@ -5155,6 +5208,8 @@ class SemanticAnalyzer:
                                 f"(Line {self.line_number}) | Syntax Error: Expected 'Rcurlbraces', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
                     #  empty size, proceed to close it with '}'
                     elif self.peek_next_token() == "}":
+                        # SEMANTIC CHECK
+                        self.check_array_size()
                         self.match("}")
                         # add another size to become 2D array
                         if self.peek_next_token() == "{":
@@ -5284,8 +5339,11 @@ class SemanticAnalyzer:
 
         if expected_token == "(":
             if (re.match(r'Identifier\d*$', self.peek_next_token())
-                    or "SunLiteral" or "LuhmanLiteral"):
+                    or self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral"):
                 self.match(Resources.Value2)  # consume
+                # SEMANTIC CHECK
+                if re.match(r'Identifier\d*$', self.peek_previous_token()):
+                    self.check_variable_usage()
                 # add it
                 if self.peek_next_token() == "+":
                     self.match_mathop2("+")
@@ -5590,6 +5648,13 @@ class SemanticAnalyzer:
                         return True
                 #  array index assign path
                 elif self.peek_next_token() == "{":
+                    #  SEMANTIC CHECK
+                    if self.peek_previous_lexeme() in self.symbol_table and (
+                            self.peek_previous_lexeme() not in self.array_variable_table or self.array_variable_table is None) and not self.isParameterVariable:
+                        self.errors.append(
+                            f"(Line {self.line_number}) | Semantic Error: (Assignment Mismatch) Variable '{self.peek_previous_lexeme()}' is not declared as an array.")
+                    else:
+                        self.array_variable = self.peek_previous_lexeme()
                     self.match("{")
                     #  array index assign path
                     if (re.match(r'Identifier\d*$', self.peek_next_token())
@@ -5601,6 +5666,8 @@ class SemanticAnalyzer:
                             self.match_mathop3(Resources.mathop1)  # size is a math expr
                             #  close it with "}" if size is fulfilled
                             if self.peek_next_token() == "}":
+                                # SEMANTIC CHECK
+                                self.check_array_size()
                                 self.match("}")
                                 # add it
                                 if self.peek_next_token() == "+":
@@ -6223,6 +6290,8 @@ class SemanticAnalyzer:
                                     f"(Line {self.line_number}) | Syntax Error: Expected 'Rcurlbrace', but instead got '{self.peek_next_token()}'")
                         #  size is single value
                         elif self.peek_next_token() == "}":
+                            # SEMANTIC CHECK
+                            self.check_array_size()
                             self.match("}")
                             # add it
                             if self.peek_next_token() == "+":
@@ -6838,6 +6907,8 @@ class SemanticAnalyzer:
                                 f"(Line {self.line_number}) | Syntax Error: Expected 'Rcurlbraces', '+', '-', '*', '/', '%' after {self.peek_previous_token()}")
                     #  empty size, proceed to close it with '}'
                     elif self.peek_next_token() == "}":
+                        # SEMANTIC CHECK
+                        self.check_array_size()
                         self.match("}")
                         # add another size to become 2D array
                         if self.peek_next_token() == "{":
@@ -7469,6 +7540,53 @@ class SemanticAnalyzer:
                                                                                   or self.peek_next_token() != "{")):
                     self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected ')', '+', '-', '*', '/', '%', '**'"
                                        f", but instead got '{self.peek_next_token()}'")
+            elif self.peek_next_token() == "(":
+                self.match_parenth("(")
+                if self.peek_previous_token() == ")":
+                    self.match(")")  # consume
+                    #  add is next
+                    if self.peek_next_token() == "+":
+                        self.match_mathop("+")
+                    #  subtract is next
+                    elif self.peek_next_token() == "-":
+                        self.match_mathop("-")
+                    #  multiply is next
+                    elif self.peek_next_token() == "*":
+                        self.match_mathop("*")
+                    #  divide is next
+                    elif self.peek_next_token() == "/":
+                        self.match_mathop("/")
+                    #  modulo is next
+                    elif self.peek_next_token() == "%":
+                        self.match_mathop("%")
+                    #  next value asisgn
+                    elif self.peek_next_token() == ",":
+                        self.match(",")  # consume ','
+                        if re.match(r'Identifier\d*$', self.peek_next_token()):
+                            self.matchID_mult("Identifier")
+                            if self.peek_next_token() == "=":
+                                self.match_mult_assign("=")
+                            #  terminate it
+                            elif self.peek_next_token() == "#":
+                                self.match("#")
+                            #  error: not followed by any expected tokens
+                            elif (
+                                    self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                    or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                    and (
+                                            self.peek_next_token != "#" or self.peek_next_token != "=" or self.peek_next_token != ",")):
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '=', ',' "
+                                    f" but instead got '{self.peek_next_token()}'")
+                        else:
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Syntax Error: Expected 'Identifier', "
+                                f" but instead got '{self.peek_next_token()}'")
+                    else:
+                        return True
+                #  error: not followed by mathop or closed with ')'
+                else:
+                    return False
             else:
                 self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
                                        f" but instead got '{self.peek_next_token()}'")
@@ -8099,7 +8217,7 @@ class SemanticAnalyzer:
             #  empty size, proceed to close it with '}'
             elif self.peek_next_token() == "}":
                 # SEMANTIC CHECK
-                self.array_size = None
+                self.array_size = "null"
                 self.declare_array(self.array_variable, self.array_size)
                 self.match("}")
                 # assign a value syntax for 1D array (empty size)
@@ -16735,6 +16853,9 @@ class SemanticAnalyzer:
                 elif re.match(r'Identifier\d*$', self.peek_next_token()) or self.peek_next_token() == "SunLiteral" \
                         or self.peek_next_token() == "LuhmanLiteral":
                     self.match(Resources.Value2)
+                    # SEMANTIC CHECK
+                    if re.match(r'Identifier\d*$', self.peek_previous_token()):
+                        self.check_variable_usage()
                     #  return is an array index path
                     if self.peek_next_token() == "{":
                         self.match("{")  # consume
@@ -17139,8 +17260,18 @@ class SemanticAnalyzer:
             elif re.match(r'Identifier\d*$', self.peek_next_token()) or self.peek_next_token() == "SunLiteral"\
                     or self.peek_next_token() == "LuhmanLiteral":
                 self.match(Resources.Value2)  # consume values
+                # SEMANTIC CHECK
+                if re.match(r'Identifier\d*$', self.peek_previous_token()):
+                    self.check_variable_usage()
                 #  return is an array index path
                 if self.peek_next_token() == "{":
+                    #  SEMANTIC CHECK
+                    if self.peek_previous_lexeme() in self.symbol_table and (
+                            self.peek_previous_lexeme() not in self.array_variable_table or self.array_variable_table is None) and not self.isParameterVariable:
+                        self.errors.append(
+                            f"(Line {self.line_number}) | Semantic Error: (Assignment Mismatch) Variable '{self.peek_previous_lexeme()}' is not declared as an array.")
+                    else:
+                        self.array_variable = self.peek_previous_lexeme()
                     self.match("{")  # consume
                     #  array index assign path
                     if (re.match(r'Identifier\d*$', self.peek_next_token())
@@ -17153,6 +17284,8 @@ class SemanticAnalyzer:
                             self.match_mathop3(Resources.mathop1)  # size is a math expr
                             #  close it with "}" if size is fulfilled
                             if self.peek_next_token() == "}":
+                                # SEMANTIC CHECK
+                                self.check_array_size()
                                 self.match("}")
                                 #  check: if terminated, single 1D array
                                 if self.peek_next_token() == "#":
@@ -17189,6 +17322,8 @@ class SemanticAnalyzer:
                                     f"(Line {self.line_number}) | Syntax Error: Expected 'Rcurlbrace', but instead got '{self.peek_next_token()}'")
                         #  size is single value
                         elif self.peek_next_token() == "}":
+                            # SEMANTIC CHECK
+                            self.check_array_size()
                             self.match("}")
                             #  check: if terminated, single 1D array (size is single value)
                             if self.peek_next_token() == "#":
@@ -17225,6 +17360,8 @@ class SemanticAnalyzer:
                                 f"(Line {self.line_number}) | Syntax Error: Expected 'Rcurlbraces', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
                     #  empty size, proceed to close it with '}'
                     elif self.peek_next_token() == "}":
+                        # SEMANTIC CHECK
+                        self.check_array_size()
                         self.match("}")
                         #  check: if terminated, single 1D array (size is single value)
                         if self.peek_next_token() == "#":
@@ -21496,11 +21633,20 @@ class SemanticAnalyzer:
                 f"(Line {self.line_number}) | Semantic Error: (Invalid Indices) Attempting to assign a single value to all elements of the array without specifying individual indices for variable '{self.array_variable}'"
             )
         else:
-            array_size = int(self.peek_previous_lexeme())  # Convert array_size to integer
-
             if self.array_variable in self.array_variable_table:
-                table_size = int(self.array_variable_table[self.array_variable]['array_size'])  # Get size from table
-                if array_size >= table_size:
+                array_size = int(self.peek_previous_lexeme())  # Convert array_size to integer
+                if self.array_variable_table[self.array_variable]['array_size'] == "null":
+                    table_size = "null"
+                else:
+                    table_size = int(self.array_variable_table[self.array_variable]['array_size'])  # Get size from table
+                if table_size == "null":
+                    value_count = int(self.array_count_table[self.array_variable]['array_count'])  # Get count of assigned values
+                    if array_size >= value_count:
+                        self.array_size_error = True
+                        self.errors.append(
+                            f"(Line {self.line_number}) | Semantic Error: (Out of Bounds) Array index out of bounds for variable '{self.array_variable}'"
+                        )
+                elif array_size >= table_size:
                     self.array_size_error = True
                     self.errors.append(
                         f"(Line {self.line_number}) | Semantic Error: (Out of Bounds) Array index out of bounds for variable '{self.array_variable}'"
@@ -21509,9 +21655,14 @@ class SemanticAnalyzer:
     # check array values if it matches array size, 1D
     def check_array_value(self):
         if self.array_variable in self.array_variable_table:
-            table_size = int(self.array_variable_table[self.array_variable]['array_size'])  # Get size from table
+            if self.array_variable_table[self.array_variable]['array_size'] == "null":
+                table_size = "null"
+            else:
+                table_size = int(self.array_variable_table[self.array_variable]['array_size'])  # Get size from table
+
             value_count = int(self.array_count_table[self.array_variable]['array_count'])  # Get count of assigned values
-            if value_count > table_size and not self.is2DValue:
+
+            if table_size != "null" and value_count > table_size and not self.is2DValue:
                 self.errors.append(
                     f"(Line {self.line_number}) | Semantic Error: (Out of Bounds) Array variable '{self.array_variable}' exceeds the amount of values its size can keep"
                 )
@@ -21660,14 +21811,4 @@ class SemanticAnalyzer:
         else:
             self.errors.append(
                 f"(Line {self.line_number}) | Semantic Error: Variable not declared")
-            
-if __name__ == "__main__":
-    errors, tokens = Lexer.read_text('StellarSynth')
-    Semantic_analyzer = SemanticAnalyzer(tokens)
-    Semantic_analyzer.parse_top_program()
-    print(SemanticAnalyzer.errors)
-    
-'''
-Remarks:
-Some Bugs still.
-'''
+

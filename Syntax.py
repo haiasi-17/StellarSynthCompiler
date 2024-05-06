@@ -1,6 +1,5 @@
 import re
 import Resources
-import Lexer
 
 class SyntaxAnalyzer:
     def __init__(self, tokens):
@@ -5116,7 +5115,7 @@ class SyntaxAnalyzer:
 
         if expected_token == "(":
             if (re.match(r'Identifier\d*$', self.peek_next_token())
-                    or "SunLiteral" or "LuhmanLiteral"):
+                    or self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral"):
                 self.match(Resources.Value2)  # consume
                 # add it
                 if self.peek_next_token() == "+":
@@ -7301,6 +7300,53 @@ class SyntaxAnalyzer:
                                                                                   or self.peek_next_token() != "{")):
                     self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected ')', '+', '-', '*', '/', '%', '**'"
                                        f", but instead got '{self.peek_next_token()}'")
+            elif self.peek_next_token() == "(":
+                self.match_parenth("(")
+                if self.peek_previous_token() == ")":
+                    self.match(")")  # consume
+                    #  add is next
+                    if self.peek_next_token() == "+":
+                        self.match_mathop("+")
+                    #  subtract is next
+                    elif self.peek_next_token() == "-":
+                        self.match_mathop("-")
+                    #  multiply is next
+                    elif self.peek_next_token() == "*":
+                        self.match_mathop("*")
+                    #  divide is next
+                    elif self.peek_next_token() == "/":
+                        self.match_mathop("/")
+                    #  modulo is next
+                    elif self.peek_next_token() == "%":
+                        self.match_mathop("%")
+                    #  next value asisgn
+                    elif self.peek_next_token() == ",":
+                        self.match(",")  # consume ','
+                        if re.match(r'Identifier\d*$', self.peek_next_token()):
+                            self.matchID_mult("Identifier")
+                            if self.peek_next_token() == "=":
+                                self.match_mult_assign("=")
+                            #  terminate it
+                            elif self.peek_next_token() == "#":
+                                self.match("#")
+                            #  error: not followed by any expected tokens
+                            elif (
+                                    self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                    or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                    and (
+                                            self.peek_next_token != "#" or self.peek_next_token != "=" or self.peek_next_token != ",")):
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '=', ',' "
+                                    f" but instead got '{self.peek_next_token()}'")
+                        else:
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Syntax Error: Expected 'Identifier', "
+                                f" but instead got '{self.peek_next_token()}'")
+                    else:
+                        return True
+                #  error: not followed by mathop or closed with ')'
+                else:
+                    return False
             else:
                 self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
                                        f" but instead got '{self.peek_next_token()}'")
@@ -8272,6 +8318,7 @@ class SyntaxAnalyzer:
             #  terminate?
             elif self.peek_next_token() == "#":
                 self.match("#")
+
             # error: missing any of the possibilities
             else:
                 self.errors.append(
@@ -20299,13 +20346,3 @@ class SyntaxAnalyzer:
             self.errors.append(f"Syntax Error: Main Program Missing, Expected 'Sun', 'Identifier', '('. ')', '[', ']'")
     '''
 
-if __name__ == "__main__":
-    errors, tokens = Lexer.read_text('StellarSynth')
-    syntax_analyzer = SyntaxAnalyzer(tokens)
-    syntax_analyzer.parse_top_program()
-    print(syntax_analyzer.errors, syntax_analyzer.tokens)
-    
-'''
-Remarks:
-Some Bugs still.
-'''
