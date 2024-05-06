@@ -1,0 +1,33 @@
+__typein ()
+{
+  int D.64158;
+
+  {
+    int a;
+    int b;
+
+    a = 2;
+    b = 0;
+    _1 = a + 2;
+    _2 = b + 8;
+    _3 = std::pow<int, int> (_2, _1);
+    _4 = _3 + 3.0e+0;
+    b = (int) _4;
+  }
+  D.64158 = 0;
+  return D.64158;
+}
+
+
+ std::pow<int, int> (int __x, int __y)
+{
+  __type D.64160;
+  typedef __type __type;
+
+  _1 = (double) __y;
+  _2 = (double) __x;
+  D.64160 = pow (_2, _1);
+  return D.64160;
+}
+
+

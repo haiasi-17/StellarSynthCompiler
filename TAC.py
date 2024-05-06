@@ -28,7 +28,7 @@ class ThreeAddressCode:
         if (self.tokenIndex < (len(self.tokens)-1) and self.tokenIndex > -1) and self.currentToken != None:
             self.tokenIndex += 1
             self.currentToken = self.tokens[self.tokenIndex][0]
-            while self.currentToken in Resources.whitespace and (self.tokenIndex < (len(self.tokens)-1) and self.currentToken != None):
+            while self.currentToken in Resources.whitespaceStellar and (self.tokenIndex < (len(self.tokens)-1) and self.currentToken != None):
                 self.tokenIndex += 1
                 self.currentToken = self.tokens[self.tokenIndex][0]
         return
@@ -37,7 +37,7 @@ class ThreeAddressCode:
         if (self.tokenIndex < (len(self.tokens)-1) and self.tokenIndex > -1) and self.currentToken != None:
             self.tokenIndex -= 1
             self.currentToken = self.tokens[self.tokenIndex][0]
-            while self.currentToken in Resources.whitespace and (self.tokenIndex < (len(self.tokens)-1) and self.currentToken != None):
+            while self.currentToken in Resources.whitespaceStellar and (self.tokenIndex < (len(self.tokens)-1) and self.currentToken != None):
                 self.tokenIndex -= 1
                 self.currentToken = self.tokens[self.tokenIndex][0]
         return
@@ -46,8 +46,8 @@ class ThreeAddressCode:
         self.currentToken = self.tokens[self.tokenIndex][0]
         while self.tokenIndex < (len(self.tokens)-1):
 
-            # Check if it is a whitespace, if so, skip it.
-            if self.currentToken in Resources.whitespace:
+            # Check if it is a whitespaceStellar, if so, skip it.
+            if self.currentToken in Resources.whitespaceStellar:
                 self.go_next_token()
                
             # Check if current token is a data type. Which means it could either be a function dec or def, vardec.

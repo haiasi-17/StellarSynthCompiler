@@ -9,28 +9,315 @@ class Transpiler:
         self.currentToken = None
         self.translatedTokens = []
         self.translatedTokensIndex = 0
+        
         self.dataType = None
         self.f_cpp = None
         self.isVarDec = False
         
+        self.expoString = ""
+        self.operandOne = ""
+        self.operandTwo = ""
+        self.parenthCount = 0
+        self.removeTokenCount = 0
+        self.goNextTokenCount = 0
+        self.goBackTokenCount = 0 
+        self.prevTokenParenth = False
+        self.nextTokenParenth = False
+        
     def stellarTranslator(self):
         self.currentToken = self.tokens[self.tokenIndex][0]
         while self.tokenIndex < (len(self.tokens)-1):
-        # Remove Formulate from the beginning of the program.
+        # Remove Formulate and Disintegrate from the beginning of the program.
             if self.currentToken == "Formulate" or self.currentToken == "Disintegrate":
                 self.tokens.pop(self.tokenIndex)
                 self.currentToken = self.tokens[self.tokenIndex][0] # Do not increment as the number of tokens decreases because of the removed element.
                 continue 
             # Temporary solution, import is currently non-functional.
             elif self.currentToken == "Import":
-                # Remove entire import statement.
+                # Omit the entire import statement.
                 while self.currentToken != "\n":
                     self.tokens.pop(self.tokenIndex)     
                     self.currentToken = self.tokens[self.tokenIndex][0] # Do not increment as the number of tokens decreases because of the removed element.
                 continue 
+            
+            
+            # Convert exponentiation operator to c++ pow function
+            elif self.currentToken == "**": 
+                # i = a+4**10 -> i = a+pow(4,10) Check
+                # i = 3+(a+4)**10 -> i = pow((a+4),10) Check
+                # i = 3+(a+4)**(b+10) -> i = pow((a+4),(b+10)) Check
+                # i = 3+a**(b+10) -> i = pow(a,(b+10)) Check
+                # i = 3+(a+(4-2))**10 = pow((a+(4-2)), 10) Check
+                # i = 3+10**(a+(4-2)) = pow(10, (a+(4-2))) Check
+                # i = 3+(b-(2-10))**(a+(4-2)) = pow((b-(2-10), (a+(4-2))) 
+                
+                
+                # Check to see if the previous token of the exponentiation operator is a parenthesis.
+                self.go_back_token()
+                if self.currentToken == ")": self.prevTokenParenth = True
+                
+                # Check to see if the next token of the exponentiation operator is a parenthesis.
+                self.go_next_token()
+                self.go_next_token()
+                if self.currentToken == "(": self.nextTokenParenth = True
+                
+                # Go back to exponentiation operator token
+                self.go_back_token()
+                
+                # Check if there are parentheses
+                if self.prevTokenParenth is True or self.nextTokenParenth is True:
+                    
+                    # Check if the parentheses comes before the exponentiation operator
+                    if self.prevTokenParenth is True:
+                        self.go_back_token()
+                        if self.currentToken == ")":
+                            self.parenthCount += 1
+                            self.removeTokenCount += 1
+                            
+                            # Find its pair of opening parenthesis, Go back to the leftmost parenthesis of the operand
+                            self.go_back_token()
+                            self.removeTokenCount += 1
+                            
+                            while self.currentToken != "(" or self.parenthCount > 0:
+                                # if have a closing parenthesis, decrement parenthcount, else increment parenthcount
+                                if self.currentToken == "(":
+                                    self.parenthCount -= 1
+                                elif self.currentToken == ")":
+                                    self.parenthCount += 1
+                                # Go back a token if the parenth count is > zero, else the last remaining pair of closing parenthesis is the current token, and no need to go back a token anymore.
+                                if self.parenthCount > 0:
+                                    self.go_back_token()
+                                    self.removeTokenCount +=1
+                                    
+                            # We get the entire operandOne
+                            while self.currentToken != "**":
+                                self.operandOne += self.currentToken
+                                self.go_next_token()
+                            
+                            # Check to see if the next token of the exponentiation operator is a parenthesis also.
+                            self.go_next_token()
+                            
+                            # If it is a parenthesis, get the entire expression as operandTwo.
+                            if self.currentToken == "(":
+                                self.parenthCount += 1
+                                self.goNextTokenCount += 1
+                                
+                                # Find its pair of closing parenthesis, Go to the rightmost parenthesis of the operand
+                                self.go_next_token()
+                                self.goNextTokenCount += 1
+                                
+                                while self.currentToken != ")" or self.parenthCount > 0:
+                                    # if have an opening parenthesis, decrement parenthcount, else increment parenthcount
+                                    if self.currentToken == ")":
+                                        self.parenthCount -= 1
+                                    elif self.currentToken == "(":
+                                        self.parenthCount += 1
+                                    # Go to next token if the parenth count is > zero, else the last remaining pair of opening parenthesis is the current token, and no need to go next a token anymore.
+                                    if self.parenthCount > 0:
+                                        self.go_next_token()
+                                        self.goNextTokenCount +=1
+                                        
+                                # Go to exponentiation token
+                                while self.currentToken != "**":   
+                                    self.go_back_token()
+                                
+                                # Go to the end point of the operandTwo, while getting the entire operandTwo
+                                while self.goNextTokenCount > 0:
+                                    self.go_next_token()
+                                    self.operandTwo += self.currentToken
+                                    self.goNextTokenCount -= 1
+                                    
+                                # Remove operandOne from translatedTokens
+                                while self.removeTokenCount > 0:
+                                    self.translatedTokens.pop()
+                                    self.removeTokenCount -= 1
+
+                                # Construct the expression
+                                self.expoString = f"pow({self.operandOne}, {self.operandTwo})"
+                                
+                                # Append to translatedtokens
+                                self.translatedTokens.append([self.expoString, self.expoString])
+                                
+                                # Go to next token, and reset used variables.
+                                self.go_next_token()
+                                self.expoString = ""
+                                self.operandOne = ""
+                                self.operandTwo = ""
+                                self.prevTokenParenth = False
+                                continue
+                            
+                            # Else just get operandtwo and append.
+                            else: 
+                                # We get operandtwo
+                                self.operandTwo = self.currentToken
+                                
+                                # Remove operandOne from translatedTokens
+                                while self.removeTokenCount > 0:
+                                    self.translatedTokens.pop()
+                                    self.removeTokenCount -= 1
+                                
+                                # Construct the expression
+                                self.expoString = f"pow({self.operandOne}, {self.operandTwo})"
+                                
+                                # Append to translatedtokens
+                                self.translatedTokens.append([self.expoString, self.expoString])
+                                
+                                # Go to next token, and reset used variables.
+                                self.go_next_token()
+                                self.expoString = ""
+                                self.operandOne = ""
+                                self.operandTwo = ""
+                                self.prevTokenParenth = False
+                                continue
+                            
+                    # If the parentheses come after the exponentiation token.
+                    elif self.nextTokenParenth is True:
+                        self.go_next_token()
+                        # If it is a parenthesis, get the entire expression as operandTwo.
+                        if self.currentToken == "(":
+                            self.parenthCount += 1
+                            self.goNextTokenCount += 1
+                            
+                            # Find its pair of closing parenthesis.
+                            self.go_next_token()
+                            self.goNextTokenCount += 1
+
+                            while self.currentToken != ")" or self.parenthCount > 0:
+                                # if have an opening parenthesis, decrement parenthcount, else increment parenthcount
+                                if self.currentToken == ")":
+                                    self.parenthCount -= 1
+                                elif self.currentToken == "(":
+                                    self.parenthCount += 1
+                                # Go to next token if the parenth count is > zero, else the last remaining pair of opening parenthesis is the current token, and no need to go next a token anymore.
+                                if self.parenthCount > 0:
+                                    self.go_next_token()
+                                    self.goNextTokenCount +=1
+                                    
+                            # Go to exponentiation token
+                            while self.currentToken != "**":   
+                                self.go_back_token()
+                            
+                            # Go to the end point of the operandTwo, while getting the entire operandTwo
+                            while self.goNextTokenCount > 0:
+                                self.go_next_token()
+                                self.operandTwo += self.currentToken
+                                self.goNextTokenCount -= 1
+                            
+                            # Go to exponentiation token
+                            while self.currentToken != "**":   
+                                self.go_back_token()
+                                self.goBackTokenCount +=1
+                            
+                            # Go to the token before the exponentiation token
+                            self.go_back_token()
+                            self.goBackTokenCount +=1
+                            
+                            # Check if the operandone is also a parenthesis expression, if so get the entire operandOne.
+                            if self.currentToken == ")":
+                                self.parenthCount += 1
+                                self.removeTokenCount += 1
+                                
+                                # Find its pair of opening parenthesis.
+                                self.go_back_token()
+                                self.removeTokenCount += 1
+                                
+                                while self.currentToken != "(" or self.parenthCount > 0:
+                                    # if have a closing parenthesis, decrement parenthcount, else increment parenthcount
+                                    if self.currentToken == "(":
+                                        self.parenthCount -= 1
+                                    elif self.currentToken == ")":
+                                        self.parenthCount += 1
+                                    # Go back a token if the parenth count is > zero, else the last remaining pair of closing parenthesis is the current token, and no need to go back a token anymore.
+                                    if self.parenthCount > 0:
+                                        self.go_back_token()
+                                        self.removeTokenCount +=1
+                                        
+                                # We get the entire operandOne
+                                while self.currentToken != "**":
+                                    self.operandOne += self.currentToken
+                                    self.go_next_token()
+
+                                # Remove operandOne from translatedTokens
+                                while self.removeTokenCount > 0:
+                                    self.translatedTokens.pop()
+                                    self.removeTokenCount -= 1
+                                    
+                                # Return to the end point of the operandTwo
+                                while self.goBackTokenCount > 0:
+                                    self.go_next_token()
+                                    self.goBackTokenCount -= 1
+
+                                # Construct the expression
+                                self.expoString = f"pow({self.operandOne}, {self.operandTwo})"
+                                
+                                # Append to translatedtokens
+                                self.translatedTokens.append([self.expoString, self.expoString])
+
+                                # Go to next token, and reset used variables.
+                                self.go_next_token()
+                                self.expoString = ""
+                                self.operandOne = ""
+                                self.operandTwo = ""
+                                self.nextTokenParenth = False
+                                continue
+                                
+                            else: 
+                                self.removeTokenCount += 1
+                                # We get operandone
+                                self.operandOne = self.currentToken
+                                
+                                # Remove operandOne from translatedTokens
+                                while self.removeTokenCount > 0:
+                                    self.translatedTokens.pop()
+                                    self.removeTokenCount -= 1
+                                
+                                # Construct the expression
+                                self.expoString = f"pow({self.operandOne}, {self.operandTwo})"
+                                
+                                # Append to translatedtokens
+                                self.translatedTokens.append([self.expoString, self.expoString])
+                                
+                                # Return to the end point of the operandTwo
+                                while self.goBackTokenCount > 0:
+                                    self.go_next_token()
+                                    self.goBackTokenCount -= 1
+                                
+                                # Go to next token, and reset used variables.
+                                self.go_next_token()
+                                self.expoString = ""
+                                self.operandOne = ""
+                                self.operandTwo = ""
+                                self.nextTokenParenth = False
+                                continue 
+                
+                # No parenthesis in this expression
+                else:
+                    # Store the operands of the exponentiation operator
+                    self.operandOne = self.tokens[self.tokenIndex-1][0]
+                    self.operandTwo = self.tokens[self.tokenIndex+1][0]
+                    
+                    # Remove operandOne from translatedTokens
+                    self.translatedTokens.pop(len(self.translatedTokens)-1)
+                    
+                    # Go to the token after the exponentiation operator
+                    self.go_next_token()
+                    
+                    # Construct the expression
+                    self.expoString = f"pow({self.operandOne}, {self.operandTwo})"
+                    
+                    # Append to translatedtokens
+                    self.translatedTokens.append([self.expoString, self.expoString])
+                    
+                    self.go_next_token()
+                    self.expoString = ""
+                    self.operandOne = ""
+                    self.operandTwo = ""
+                    continue
+                
+            
             # Replace StellarSynth Token with its C++ Counterpart.
             elif self.currentToken in Resources.StellarCPlusPlusDict:
-                # If it is a string typecast operator, convert datatype Starsys to to_string then append to translated tokens.
+                # If it is a string typecast operator, convert datatype Starsys to 'to_string' then append to translated tokens.
                 if self.currentToken == "Starsys":
                     self.go_next_token()
                     if self.currentToken == "(":
@@ -40,7 +327,7 @@ class Transpiler:
                         self.translatedTokens.append(self.tokens[self.tokenIndex])
                         self.go_next_token()
                         continue
-                    # If it isn't just the translated counterpart to translated tokens.
+                    # If it isn't just append the translated counterpart to translated tokens.
                     else:
                         self.go_back_token()
                         self.tokens[self.tokenIndex][0] = self.tokens[self.tokenIndex][1] = Resources.StellarCPlusPlusDict[self.currentToken] 
@@ -134,8 +421,11 @@ class Transpiler:
         return
     
     def writetoCPPFile(self):
+        convertedcppCode = ''
+        
         # Initialize with some needed headers.
-        convertedcppCode = '#include <iostream>\n#include <string>\nusing namespace std;'
+        for header in Resources.headerInclude:
+            convertedcppCode += header
              
         # Concatenate all translatedtokens to the cppCode string
         while self.translatedTokensIndex < (len(self.translatedTokens)-1):
@@ -151,6 +441,10 @@ class Transpiler:
         f_exec = "Output.exe"
         compile_cmd = "g++ {} -o {}".format(self.f_cpp, f_exec)
         subprocess.call(compile_cmd, shell=True)
+        
+        # Generate the Gimple Representation of the program.
+        gimple_cmd = "g++ -fdump-tree-gimple -c {}".format(self.f_cpp)
+        subprocess.call(gimple_cmd, shell=True)
 
         # Run the program
         p = subprocess.Popen(f_exec, shell=True,
@@ -190,9 +484,10 @@ Issues:
 2. Currently does not accept multiple input in exe running.
 
 Features that differ in the C++ Language:
-    Exponentiation Operator -> No Solution yet. May define a separate header c++ to implement it.
+    Exponentiation Operator -> Solution is to use pow and math header. Now, the order precedence is different, as pow is implemented that same as functions may need to revise the rules. PEMDAS STILL THOUGH.
     Importation -> Temporary Solution. Removed from Program.
     Type Conversion -> Currently utilizing implicit type conversion of c++, no idea how to modify it. Explicit is covered na. However, there might be inconsistencies with c++ type conversion with our rules.
+                        may need to revise float and int rules regarding output. cuz integer division and all that. Like if its decimal places are zero, then it wont include them even if it is declared as float
     Default Value -> Implemented rules in our language
     
 Algorithm:
