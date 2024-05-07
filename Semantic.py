@@ -21618,7 +21618,16 @@ class SemanticAnalyzer:
                     and (value == "SunLiteral" or value == "LuhmanLiteral" or value == "True" or value == "False")):
                 self.errors.append(
                     f"(Line {self.line_number}) | Semantic Error: (Type Comparison Mismatch) Value is a '{self.current_match}'. Starsysliteral cannot be compared to {value}")
-            elif (self.current_match == "SunsLiteral" or self.current_match == "LuhmanLiteral" and (self.current_relop == "<="
+            elif ((self.current_match == "SunLiteral" or self.current_match== "LuhmanLiteral" or self.current_match == "True" or self.current_match == "False") and (self.current_relop == "<="
+                                                            or self.current_relop == ">=" or self.current_relop == "<"
+                                                            or self.current_relop == ">" or self.current_relop == "+"
+                                                            or self.current_relop == "-" or self.current_relop == "*"
+                                                            or self.current_relop == "/" or self.current_relop == "%"
+                                                            or self.current_relop == "==" or self.current_relop == "!=")
+                    and (value == "StarsysLiteral")):
+                self.errors.append(
+                    f"(Line {self.line_number}) | Semantic Error: (Type Comparison Mismatch) Value is a '{value}'. Starsysliteral cannot be compared to {self.current_match}")
+            elif ((self.current_match == "SunLiteral" or self.current_match == "LuhmanLiteral") and (self.current_relop == "<="
                                                             or self.current_relop == ">=" or self.current_relop == "<"
                                                             or self.current_relop == ">" or self.current_relop == "+"
                                                             or self.current_relop == "-" or self.current_relop == "*"
@@ -21627,6 +21636,15 @@ class SemanticAnalyzer:
                     and (value == "True" or value == "False")):
                 self.errors.append(
                     f"(Line {self.line_number}) | Semantic Error: (Type Comparison Mismatch) Value is a '{self.current_match}'. {self.current_match} cannot be compared to {value}")
+            elif ((self.current_match == "True" or self.current_match == "False") and (self.current_relop == "<="
+                                                            or self.current_relop == ">=" or self.current_relop == "<"
+                                                            or self.current_relop == ">" or self.current_relop == "+"
+                                                            or self.current_relop == "-" or self.current_relop == "*"
+                                                            or self.current_relop == "/" or self.current_relop == "%"
+                                                            or self.current_relop == "==" or self.current_relop == "!=")
+                    and (value == "SunLiteral" or value == "LuhmanLiteral")):
+                self.errors.append(
+                    f"(Line {self.line_number}) | Semantic Error: (Type Comparison Mismatch) Value is a '{value}'. {value} cannot be compared to {self.current_match}")
             elif ((self.current_match == "True" or self.current_match == "False") and (self.current_relop == "<="
                                                                                        or self.current_relop == ">=" or self.current_relop == "<"
                                                                                        or self.current_relop == ">" or self.current_relop == "+"
