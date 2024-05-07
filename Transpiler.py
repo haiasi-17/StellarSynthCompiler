@@ -27,6 +27,8 @@ class Transpiler:
         self.prevTokenParenth = False
         self.nextTokenParenth = False
         
+        self.isDisp = False
+        
     def stellarTranslator(self):
         self.currentToken = self.tokens[self.tokenIndex][0]
         while self.tokenIndex < (len(self.tokens)-1):
@@ -35,7 +37,7 @@ class Transpiler:
                 self.tokens.pop(self.tokenIndex)
                 self.currentToken = self.tokens[self.tokenIndex][0] # Do not increment as the number of tokens decreases because of the removed element.
                 continue 
-            # Import with no '~ Ident1, Ident2' is functional.
+            # Import with no '~ Ident1, Ident2' is functional theoretically, but errors because it can't find the module.
             elif self.currentToken == "Import":
                 self.tokens[self.tokenIndex][0] = self.tokens[self.tokenIndex][1] = Resources.StellarCPlusPlusDict[self.currentToken] 
                 self.translatedTokens.append(self.tokens[self.tokenIndex])
@@ -313,8 +315,28 @@ class Transpiler:
                     self.operandOne = ""
                     self.operandTwo = ""
                     continue
+            # If current token is Disp, pad it with an "endl" before the terminator so that line buffering is implmemented and it is flushed in the stdout. 
+            # This is so that when StellarSynthcompiler runs the exectuable, it properly knows the end of each line because "endl" adds a newline at end of each disp and flushes it to the stdout.
+            # This condition will only evaluate to True if we curToken is Disp and isDisp is false meaning we just encountered it, or isDisp is true, and curToken is # meaning we have reached the end of the statement and just need to pad it.
+            elif (self.currentToken == "Disp" and self.isDisp is False) or (self.isDisp is True and self.currentToken == "#"):
                 
-            
+                # We have encountered a disp statement, set isDisp to true so that we pad endl before the terminator of this statement.
+                if self.currentToken == "Disp" and self.isDisp is False:
+                    self.isDisp = True
+                    continue
+                # We reached the terminator of this Disp statement. Now all we have to do is pad it.
+                elif (self.isDisp is True and self.currentToken == "#"):
+                    # append the endl
+                    self.translatedTokens.append(["<< endl","<< endl"])
+                    # append the teminator
+                    self.tokens[self.tokenIndex][0] = self.tokens[self.tokenIndex][1] = Resources.StellarCPlusPlusDict[self.currentToken] 
+                    self.translatedTokens.append(self.tokens[self.tokenIndex])
+                    
+                    # go next token and set isDisp to false.
+                    self.go_next_token()
+                    self.isDisp = False
+                    continue
+                         
             # Replace StellarSynth Token with its C++ Counterpart.
             elif self.currentToken in Resources.StellarCPlusPlusDict:
                 # If it is a string typecast operator, convert datatype Starsys to 'to_string' then append to translated tokens.
@@ -461,12 +483,18 @@ class Transpiler:
         gimple_cmd = "g++ -fdump-tree-gimple -c {} -o {}".format(file_path, gimple_file_path)
         subprocess.call(gimple_cmd, shell=True)
         
+        return f_exec
+    
+        """
+        This part of the program does not accept input, only outputs. If you want this, Remove return f_exec. and modify lines 450-464 in compiler2.
+        
         # Run the program
         try:
             p = subprocess.Popen(f_exec, shell=True,
                                 stdin=subprocess.PIPE, 
                                 stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE)
+                                stderr=subprocess.PIPE,
+                                 text=True, bufsize=1)
         except Exception as e:
             print("Error executing subprocess:", e)
 
@@ -490,7 +518,7 @@ class Transpiler:
             print("Error communicating with subprocess:", e)
         
         # Return output to Compiler
-        return output, error
+        return output, error"""
         
 
 if __name__ == "__main__":
@@ -500,29 +528,6 @@ if __name__ == "__main__":
     transpilerInstance.writetoCPPFile()
 
 """ 
-Issues:
-1. Currently does not accept input in the compiler ui.
-2. Currently does not accept multiple input in exe running.
-
-Features that differ in the C++ Language:
-    Exponentiation Operator -> Functional
-                1. Solution was to use pow and math header.
-                2. Now, the order precedence is different, as pow is implemented that same as functions may need to revise the rules. 
-                3. NEVERMIND PEMDAS STILL THOUGH but add to rules and read.
-    Importation -> Non-functional. 
-                1. Modify rules in that it can only appear before declarations.
-                2. C++ does not use . operator to access its contents.
-                3. No solution in how to check if module exists yet
-                4. does not function with ~ operator.
-    Type Conversion -> Functional
-                1. Currently utilizing implicit type conversion of c++, no idea how to modify it. 
-                2. Explicit is covered na. However, there might be inconsistencies with c++ type conversion with our rules.
-                3. For instance, may need to revise float and int rules regarding output. cuz integer division and all that. 
-                4. Like if its decimal places are zero, then it wont include them even if it is declared as float.
-                5. We don't have decimal places specifier.
-    Default Value -> Implemented rules in our language. Functional.
-    Scope Resolution Operator -> IDK Yet
-    
 Algorithm:
 1. Translate StellarSynth to C++
 2. Write C++ to cpp file, writing the necessary headers and namespaces.

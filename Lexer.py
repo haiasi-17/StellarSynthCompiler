@@ -1647,9 +1647,6 @@ if __name__ == "__main__":
     print(errors, tokens)
 
 """
-Remarks:
-100% Bug Free!
-
 Algorithm:
 
 Split Content into Lines

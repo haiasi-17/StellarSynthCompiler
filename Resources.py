@@ -263,3 +263,69 @@ transdefaultvalueDict= {"int"        : '0',
 whitespaces = [" ", "\t", "\n"]
 
 headerInclude = ["#include <iostream>\n","#include <string>\n", "#include <math.h>\n", "using namespace std;"]
+
+
+
+
+"""
+Remarks:
+    Lexer:
+        Bug Free
+    
+    Syntax:
+        Bugs
+    
+    Semantic
+        Bugs
+
+    StellarSynthUI:
+    # Issue:
+        # Does not output if string does not end in a newline character, similarly it does not accept input if the string doesn't end in a newline character.
+        # SOLVED: I have remedied this by padding an endl (which adds newline character and flushes the line) at the end of every disp or cout statement in the transpiler. Will required rules change.
+
+    # Issue: 
+        # consecutive pressing of running in the compiler leads to issues with the output. This is probably because the previous process isn't terminated or killed or idk.
+        # PARTIALLY SOLVED: By implementing process killing measures. A zero is carried over, but doesnt affect the execution of the next program.
+    # Issue: 
+        # Disp << "Enter b\n" << "Intiendes?"#  doesn't work the newlines at all in string because lines are stripped. 
+        # If i don't strip the lines, the input doesnt work because the newlines pad the entry widget. making index method inaccurate.
+        # SOLVED BY CREATING SEPARATE INPUT CONSOLE WIDGET FOR INPUTS ONLY.
+    # Issue:
+        # Having multiple strings end with : or ? leads to multiple request for input bugs.
+        # UNSOLVED: To resolve this, find a way to correctly determine when a cin request comes in, so for every cin request there is a send input.
+
+
+    Transpiler:
+    Issues:
+    1. Currently does accept input in the ui but only on set conditions (Is followed by a disp statement that outputs something that ends in : or ?). 
+    2. We need to find a way that knows definitely when a cin is called during runtime. this way we can call the necessary method to accept and send input.
+
+    Features that differ in the C++ Language:
+        Exponentiation Operator -> Functional
+                    1. Solution was to use pow and math header.
+                    2. Now, the order precedence is different, as pow is implemented that same as functions may need to revise the rules. 
+                    3. NEVERMIND PEMDAS STILL THOUGH but add to rules and read.
+        Importation -> Non-functional. 
+                    1. Modify rules in that it can only appear before declarations.
+                    2. C++ does not use . operator to access its contents.
+                    3. No solution in how to check if module exists yet
+                    4. does not function with ~ operator.
+        Type Conversion -> Functional
+                    1. Currently utilizing implicit type conversion of c++, no idea how to modify it. 
+                    2. Explicit is covered na. However, there might be inconsistencies with c++ type conversion with our rules.
+                    3. For instance, may need to revise float and int rules regarding output. cuz integer division and all that. 
+                    4. Like if its decimal places are zero, then it wont include them even if it is declared as float.
+                    5. We don't have decimal places specifier.
+        Default Value -> Implemented rules in our language. Functional.
+        Scope Resolution Operator -> IDK Yet
+        
+        Printing
+                    1. Change of rules, there is always an implicit newline at the end of each Disp statement.
+                    2. This is because for stdout to output in compiler, a newline is needed at the end of each line. Otherwise it doesn't output it and waits for the newline character forever.
+        Invalid Input
+                    1. Invalid data type input will result in cin fail, according to the rules of c++.
+                    2. Same thing, if int inputted float surpasses the number of bits by c++,  it fails. The rules of our language regarding bit size of data types do not apply to c++
+                        I think we should just adopt the bit sizes of c++.
+                    3. Maybe add to rules that there should alawys be a disp statement before a capt statement?
+
+"""

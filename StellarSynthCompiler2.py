@@ -7,6 +7,8 @@ import datetime
 import subprocess
 import Transpiler
 import os.path
+import threading
+import time
 
 class App(customtkinter.CTk):
     def __init__(self):
@@ -30,15 +32,18 @@ class App(customtkinter.CTk):
         
         # Logs & Console
         self.Console = CreateConsole(self)
+        
+        # Input Console
+        self.inputConsole = CreateInputConsole(self)
 
         # Logo
         self.StellarLogo = CreateLogo(self)
         
         # Main Menu
-        self.Menu = CreateMenu(self, self.LexemeTable, self.TextEditor, self.Console)
+        self.Menu = CreateMenu(self, self.LexemeTable, self.TextEditor, self.Console, self.inputConsole)
 
         # Buttons
-        self.Buttons = CreateButtons(self, self.LexemeTable, self.TextEditor, self.Console, self.Menu)
+        self.Buttons = CreateButtons(self, self.LexemeTable, self.TextEditor, self.Console, self.Menu, self.inputConsole)
 
         # Date
         self.TimeDate = CreateTimer(self)
@@ -53,6 +58,7 @@ class App(customtkinter.CTk):
     def CreateMainFrame(self):
         self.mainframe = customtkinter.CTkFrame(self, bg_color='gray10')
         self.mainframe.pack(anchor='n',fill=tk.BOTH,expand=True)
+        self.mainframe.grid_rowconfigure(0, weight=0)
         self.mainframe.grid_rowconfigure(1, weight=1)
         self.mainframe.grid_rowconfigure(2, weight=1)
         self.mainframe.grid_rowconfigure(3, weight=1)
@@ -81,6 +87,7 @@ class CreateTextEditor(customtkinter.CTkTextbox):
         self.textframe.grid_rowconfigure(0,weight=1)
         self.textframe.grid_rowconfigure(1,weight=1)
         self.textframe.grid_rowconfigure(2,weight=1)
+        self.textframe.grid_columnconfigure(0,weight=0)
         self.textframe.grid_columnconfigure(1,weight=1)
         self.textframe.grid_columnconfigure(2,weight=1)
 
@@ -104,6 +111,7 @@ class CreateTextEditor(customtkinter.CTkTextbox):
         self.addlineNumbers()
         self.linenumber.configure(state='disabled')
         master.after(10, self.addlineNumbers) # Updates every 0.010 seconds. Very Inefficient but does the job.
+        
 
 
     """def HandleBackSpace(self):
@@ -178,10 +186,11 @@ class CreateConsole(customtkinter.CTkTextbox):
         super().__init__(master, **kwargs)
 
         self.consoleframe = customtkinter.CTkFrame(master.mainframe, fg_color='transparent')
-        self.consoleframe.grid(row=5, column=0, columnspan=5, rowspan=2, padx=(5, 0), pady=(0, 5), sticky='nsew')
+        self.consoleframe.grid(row=5, column=0, columnspan=4, rowspan=2, padx=(5, 0), pady=(0, 5), sticky='nsew')
         self.consoleframe.grid_rowconfigure(0, weight=1)
         self.consoleframe.grid_rowconfigure(1, weight=1)
         self.consoleframe.grid_rowconfigure(2, weight=1)
+        self.consoleframe.grid_columnconfigure(0, weight=1)
         self.consoleframe.grid_columnconfigure(1, weight=1)
         self.consoleframe.grid_columnconfigure(2, weight=1)
 
@@ -190,6 +199,26 @@ class CreateConsole(customtkinter.CTkTextbox):
                                            wrap='none', border_width=1, border_color="gray20", corner_radius=0,
                                            fg_color="black", border_spacing=8)
         self.console.grid(row=0, column=0, columnspan=3, rowspan=3, sticky='nsew')
+        
+        
+
+class CreateInputConsole(customtkinter.CTkTextbox):
+    def __init__(self, master: any, **kwargs):
+        super().__init__(master, **kwargs)
+
+        self.inputConsoleframe = customtkinter.CTkFrame(master.mainframe, fg_color='transparent')
+        self.inputConsoleframe.grid(row=5, column=4, columnspan=1, rowspan=2, padx=(0, 0), pady=(0, 5), sticky='nsew')
+        self.inputConsoleframe.grid_rowconfigure(0, weight=1)
+        self.inputConsoleframe.grid_rowconfigure(1, weight=1)
+        self.inputConsoleframe.grid_rowconfigure(2, weight=1)
+        self.inputConsoleframe.grid_columnconfigure(0, weight=1)
+        self.inputConsoleframe.grid_columnconfigure(1, weight=1)
+
+        self.inputConsole = customtkinter.CTkTextbox(self.inputConsoleframe, font=("Courier", 14), activate_scrollbars=True,
+                                           state='disabled',
+                                           wrap='none', border_width=1, border_color="gray20", corner_radius=0,
+                                           fg_color="black", border_spacing=8)
+        self.inputConsole.grid(row=0, column=0, columnspan=2, rowspan=3, sticky='nsew')
 
 
 
@@ -211,13 +240,14 @@ class CreateLogo(customtkinter.CTkFrame):
         self.astronaut.grid(row=1, column=1, sticky='nsew')
 
 class CreateMenu(tk.Menu):
-    def __init__(self, master: any, lexeme_table: CreateTable, text_editor: CreateTextEditor, console : CreateConsole, **kwargs):
+    def __init__(self, master: any, lexeme_table: CreateTable, text_editor: CreateTextEditor, console : CreateConsole, inputConsole: CreateInputConsole, **kwargs):
         super().__init__(master, **kwargs)
 
         self.mainmenu = tk.Menu(master)
         self.lexeme_table = lexeme_table
         self.text_editor = text_editor
         self.console1 = console
+        self.inputConsole1 = inputConsole
         self.filename = None
 
         filemenu = tk.Menu(self.mainmenu, tearoff=0, foreground='gray14', activeforeground= "gray84", activebackground="gray20")
@@ -263,6 +293,10 @@ class CreateMenu(tk.Menu):
 
     def clear(self):
         try:
+            if self.inputConsole1.inputConsole:
+                self.inputConsole1.inputConsole.configure(state="normal")
+                self.inputConsole1.inputConsole.delete('1.0', tk.END)
+                self.inputConsole1.inputConsole.configure(state="disabled")
             if self.text_editor.texteditor:
                 self.text_editor.texteditor.delete('1.0', tk.END)
             if self.console1.console:
@@ -277,14 +311,17 @@ class CreateMenu(tk.Menu):
 
 
 class CreateButtons(customtkinter.CTkButton):
-    def __init__(self, master: any, lexeme_table: CreateTable, text_editor: CreateTextEditor, console: CreateConsole, menu: CreateMenu,
+    def __init__(self, master: any, lexeme_table: CreateTable, text_editor: CreateTextEditor, console: CreateConsole, menu: CreateMenu, inputConsole: CreateInputConsole,
                  **kwargs):
         super().__init__(master, **kwargs)
 
         self.lexeme_table = lexeme_table
         self.text_editor = text_editor
         self.console1 = console
+        self.inputConsole1 = inputConsole
         self.menu = menu
+        self.process = None
+        self.previous_executable = None
 
         self.ButtonFrame = customtkinter.CTkFrame(master.mainframe, fg_color='transparent')
         self.ButtonFrame.grid(row=0, column=2, columnspan=3, padx=(5,0), pady=(10,0))
@@ -293,6 +330,17 @@ class CreateButtons(customtkinter.CTkButton):
         self.createbutton("Syntax", 1, self.run_syntax)
         self.createbutton("Semantic", 2, self.run_semantic)
         self.createbutton("Run", 3, self.run_Compile)
+    
+    def delete_previous_executable(self):
+        """Delete the previous executable file, if it exists and is not in use."""
+        if self.previous_executable and os.path.isfile(self.previous_executable):
+            try:
+                os.remove(self.previous_executable)
+                print(f"Previous executable {self.previous_executable} deleted successfully.")
+            except PermissionError:
+                print(f"Error: Unable to delete {self.previous_executable}. Make sure it's not being used.")
+            except Exception as e:
+                print(f"Error deleting previous executable {self.previous_executable}: {e}")
 
     def createbutton(self, text, column, command):
         button = customtkinter.CTkButton(self.ButtonFrame, text=text, font=("terminal", 17), fg_color='#381456', hover_color="#4b1a73", border_width=1, border_color="#1a1631", height=40,width=200, command=command)
@@ -304,9 +352,12 @@ class CreateButtons(customtkinter.CTkButton):
         self.console1.console.tag_config("Error", foreground="#d50000")
         self.console1.console.tag_config("Complete", foreground="green")
         try:
+            # Run Lexer from contents of text editor.
             contents=self.text_editor.texteditor.get("1.0", "end-1c")
             errors, tokens = Lexer.read_text(contents)
+            # Clear
             self.console1.console.delete("1.0", tk.END)
+            self.lexeme_table.Lexeme_Token_Table.delete(*self.lexeme_table.Lexeme_Token_Table.get_children())
 
             if not errors and tokens:
                 self.console1.console.insert(tk.END, "StellarSynth -> No errors found during lexical analysis.\n", tags="Complete")
@@ -314,7 +365,6 @@ class CreateButtons(customtkinter.CTkButton):
                 for error in errors:
                     self.console1.console.insert(tk.END, f"StellarSynth -> {error}\n", tags="Error")
 
-            self.lexeme_table.Lexeme_Token_Table.delete(*self.lexeme_table.Lexeme_Token_Table.get_children())
             if not tokens:
                 self.console1.console.insert(tk.END, "StellarSynth -> Tokens list is empty.\n")
             else:
@@ -421,8 +471,12 @@ class CreateButtons(customtkinter.CTkButton):
         self.console1.console.tag_config("Error", foreground="#d50000")
         self.console1.console.tag_config("Complete", foreground="green")
         contents = self.text_editor.texteditor.get("1.0", "end-1c")
+        
         try:
+            # Clear both consoles in case the run button is pressed again.
             self.console1.console.delete("1.0", tk.END)
+            self.inputConsole1.inputConsole.delete("1.0", tk.END)
+            
             errors, tokens = Lexer.read_text(contents)
             if errors:
                 self.console1.console.insert(tk.END,
@@ -446,19 +500,103 @@ class CreateButtons(customtkinter.CTkButton):
                     else:
                         transpilerInstance = Transpiler.Transpiler(tokens, self.menu.filename)
                         transpilerInstance.stellarTranslator()
-                        transerrors, transoutput = transpilerInstance.writetoCPPFile()
+                         # Kill any existing process
+                        if hasattr(self, "process") and self.process and self.process.poll() is None:
+                            try:
+                                print("Terminating existing process...")
+                                self.process.terminate()
+                                self.process.wait()
+                            except Exception as e:
+                                print(f"Error terminating the process: {e}")
+                                
+                        # Attempt to delete the previous exe file.
+                        self.delete_previous_executable()
+                        # Create new Exe file
+                        executableFile = transpilerInstance.writetoCPPFile()
+                        # Assign exe file to previous for next deletion.
+                        self.previous_executable = executableFile
+                        
+                        try:         
+                            # Runs the c++ executable
+                            threading.Thread(target=self.run_cpp_executable, args=(executableFile,), daemon=True).start()
+                        except Exception as e:
+                            print("Error executing subprocess:", e)
+                        
+                        """
                         if errors:
                             self.console1.console.insert(tk.END, f"StellarSynth -> {transerrors}\n", tags="Error")
                         else:
                             self.console1.console.insert(tk.END, f"-"*40)
                             self.console1.console.insert(tk.END, f"\n{transoutput}\n")
                             self.console1.console.insert(tk.END, f"-"*40)
-                    self.console1.console.insert(tk.END, "\nStellarSynth -> Compilation Complete.")
+                        """
             
         except Exception as e:
             print(f"Error: {e}")
             
         self.console1.console.configure(state="disabled")
+    
+    def run_cpp_executable(self, executable_path):
+        
+        # Creates a process that runs the c++ exe file.
+        self.process = subprocess.Popen(executable_path, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        
+        def update_console(output):
+            def safeupdate():
+                # Ensure GUI changes happen in the main thread
+                self.console1.console.configure(state="normal")
+                self.console1.console.insert(tk.END, output)
+                self.console1.console.configure(state="disabled")
+            self.console1.console.after(0, safeupdate)
+            
+        def read_process_output():
+            def send_input(Event=None):
+                # Get the index of the third character (>> ^starts here) of the last line in the inputconsole
+                input_start = self.inputConsole1.inputConsole.index("end-1c linestart + 3 chars")
+                
+                # Get the text from the start of the last line to the end
+                input_data = self.inputConsole1.inputConsole.get(input_start, "end-1c")
+            
+                # Send input to the process
+                try:
+                    self.process.stdin.write(input_data + "\n")
+                    self.process.stdin.flush()
+                except Exception as e:
+                    print(f"Error writing to process: {e}")
+                
+                # Clear input Console
+                self.inputConsole1.inputConsole.delete("1.0", tk.END)
+                
+                # Unbind <Return> until another input request is made
+                self.inputConsole1.inputConsole.unbind("<Return>")
+                
+                # Disable input Console until next request
+                self.inputConsole1.inputConsole.configure(state="disabled")
+            
+            for line in self.process.stdout:
+                outputNoWhiteSpace = line.strip()
+                if line:
+                    # Update GUI in the main thread
+                    update_console(line)
+                    # Sometimes it doesn't work without this print statement.
+                    print("Output Check: ", repr(outputNoWhiteSpace.endswith((':', '?'))))
+                    # Check if the output, with leading and trailing whitespace removed, ends with a colon or question mark indicating an input request (This is a problem as it depends on the disp ending in : or ?)
+                    if outputNoWhiteSpace.endswith((':', '?')):
+                        # Enable input Console
+                        self.inputConsole1.inputConsole.configure(state="normal")
+                        # Request user input indicator
+                        self.inputConsole1.inputConsole.insert(tk.END, ">> ")
+                        # Set focus to the input console
+                        self.inputConsole1.inputConsole.focus_set()
+                        # User presses enter, and the data will be sent to the program.
+                        self.inputConsole1.inputConsole.bind("<Return>", lambda event: send_input())
+                else:
+                    break
+
+        # Start a thread to read the process output to avoid freezing the GUI
+        output_thread = threading.Thread(target=read_process_output)
+        output_thread.daemon = True
+        output_thread.start()
 
 
 class CreateTimer(customtkinter.CTkFrame):
