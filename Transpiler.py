@@ -27,6 +27,8 @@ class Transpiler:
         self.prevTokenParenth = False
         self.nextTokenParenth = False
         
+        self.isDisp = False
+        
     def stellarTranslator(self):
         self.currentToken = self.tokens[self.tokenIndex][0]
         while self.tokenIndex < (len(self.tokens)-1):
@@ -313,8 +315,28 @@ class Transpiler:
                     self.operandOne = ""
                     self.operandTwo = ""
                     continue
+            # If current token is Disp, pad it with an "endl" before the terminator so that line buffering is implmemented and it is flushed in the stdout. 
+            # This is so that when StellarSynthcompiler runs the exectuable, it properly knows the end of each line because "endl" adds a newline at end of each disp and flushes it to the stdout.
+            # This condition will only evaluate to True if we curToken is Disp and isDisp is false meaning we just encountered it, or isDisp is true, and curToken is # meaning we have reached the end of the statement and just need to pad it.
+            elif (self.currentToken == "Disp" and self.isDisp is False) or (self.isDisp is True and self.currentToken == "#"):
                 
-            
+                # We have encountered a disp statement, set isDisp to true so that we pad endl before the terminator of this statement.
+                if self.currentToken == "Disp" and self.isDisp is False:
+                    self.isDisp = True
+                    continue
+                # We reached the terminator of this Disp statement. Now all we have to do is pad it.
+                elif (self.isDisp is True and self.currentToken == "#"):
+                    # append the endl
+                    self.translatedTokens.append(["<< endl","<< endl"])
+                    # append the teminator
+                    self.tokens[self.tokenIndex][0] = self.tokens[self.tokenIndex][1] = Resources.StellarCPlusPlusDict[self.currentToken] 
+                    self.translatedTokens.append(self.tokens[self.tokenIndex])
+                    
+                    # go next token and set isDisp to false.
+                    self.go_next_token()
+                    self.isDisp = False
+                    continue
+                         
             # Replace StellarSynth Token with its C++ Counterpart.
             elif self.currentToken in Resources.StellarCPlusPlusDict:
                 # If it is a string typecast operator, convert datatype Starsys to 'to_string' then append to translated tokens.
@@ -528,6 +550,11 @@ Features that differ in the C++ Language:
                 5. We don't have decimal places specifier.
     Default Value -> Implemented rules in our language. Functional.
     Scope Resolution Operator -> IDK Yet
+    
+    Printing
+                1. Change of rules, there is always an implicit newline at the end of each Disp statement.
+                2. This is because for stdout to output in compiler, a newline is needed at the end of each line. Otherwise it doesn't output it and waits for the newline character forever.
+                
     
 Algorithm:
 1. Translate StellarSynth to C++

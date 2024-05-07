@@ -287,6 +287,7 @@ class CreateButtons(customtkinter.CTkButton):
         self.text_editor = text_editor
         self.console1 = console
         self.menu = menu
+        self.process = None
 
         self.ButtonFrame = customtkinter.CTkFrame(master.mainframe, fg_color='transparent')
         self.ButtonFrame.grid(row=0, column=2, columnspan=3, padx=(5,0), pady=(10,0))
@@ -470,39 +471,60 @@ class CreateButtons(customtkinter.CTkButton):
         self.console1.console.configure(state="disabled")
     
     def run_cpp_executable(self, executable_path):
-        process = subprocess.Popen(executable_path, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        if hasattr(self, "process") and self.process:
+            try:
+                self.process.terminate()
+            except Exception as e:
+                print(f"Error terminating the process: {e}")
+        self.process = subprocess.Popen(executable_path, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         
         def update_console(output):
-            # Ensure GUI changes happen in the main thread
-            self.console1.console.configure(state="normal")
-            self.console1.console.insert(tk.END, output)
+            def safeupdate():
+                # Ensure GUI changes happen in the main thread
+                self.console1.console.configure(state="normal")
+                self.console1.console.insert(tk.END, output)
+            self.console1.console.after(0, safeupdate)
             
         def read_process_output():
-            def send_input(input_data):
-                process.stdin.write(input_data + "\n")
-                process.stdin.flush()
-
-            def request_input():
+            def send_input(Event=None):
                 # Get the index of the third character (>> ^starts here) of the last line in the console
+                print(self.console1.console.index("end-1c linestart + 3 chars"))
                 input_start = self.console1.console.index("end-1c linestart + 3 chars")
                 
                 # Get the text from the start of the last line to the end
                 input_data = self.console1.console.get(input_start, "end-1c")
-                # Send the input to the stream.
-                send_input(input_data)
+            
+                # Send input to the process
+                try:
+                    self.process.stdin.write(input_data + "\n")
+                    self.process.stdin.flush()
+                except Exception as e:
+                    print(f"Error writing to process: {e}")
+
+                # Prepare the console for the next prompt
+                self.console1.console.configure(state="normal")
                 
-            for line in process.stdout:
-                self.console1.console.bind("<Escape>", lambda event: process.kill())
-                output = line
-                if output:
+                # Unbind <Return> until another input request is made
+             
+            
+            # Does not output if string does not end in a newline character, similarly it does not accept input if the string doesn't end in a newline character.
+            # I have remedied this by padding an endl (which adds newline character and flushes the line) at the end of every disp or cout statement in the transpiler.
+            # Issue: Disp << "Enter b\n" << "Intiendes?"#  doesn't work because lines are stripped. If i don't strip the lines, the input doesnt work because the newlines pad the entry widget. making index method inaccurate.
+            for line in self.process.stdout:
+                outputNoWhiteSpace = line.strip()
+                if line:
                     # Update GUI in the main thread
-                    update_console(output)
-                    # Check if the output ends with a colon or question mark indicating an input request (This is a problem as it depends on the disp ending in : or ?)
-                    if output[-2] in [':', '?']:
+                    update_console(outputNoWhiteSpace)
+                    # Sometimes it doesn't work without this print statement.
+                    print(repr(outputNoWhiteSpace.endswith((':', '?'))))
+                    # Check if the output, with leading and trailing whitespace removed, ends with a colon or question mark indicating an input request (This is a problem as it depends on the disp ending in : or ?)
+                    if outputNoWhiteSpace.endswith((':', '?')):
                         # Request user input indicator
                         self.console1.console.insert(tk.END, "\n>> ")
                         # User presses enter, and the data will be sent to the program.
-                        self.console1.console.bind("<Return>", lambda event: request_input())
+                        self.console1.console.bind("<Return>", lambda event: send_input())
+                else:
+                    break
 
         # Start a thread to read the process output to avoid freezing the GUI
         output_thread = threading.Thread(target=read_process_output)
