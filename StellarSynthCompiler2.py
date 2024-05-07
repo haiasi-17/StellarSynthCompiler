@@ -31,15 +31,18 @@ class App(customtkinter.CTk):
         
         # Logs & Console
         self.Console = CreateConsole(self)
+        
+        # Input Console
+        self.inputConsole = CreateInputConsole(self)
 
         # Logo
         self.StellarLogo = CreateLogo(self)
         
         # Main Menu
-        self.Menu = CreateMenu(self, self.LexemeTable, self.TextEditor, self.Console)
+        self.Menu = CreateMenu(self, self.LexemeTable, self.TextEditor, self.Console, self.inputConsole)
 
         # Buttons
-        self.Buttons = CreateButtons(self, self.LexemeTable, self.TextEditor, self.Console, self.Menu)
+        self.Buttons = CreateButtons(self, self.LexemeTable, self.TextEditor, self.Console, self.Menu, self.inputConsole)
 
         # Date
         self.TimeDate = CreateTimer(self)
@@ -54,6 +57,7 @@ class App(customtkinter.CTk):
     def CreateMainFrame(self):
         self.mainframe = customtkinter.CTkFrame(self, bg_color='gray10')
         self.mainframe.pack(anchor='n',fill=tk.BOTH,expand=True)
+        self.mainframe.grid_rowconfigure(0, weight=0)
         self.mainframe.grid_rowconfigure(1, weight=1)
         self.mainframe.grid_rowconfigure(2, weight=1)
         self.mainframe.grid_rowconfigure(3, weight=1)
@@ -82,6 +86,7 @@ class CreateTextEditor(customtkinter.CTkTextbox):
         self.textframe.grid_rowconfigure(0,weight=1)
         self.textframe.grid_rowconfigure(1,weight=1)
         self.textframe.grid_rowconfigure(2,weight=1)
+        self.textframe.grid_columnconfigure(0,weight=0)
         self.textframe.grid_columnconfigure(1,weight=1)
         self.textframe.grid_columnconfigure(2,weight=1)
 
@@ -180,10 +185,11 @@ class CreateConsole(customtkinter.CTkTextbox):
         super().__init__(master, **kwargs)
 
         self.consoleframe = customtkinter.CTkFrame(master.mainframe, fg_color='transparent')
-        self.consoleframe.grid(row=5, column=0, columnspan=5, rowspan=2, padx=(5, 0), pady=(0, 5), sticky='nsew')
+        self.consoleframe.grid(row=5, column=0, columnspan=4, rowspan=2, padx=(5, 0), pady=(0, 5), sticky='nsew')
         self.consoleframe.grid_rowconfigure(0, weight=1)
         self.consoleframe.grid_rowconfigure(1, weight=1)
         self.consoleframe.grid_rowconfigure(2, weight=1)
+        self.consoleframe.grid_columnconfigure(0, weight=1)
         self.consoleframe.grid_columnconfigure(1, weight=1)
         self.consoleframe.grid_columnconfigure(2, weight=1)
 
@@ -192,6 +198,26 @@ class CreateConsole(customtkinter.CTkTextbox):
                                            wrap='none', border_width=1, border_color="gray20", corner_radius=0,
                                            fg_color="black", border_spacing=8)
         self.console.grid(row=0, column=0, columnspan=3, rowspan=3, sticky='nsew')
+        
+        
+
+class CreateInputConsole(customtkinter.CTkTextbox):
+    def __init__(self, master: any, **kwargs):
+        super().__init__(master, **kwargs)
+
+        self.inputConsoleframe = customtkinter.CTkFrame(master.mainframe, fg_color='transparent')
+        self.inputConsoleframe.grid(row=5, column=4, columnspan=1, rowspan=2, padx=(0, 0), pady=(0, 5), sticky='nsew')
+        self.inputConsoleframe.grid_rowconfigure(0, weight=1)
+        self.inputConsoleframe.grid_rowconfigure(1, weight=1)
+        self.inputConsoleframe.grid_rowconfigure(2, weight=1)
+        self.inputConsoleframe.grid_columnconfigure(0, weight=1)
+        self.inputConsoleframe.grid_columnconfigure(1, weight=1)
+
+        self.inputConsole = customtkinter.CTkTextbox(self.inputConsoleframe, font=("Courier", 14), activate_scrollbars=True,
+                                           state='disabled',
+                                           wrap='none', border_width=1, border_color="gray20", corner_radius=0,
+                                           fg_color="black", border_spacing=8)
+        self.inputConsole.grid(row=0, column=0, columnspan=2, rowspan=3, sticky='nsew')
 
 
 
@@ -213,13 +239,14 @@ class CreateLogo(customtkinter.CTkFrame):
         self.astronaut.grid(row=1, column=1, sticky='nsew')
 
 class CreateMenu(tk.Menu):
-    def __init__(self, master: any, lexeme_table: CreateTable, text_editor: CreateTextEditor, console : CreateConsole, **kwargs):
+    def __init__(self, master: any, lexeme_table: CreateTable, text_editor: CreateTextEditor, console : CreateConsole, inputConsole: CreateInputConsole, **kwargs):
         super().__init__(master, **kwargs)
 
         self.mainmenu = tk.Menu(master)
         self.lexeme_table = lexeme_table
         self.text_editor = text_editor
         self.console1 = console
+        self.inputConsole1 = inputConsole
         self.filename = None
 
         filemenu = tk.Menu(self.mainmenu, tearoff=0, foreground='gray14', activeforeground= "gray84", activebackground="gray20")
@@ -265,6 +292,10 @@ class CreateMenu(tk.Menu):
 
     def clear(self):
         try:
+            if self.inputConsole1.inputConsole:
+                self.inputConsole1.inputConsole.configure(state="normal")
+                self.inputConsole1.inputConsole.delete('1.0', tk.END)
+                self.inputConsole1.inputConsole.configure(state="disabled")
             if self.text_editor.texteditor:
                 self.text_editor.texteditor.delete('1.0', tk.END)
             if self.console1.console:
@@ -279,13 +310,14 @@ class CreateMenu(tk.Menu):
 
 
 class CreateButtons(customtkinter.CTkButton):
-    def __init__(self, master: any, lexeme_table: CreateTable, text_editor: CreateTextEditor, console: CreateConsole, menu: CreateMenu,
+    def __init__(self, master: any, lexeme_table: CreateTable, text_editor: CreateTextEditor, console: CreateConsole, menu: CreateMenu, inputConsole: CreateInputConsole,
                  **kwargs):
         super().__init__(master, **kwargs)
 
         self.lexeme_table = lexeme_table
         self.text_editor = text_editor
         self.console1 = console
+        self.inputConsole1 = inputConsole
         self.menu = menu
         self.process = None
 
@@ -487,12 +519,11 @@ class CreateButtons(customtkinter.CTkButton):
             
         def read_process_output():
             def send_input(Event=None):
-                # Get the index of the third character (>> ^starts here) of the last line in the console
-                print(self.console1.console.index("end-1c linestart + 3 chars"))
-                input_start = self.console1.console.index("end-1c linestart + 3 chars")
+                # Get the index of the third character (>> ^starts here) of the last line in the inputconsole
+                input_start = self.inputConsole1.inputConsole.index("end-1c linestart + 3 chars")
                 
                 # Get the text from the start of the last line to the end
-                input_data = self.console1.console.get(input_start, "end-1c")
+                input_data = self.inputConsole1.inputConsole.get(input_start, "end-1c")
             
                 # Send input to the process
                 try:
@@ -500,29 +531,49 @@ class CreateButtons(customtkinter.CTkButton):
                     self.process.stdin.flush()
                 except Exception as e:
                     print(f"Error writing to process: {e}")
-
-                # Prepare the console for the next prompt
-                self.console1.console.configure(state="normal")
+                
+                # Clear input Console
+                self.inputConsole1.inputConsole.delete("1.0", tk.END)
                 
                 # Unbind <Return> until another input request is made
+                self.inputConsole1.inputConsole.unbind("<Return>")
+                
+                # Disable input Console until next request
+                self.inputConsole1.inputConsole.configure(state="disabled")
              
             
-            # Does not output if string does not end in a newline character, similarly it does not accept input if the string doesn't end in a newline character.
-            # I have remedied this by padding an endl (which adds newline character and flushes the line) at the end of every disp or cout statement in the transpiler.
-            # Issue: Disp << "Enter b\n" << "Intiendes?"#  doesn't work because lines are stripped. If i don't strip the lines, the input doesnt work because the newlines pad the entry widget. making index method inaccurate.
+            # Issue:
+                # Does not output if string does not end in a newline character, similarly it does not accept input if the string doesn't end in a newline character.
+                # SOLVED: I have remedied this by padding an endl (which adds newline character and flushes the line) at the end of every disp or cout statement in the transpiler. Will required rules change.
+            
+            # Issue: 
+                # consecutive pressing of running in the compiler leads to issues with the output. This is probably because the previous process isn't terminated or killed or idk.
+                # UNSOLVED
+            # Issue: 
+                # Disp << "Enter b\n" << "Intiendes?"#  doesn't work the newlines at all in string because lines are stripped. 
+                # If i don't strip the lines, the input doesnt work because the newlines pad the entry widget. making index method inaccurate.
+                # SOLVED BY CREATING SEPARATE INPUT CONSOLE WIDGET FOR INPUTS ONLY.
+            # Issue:
+                # Having multiple strings end with : or ? leads to multiple request for input bugs.
+                # UNSOLVED: To resolve this, find a way to correctly determine when a cin request comes in, so for every cin request there is a send input.
+            
             for line in self.process.stdout:
                 outputNoWhiteSpace = line.strip()
                 if line:
                     # Update GUI in the main thread
-                    update_console(outputNoWhiteSpace)
+                    update_console(line)
                     # Sometimes it doesn't work without this print statement.
                     print(repr(outputNoWhiteSpace.endswith((':', '?'))))
                     # Check if the output, with leading and trailing whitespace removed, ends with a colon or question mark indicating an input request (This is a problem as it depends on the disp ending in : or ?)
                     if outputNoWhiteSpace.endswith((':', '?')):
+                        # Enable input Console
+                        self.inputConsole1.inputConsole.configure(state="normal")
                         # Request user input indicator
-                        self.console1.console.insert(tk.END, "\n>> ")
+                        self.inputConsole1.inputConsole.insert(tk.END, ">> ")
+                        # Set focus to the input console
+                        self.inputConsole1.inputConsole.focus_set()
                         # User presses enter, and the data will be sent to the program.
-                        self.console1.console.bind("<Return>", lambda event: send_input())
+                        self.inputConsole1.inputConsole.bind("<Return>", lambda event: send_input())
                 else:
                     break
 
