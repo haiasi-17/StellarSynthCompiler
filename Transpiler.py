@@ -528,34 +528,6 @@ if __name__ == "__main__":
     transpilerInstance.writetoCPPFile()
 
 """ 
-Issues:
-1. Currently does accept input in the ui but only on set conditions (Is followed by a disp statement that outputs something that ends in : or ?). 
-2. We need to find a way that knows definitely when a cin is called during runtime. this way we can call the necessary method to accept and send input.
-
-Features that differ in the C++ Language:
-    Exponentiation Operator -> Functional
-                1. Solution was to use pow and math header.
-                2. Now, the order precedence is different, as pow is implemented that same as functions may need to revise the rules. 
-                3. NEVERMIND PEMDAS STILL THOUGH but add to rules and read.
-    Importation -> Non-functional. 
-                1. Modify rules in that it can only appear before declarations.
-                2. C++ does not use . operator to access its contents.
-                3. No solution in how to check if module exists yet
-                4. does not function with ~ operator.
-    Type Conversion -> Functional
-                1. Currently utilizing implicit type conversion of c++, no idea how to modify it. 
-                2. Explicit is covered na. However, there might be inconsistencies with c++ type conversion with our rules.
-                3. For instance, may need to revise float and int rules regarding output. cuz integer division and all that. 
-                4. Like if its decimal places are zero, then it wont include them even if it is declared as float.
-                5. We don't have decimal places specifier.
-    Default Value -> Implemented rules in our language. Functional.
-    Scope Resolution Operator -> IDK Yet
-    
-    Printing
-                1. Change of rules, there is always an implicit newline at the end of each Disp statement.
-                2. This is because for stdout to output in compiler, a newline is needed at the end of each line. Otherwise it doesn't output it and waits for the newline character forever.
-                
-    
 Algorithm:
 1. Translate StellarSynth to C++
 2. Write C++ to cpp file, writing the necessary headers and namespaces.

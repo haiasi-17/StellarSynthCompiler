@@ -12,8 +12,3 @@ int main(){
     cout << b<< endl;
 }
 
-
-
-
-
-
