@@ -229,7 +229,7 @@ StellarCPlusPlusDict = {
     "Fore"          : "for",
     "If"            : "if",
     "Import"        : "import", # Python style import not c++
-    "Sun"           : "int",
+    "Sun"           : "long long",
     "Gotolerate"    : "noexcept",
     "Private"       : "private",
     "Protected"     : "protected",
@@ -262,7 +262,7 @@ transdefaultvalueDict= {"int"        : '0',
 
 whitespaces = [" ", "\t", "\n"]
 
-headerInclude = ["#include <iostream>\n","#include <string>\n", "#include <math.h>\n", "using namespace std;"]
+headerInclude = ["#include <iostream>\n","#include <string>\n", "#include <math.h>\n", "#include <iomanip>\n", "using namespace std;"]
 
 
 
@@ -303,10 +303,10 @@ Remarks:
     Features that differ in the C++ Language:
         Exponentiation Operator -> Functional
                     1. Solution was to use pow and math header.
-                    2. Now, the order precedence is different, as pow is implemented that same as functions may need to revise the rules. 
+                    2. RULES: Now, the order precedence is different, as pow is implemented that same as functions may need to revise the rules. 
                     3. NEVERMIND PEMDAS STILL THOUGH but add to rules and read.
         Importation -> Non-functional. 
-                    1. Modify rules in that it can only appear before declarations.
+                    1. RULES: Modify rules in that it can only appear before declarations.
                     2. C++ does not use . operator to access its contents.
                     3. No solution in how to check if module exists yet
                     4. does not function with ~ operator.
@@ -314,18 +314,19 @@ Remarks:
                     1. Currently utilizing implicit type conversion of c++, no idea how to modify it. 
                     2. Explicit is covered na. However, there might be inconsistencies with c++ type conversion with our rules.
                     3. For instance, may need to revise float and int rules regarding output. cuz integer division and all that. 
-                    4. Like if its decimal places are zero, then it wont include them even if it is declared as float.
-                    5. We don't have decimal places specifier.
+                    4. RULES: Like if its decimal places are zero, then it wont include them even if it is declared as float.
+
         Default Value -> Implemented rules in our language. Functional.
         Scope Resolution Operator -> IDK Yet
         
+                    1. If the combination Sun Universe is used in other contexts aside from being main function (e.g function prototype, or var dec) it will become a problem.
         Printing
-                    1. Change of rules, there is always an implicit newline at the end of each Disp statement.
+                    1. RULES: Change of rules, there is always an implicit newline at the end of each Disp statement.
                     2. This is because for stdout to output in compiler, a newline is needed at the end of each line. Otherwise it doesn't output it and waits for the newline character forever.
+                    3. RULES: Float values are printed sometimes rounded up, and sometimes in scientific notation when it is too large.
         Invalid Input
                     1. Invalid data type input will result in cin fail, according to the rules of c++.
                     2. Same thing, if int inputted float surpasses the number of bits by c++,  it fails. The rules of our language regarding bit size of data types do not apply to c++
                         I think we should just adopt the bit sizes of c++.
-                    3. Maybe add to rules that there should alawys be a disp statement before a capt statement?
-
+                    3. Maybe add to rules that there should alawys be a disp statement before a capt statement? Terrible solution. There are instances that multiple cin statements follow a cout.
 """

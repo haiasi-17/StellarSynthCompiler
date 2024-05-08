@@ -3,12 +3,9 @@
 #include <math.h>
 using namespace std;
 
-
 int main(){
-    int a = 2;
-    int b=0;
-	cout << "Enter b\n" << "Intiendes?"<< endl;
-    cin >> b;
-    cout << b<< endl;
-}
+	float a = 9999.99999;
+	float b = -9999.99999;
+	cout << a << " " << b<< endl;
 
+}
