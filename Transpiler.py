@@ -317,6 +317,7 @@ class Transpiler:
                     self.operandOne = ""
                     self.operandTwo = ""
                     continue
+                
             # If current token is Disp, pad it with an "endl" before the terminator so that line buffering is implmemented and it is flushed in the stdout. 
             # This is so that when StellarSynthcompiler runs the exectuable, it properly knows the end of each line because "endl" adds a newline at end of each disp and flushes it to the stdout.
             # This condition will only evaluate to True if we curToken is Disp and isDisp is false meaning we just encountered it, or isDisp is true, and curToken is # meaning we have reached the end of the statement and just need to pad it.
