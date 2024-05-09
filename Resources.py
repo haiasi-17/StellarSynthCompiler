@@ -316,7 +316,9 @@ Remarks:
                     3. For instance, may need to revise float and int rules regarding output. cuz integer division and all that. 
                     4. RULES: Like if its decimal places are zero, then it wont include them even if it is declared as float.
 
-        Default Value -> Implemented rules in our language. Functional.
+        Default Value -> 
+                    1. Vardec have implemented rules.
+                    2. Arrdec not yet.
         Scope Resolution Operator -> IDK Yet
         
                     1. If the combination Sun Universe is used in other contexts aside from being main function (e.g function prototype, or var dec) it will become a problem.
@@ -329,4 +331,5 @@ Remarks:
                     2. Same thing, if int inputted float surpasses the number of bits by c++,  it fails. The rules of our language regarding bit size of data types do not apply to c++
                         I think we should just adopt the bit sizes of c++.
                     3. Maybe add to rules that there should alawys be a disp statement before a capt statement? Terrible solution. There are instances that multiple cin statements follow a cout.
+        
 """

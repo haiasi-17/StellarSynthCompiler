@@ -1,11 +1,10 @@
+adadadadada
 Formulate
 
 
 Sun Universe()[
-    Sun a = 2#
-    Sun b#
-    b = 1+(3+(b-(2-10))**(a+(4-2)))#
-    Disp << b#
+    Sun a{2} = [1,2]#
+    Disp << a{0} << a{1} << a{2}#
 ]
 
 Disintegrate

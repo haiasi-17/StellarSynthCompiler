@@ -1,20 +1,29 @@
 int main ()
 {
-  int D.64196;
+  int D.73338;
 
   {
-    float a;
-    float b;
+    long long int a[2];
 
-    a = 1.0e+4;
-    b = -1.0e+4;
-    _1 = std::basic_ostream<char>::operator<< (&cout, a);
-    _2 = std::operator<< <std::char_traits<char> > (_1, " ");
-    _3 = std::basic_ostream<char>::operator<< (_2, b);
-    std::basic_ostream<char>::operator<< (_3, endl);
+    try
+      {
+        a[0] = 1;
+        a[1] = 2;
+        _1 = a[0];
+        _2 = std::basic_ostream<char>::operator<< (&cout, _1);
+        _3 = a[1];
+        _4 = std::basic_ostream<char>::operator<< (_2, _3);
+        _5 = a[2];
+        _6 = std::basic_ostream<char>::operator<< (_4, _5);
+        std::basic_ostream<char>::operator<< (_6, endl);
+      }
+    finally
+      {
+        a = {CLOBBER(eol)};
+      }
   }
-  D.64196 = 0;
-  return D.64196;
+  D.73338 = 0;
+  return D.73338;
 }
 
 

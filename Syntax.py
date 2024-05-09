@@ -1,4 +1,4 @@
-import re
+import re, Lexer
 import Resources
 
 class SyntaxAnalyzer:
@@ -20345,4 +20345,8 @@ class SyntaxAnalyzer:
         else:
             self.errors.append(f"Syntax Error: Main Program Missing, Expected 'Sun', 'Identifier', '('. ')', '[', ']'")
     '''
-
+if __name__ == "__main__":
+    errors, tokens = Lexer.read_text('StellarSynth')
+    syntax_analyzer = SyntaxAnalyzer(tokens)
+    syntax_analyzer.parse_top_program()
+    print(syntax_analyzer.errors, syntax_analyzer.tokens)

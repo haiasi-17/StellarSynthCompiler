@@ -1,11 +1,12 @@
 #include <iostream>
 #include <string>
 #include <math.h>
+#include <iomanip>
 using namespace std;
 
-int main(){
-	float a = 9999.99999;
-	float b = -9999.99999;
-	cout << a << " " << b<< endl;
 
+int main(){
+    long long a[2] = {1,2};
+    cout << a[0] << a[1] << a[2]<< endl;
+	system("pause");
 }

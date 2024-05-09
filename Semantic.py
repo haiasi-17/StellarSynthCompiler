@@ -1,4 +1,4 @@
-import re
+import re, Lexer
 import Resources
 
 class SemanticAnalyzer:
@@ -22110,3 +22110,9 @@ class SemanticAnalyzer:
             self.errors.append(
                 f"(Line {self.line_number}) | Semantic Error: Variable not declared")
 
+
+if __name__ == "__main__":
+    errors, tokens = Lexer.read_text('StellarSynth')
+    Semantic_analyzer = SemanticAnalyzer(tokens)
+    Semantic_analyzer.parse_top_program()
+    print(SemanticAnalyzer.errors)
