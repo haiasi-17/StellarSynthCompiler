@@ -22,6 +22,8 @@ class Transpiler:
         self.parenthCount = 0
         self.removeTokenCount = 0
         
+        self.mainfuncFlag = False
+        
         self.goNextTokenCount = 0
         self.goBackTokenCount = 0 
         self.prevTokenParenth = False
@@ -336,7 +338,38 @@ class Transpiler:
                     self.go_next_token()
                     self.isDisp = False
                     continue
-                         
+                     
+            # Set Sun as int instead of long long
+            elif self.currentToken == "Universe" and self.mainfuncFlag == False:                 
+                # Go back to the Sun Token.
+                while self.currentToken != "long long":
+                    self.go_back_token()
+                    self.goBackTokenCount += 1
+                
+                # We have reached sun Token, pop all translated tokens until Sun
+                for i in range(self.goBackTokenCount):
+                    self.translatedTokens.pop()
+                else:
+                    #  Set Sun to int and append
+                    self.tokens[self.tokenIndex][0] = self.tokens[self.tokenIndex][1] = "int"
+                    self.translatedTokens.append(self.tokens[self.tokenIndex])
+                    
+                self.go_next_token()
+                
+                # Go back to universe token, appending token to translated if not universe token.
+                while self.currentToken != "Universe":
+                    self.translatedTokens.append(self.tokens[self.tokenIndex])
+                    self.go_next_token()
+                    
+                # We have reached universe token, append and go next token.
+                self.tokens[self.tokenIndex][0] = self.tokens[self.tokenIndex][1] = Resources.StellarCPlusPlusDict[self.currentToken]
+                self.translatedTokens.append(self.tokens[self.tokenIndex])
+                self.go_next_token()
+                
+                self.goBackTokenCount = 0
+                self.mainfuncFlag = True
+                continue
+                  
             # Replace StellarSynth Token with its C++ Counterpart.
             elif self.currentToken in Resources.StellarCPlusPlusDict:
                 # If it is a string typecast operator, convert datatype Starsys to 'to_string' then append to translated tokens.

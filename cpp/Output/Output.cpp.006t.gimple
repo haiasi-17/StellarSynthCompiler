@@ -1,30 +1,20 @@
 int main ()
 {
-  int D.64189;
+  int D.64196;
 
   {
-    int a;
-    int b;
+    float a;
+    float b;
 
-    try
-      {
-        a = 2;
-        b = 0;
-        _1 = std::operator<< <std::char_traits<char> > (&cout, "Enter b\n");
-        _2 = std::operator<< <std::char_traits<char> > (_1, "Intiendes?");
-        std::basic_ostream<char>::operator<< (_2, endl);
-        std::basic_istream<char>::operator>> (&cin, &b);
-        b.0_3 = b;
-        _4 = std::basic_ostream<char>::operator<< (&cout, b.0_3);
-        std::basic_ostream<char>::operator<< (_4, endl);
-      }
-    finally
-      {
-        b = {CLOBBER(eol)};
-      }
+    a = 1.0e+4;
+    b = -1.0e+4;
+    _1 = std::basic_ostream<char>::operator<< (&cout, a);
+    _2 = std::operator<< <std::char_traits<char> > (_1, " ");
+    _3 = std::basic_ostream<char>::operator<< (_2, b);
+    std::basic_ostream<char>::operator<< (_3, endl);
   }
-  D.64189 = 0;
-  return D.64189;
+  D.64196 = 0;
+  return D.64196;
 }
 
 

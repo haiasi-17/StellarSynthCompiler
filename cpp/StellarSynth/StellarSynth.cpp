@@ -3,7 +3,6 @@
 #include <math.h>
 using namespace std;
 
-import dogs;
 
 int main(){
     int a = 2;
