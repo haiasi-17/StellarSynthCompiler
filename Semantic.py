@@ -31,6 +31,7 @@ class SemanticAnalyzer:
         self.array_count_table = {}
         self.array_value_count = None
         self.array_variable_table = {}
+        self.array_scope = None
         # array checking 2D
         self.array2_size = None
         self.array2_row_count = None
@@ -40,6 +41,7 @@ class SemanticAnalyzer:
         self.array2_value_count_row = None
         self.array2_value_count_column = None
         self.array2_variable_table = {}
+        self.array2_scope = None
         # Function Definition checking
         self.parameter_table = {}
         self.isParameterVariable = False
@@ -8157,7 +8159,8 @@ class SemanticAnalyzer:
                     if self.peek_next_token() == "}":
                         # SEMANTIC CHECK
                         self.array_size = self.peek_previous_lexeme()
-                        self.declare_array(self.array_variable, self.array_size)
+                        self.array_scope = self.scope
+                        self.declare_array(self.array_variable, self.array_size, self.scope)
                         self.match("}")
                         # declare an array only
                         if self.peek_next_token() == "#":
@@ -8207,7 +8210,8 @@ class SemanticAnalyzer:
                 elif self.peek_next_token() == "}":
                     # SEMANTIC CHECK
                     self.array_size = self.peek_previous_lexeme()
-                    self.declare_array(self.array_variable, self.array_size)
+                    self.array_scope = self.scope
+                    self.declare_array(self.array_variable, self.array_size, self.scope)
                     self.match("}")
                     if self.peek_next_token() == "#":
                         self.match("#")
@@ -8257,7 +8261,8 @@ class SemanticAnalyzer:
             elif self.peek_next_token() == "}":
                 # SEMANTIC CHECK
                 self.array_size = "null"
-                self.declare_array(self.array_variable, self.array_size)
+                self.array_scope = self.scope
+                self.declare_array(self.array_variable, self.array_size, self.scope)
                 self.match("}")
                 # assign a value syntax for 1D array (empty size)
                 if self.peek_next_token() == "=":
@@ -8316,7 +8321,8 @@ class SemanticAnalyzer:
                     if self.peek_next_token() == "}":
                         # SEMANTIC CHECK
                         self.array2_size = self.peek_previous_lexeme()
-                        self.declare_array2(self.array_variable, self.array2_size)
+                        self.array2_scope = self.scope
+                        self.declare_array2(self.array_variable, self.array2_size, self.array2_scope)
                         self.match("}")
                         if self.peek_next_token() == "#":
                             self.match("#")  # declare an array only
@@ -8354,7 +8360,8 @@ class SemanticAnalyzer:
                 elif self.peek_next_token() == "}":
                     # SEMANTIC CHECK
                     self.array2_size = self.peek_previous_lexeme()
-                    self.declare_array2(self.array_variable, self.array2_size)
+                    self.array2_scope = self.scope
+                    self.declare_array2(self.array_variable, self.array2_size, self.array2_scope)
                     self.match("}")
                     if self.peek_next_token() == "#":
                         self.match("#")
@@ -8643,6 +8650,8 @@ class SemanticAnalyzer:
                 self.current_scope = scope # current scope
             #  is it an array declaration?
             if self.peek_next_token() == "{":
+                scope = 'global'
+                self.scope = scope # scope
                 self.match_arr_dec("{")
             #  is it a subfunction?
             elif self.peek_next_token() == "(":
@@ -8713,6 +8722,8 @@ class SemanticAnalyzer:
                 self.current_scope = scope  # current scope
             #  is it an array declaration?
             if self.peek_next_token() == "{":
+                scope = 'function'
+                self.scope = scope  # scope
                 self.match_arr_dec("{")
             #  is it a subfunction definition?
             elif self.peek_next_token() == "(":
@@ -8778,6 +8789,8 @@ class SemanticAnalyzer:
                 self.current_scope = scope  # current scope
             #  is it an array declaration?
             if self.peek_next_token() == "{":
+                scope = 'main'
+                self.scope = scope  # scope
                 self.match_arr_dec("{")
             #  or assign value/s?
             elif self.peek_next_token() == "=":
@@ -8887,6 +8900,8 @@ class SemanticAnalyzer:
                 self.current_scope = scope  # current scope
             #  is it an array declaration?
             if self.peek_next_token() == "{":
+                scope = 'global'
+                self.scope = scope  # scope
                 self.match_arr_dec("{")
             #  is it a subfunction?
             elif self.peek_next_token() == "(":
@@ -8954,6 +8969,8 @@ class SemanticAnalyzer:
                 self.current_scope = scope  # current scope
             #  is it an array declaration?
             if self.peek_next_token() == "{":
+                scope = 'function'
+                self.scope = scope  # scope
                 self.match_arr_dec("{")
             #  is it a subfunction definition?
             elif self.peek_next_token() == "(":
@@ -9018,6 +9035,8 @@ class SemanticAnalyzer:
             self.current_scope = scope  # current scope
             #  is it an array declaration?
             if self.peek_next_token() == "{":
+                scope = 'main'
+                self.scope = scope  # scope
                 self.match_arr_dec("{")
             #  or assign value/s?
             elif self.peek_next_token() == "=":
@@ -21369,16 +21388,56 @@ class SemanticAnalyzer:
             self.struct_table[struct_name] = {'scope': struct_scope, 'count': 1}
 
     # Store array variable in the table, 1D
-    def declare_array(self, array_variable, array_size):
-        self.array_variable_table[array_variable] = {'array_size': array_size}
+    def declare_array(self, array_variable, array_size, scope):
+        # Append the function name to the scope if the current scope is a function
+        if self.current_scope == 'function':
+            scope += '_' + self.function_name
+        # check if the variable is a function prototype name
+        if array_variable in self.prototype_parameter_table:
+            self.prototype_function_exist = True
+        if array_variable in self.array_variable_table:
+            if self.array_variable_table[array_variable]['scope'] == scope:
+                # Variable is already declared in the same scope, increment the count
+                self.array_variable_table[array_variable]['count'] += 1
+                if (not self.function_exist and not self.prototype_function_exist
+                        and (self.array_variable_table[array_variable]['count'] > 1)):
+                    # Variable is declared more than once in the same scope, report error
+                    self.errors.append(
+                        f"(Line {self.line_number}) | Semantic Error: (Redeclaration Error) Variable '{array_variable}' is already declared in the same scope")
+            else:
+                # Variable is declared in a different scope, update scope and reset count
+                self.array_variable_table[array_variable] = {'array_size': array_size, 'scope': scope, 'count': 1}
+        else:
+            # Variable is not yet declared, add it to the symbol table with count 1
+            self.array_variable_table[array_variable] = {'array_size': array_size, 'scope': scope, 'count': 1}
 
     # ARRAY VALUE COUNT 1D
     def array_count(self, array_variable, array_count):
         self.array_count_table[array_variable] = {'array_count': array_count}
 
     # Store array variable in the table, 2D
-    def declare_array2(self, array_variable, array_size):
-        self.array2_variable_table[array_variable] = {'array_size2': array_size}
+    def declare_array2(self, array_variable, array_size, scope):
+        # Append the function name to the scope if the current scope is a function
+        if self.current_scope == 'function':
+            scope += '_' + self.function_name
+        # check if the variable is a function prototype name
+        if array_variable in self.prototype_parameter_table:
+            self.prototype_function_exist = True
+        if array_variable in self.array2_variable_table:
+            if self.array2_variable_table[array_variable]['scope'] == scope:
+                # Variable is already declared in the same scope, increment the count
+                self.array2_variable_table[array_variable]['count'] += 1
+                if (not self.function_exist and not self.prototype_function_exist
+                        and (self.array2_variable_table[array_variable]['count'] > 1)):
+                    # Variable is declared more than once in the same scope, report error
+                    self.errors.append(
+                        f"(Line {self.line_number}) | Semantic Error: (Redeclaration Error) Variable '{array_variable}' is already declared in the same scope")
+            else:
+                # Variable is declared in a different scope, update scope and reset count
+                self.array2_variable_table[array_variable] = {'array_size2': array_size, 'scope': scope, 'count': 1}
+        else:
+            # Variable is not yet declared, add it to the symbol table with count 1
+            self.array2_variable_table[array_variable] = {'array_size2': array_size, 'scope': scope, 'count': 1}
 
     # ARRAY VALUE COUNT 2D (ROW)
     def array_count_row(self, array_variable, array_count):
@@ -21468,7 +21527,28 @@ class SemanticAnalyzer:
             if declared_scope == 'global' or declared_scope == self.current_scope or declared_scope.startswith('function'):
                 return True  # Variable usage is valid within the current scope
             else:
-                print(self.symbol_table)
+                self.errors.append(
+                    f"(Line {self.line_number}) | Semantic Error: (Undeclared Variable) Variable '{var_name}' is not accessible from the current scope")
+                return None, False
+        # Variable is declared as an array (1D)
+        elif var_name in self.array_variable_table:
+            declared_scope = self.array_variable_table[var_name]['scope']
+            # Check if the declared scope matches the current scope
+            if declared_scope == 'global' or declared_scope == self.current_scope or declared_scope.startswith(
+                    'function'):
+                return True  # Variable usage is valid within the current scope
+            else:
+                self.errors.append(
+                    f"(Line {self.line_number}) | Semantic Error: (Undeclared Variable) Variable '{var_name}' is not accessible from the current scope")
+                return None, False
+        # Variable is declared as an array (1D)
+        elif var_name in self.array2_variable_table:
+            declared_scope = self.array2_variable_table[var_name]['scope']
+            # Check if the declared scope matches the current scope
+            if declared_scope == 'global' or declared_scope == self.current_scope or declared_scope.startswith(
+                    'function'):
+                return True  # Variable usage is valid within the current scope
+            else:
                 self.errors.append(
                     f"(Line {self.line_number}) | Semantic Error: (Undeclared Variable) Variable '{var_name}' is not accessible from the current scope")
                 return None, False
