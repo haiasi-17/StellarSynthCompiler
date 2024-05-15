@@ -26,6 +26,8 @@ class SemanticAnalyzer:
         self.current_scope = None
         self.variable_dec = False
         self.case_vardec = False
+        self.output_var = False
+        self.input_var = False
         # assignment cecking
         self.assignment_variable = None
         # array checking 1D
@@ -282,7 +284,10 @@ class SemanticAnalyzer:
                 # SEMANTIC CHECK
                 if re.match(r'Identifier\d*$', self.peek_previous_token()) and not self.isParameterVariable:
                     self.variable_dec = True
-                    self.check_variable_usage()
+                    self.check_ifVariable_isParameter()
+
+                    if not self.output_var:
+                        self.check_variable_usage()
                 #  if the next is a '<<' proceed to check if it is followed by any of the given values
                 if self.peek_next_token() == "<<":
                     self.match_output("<<")
@@ -797,7 +802,13 @@ class SemanticAnalyzer:
             if (re.match(r'Identifier\d*$', self.peek_next_token())):
                 self.match("Identifier")  # consume
                 # SEMANTIC CHECK
-                self.check_variable_usage()
+                if re.match(r'Identifier\d*$', self.peek_previous_token()) and not self.isParameterVariable:
+                    self.variable_dec = True
+                    self.check_ifVariable_isParameter()
+
+                if not self.input_var:
+                    self.check_variable_usage()
+
                 #  if the next is a '>>' proceed to check if it is followed by an identifier
                 if self.peek_next_token() == ">>":
                     self.match_input(">>")
@@ -4124,11 +4135,15 @@ class SemanticAnalyzer:
                   or self.peek_next_token() == "LuhmanLiteral" or self.peek_next_token() == "StarsysLiteral"
                   or self.peek_next_token() == "True" or self.peek_next_token() == "False"):
                 # SEMANTIC CHECK: Dataype values
-                self.value = self.peek_next_token()
+                self.value = self.peek_next_lexeme()
                 self.declare_variable(self.var_name, self.datatype, self.scope,
                                       self.value)  # Store in the table (Symbol Table)
-                self.check_value_semantics()
                 self.match(Resources.Value1)
+                # SEMANTIC CHECK
+                if re.match(r'Identifier\d*$', self.peek_previous_token()):
+                    self.variable_dec = True
+                    self.check_variable_usage()
+
                 if self.peek_next_token() == ",":
                     self.isMultiple = True
                     self.match(",")
@@ -11767,15 +11782,16 @@ class SemanticAnalyzer:
                         self.check_function_assignment_type()
                     else:
                         # SEMANTIC CHECK
-                        self.current_value = self.peek_previous_token()
+                        self.current_value = self.peek_next_token()
                         self.check_assignment_type()
                         # Check if variable is in the symbol table
                         if self.assignment_variable in self.symbol_table:
                             self.var_name = self.assignment_variable
                             # Update the variable's value and scope in the symbol table
                             datatype = self.symbol_table[self.var_name]['datatype']
-                            self.symbol_table[self.var_name] = {'datatype': datatype,'scope': self.current_scope, 'count': 1,
-                                                                'value': self.peek_next_token()}
+                            self.symbol_table[self.var_name] = {'datatype': datatype, 'scope': self.current_scope,
+                                                                'count': 1,
+                                                                'value': self.current_value}
 
                     self.match(Resources.Value6)  # consume values
 
@@ -11794,7 +11810,10 @@ class SemanticAnalyzer:
                         self.check_function_assignment_type()
                     else:
                         # SEMANTIC CHECK
-                        self.current_value = self.peek_previous_token()
+                        if re.match(r'Identifier\d*$', self.peek_next_token()):
+                            self.current_value = self.peek_next_lexeme()
+                        else:
+                            self.current_value = self.peek_next_token()
                         self.check_assignment_type()
                         # Check if variable is in the symbol table
                         if self.assignment_variable in self.symbol_table:
@@ -11803,7 +11822,7 @@ class SemanticAnalyzer:
                             datatype = self.symbol_table[self.var_name]['datatype']
                             self.symbol_table[self.var_name] = {'datatype': datatype, 'scope': self.current_scope,
                                                                 'count': 1,
-                                                                'value': self.peek_next_token()}
+                                                                'value': self.current_value}
 
                     self.match(Resources.Value2)  # consume values
                     # terminate it?
@@ -21635,6 +21654,7 @@ class SemanticAnalyzer:
                 {'function_datatype': function_datatype, 'datatype': datatype, 'var_name': var_name}]
         self.current_function_name = function_name
 
+
     # store class
     def declare_class(self, class_name, class_scope):
         # check if the variable is a function prototype name
@@ -21790,7 +21810,6 @@ class SemanticAnalyzer:
         # check function call
         elif self.function_call:
             function_call_name = self.peek_previous_lexeme()
-            print(function_call_name)
             if function_call_name not in self.prototype_parameter_table:
                 self.errors.append(
                     f"Semantic Error: (Unknown Function) Function '{function_call_name}' does not exist"
@@ -21872,32 +21891,33 @@ class SemanticAnalyzer:
                 self.errors.append(
                     f"(Line {self.line_number}) | Semantic Error: (Undeclared Variable) Variable '{var_name}' is not accessible from the current scope")
                 return None, False
+        elif var_name in [param['var_name'] for param in
+                          self.parameter_table.get(self.current_function_name, [])]:
+            # Check if the variable is in the function parameter
+            current_vardec = self.symbol_table[self.var_name]['datatype']
+            for param in self.parameter_table.get(self.current_function_name, []):
+                if var_name == param['var_name']:
+                    parameter_variable_dtype = param['datatype']
+                    if (current_vardec == "Sun" and parameter_variable_dtype == "Luhman") or (
+                            current_vardec == "Luhman" and parameter_variable_dtype == "Sun"):
+                        return True
+                    elif current_vardec != parameter_variable_dtype:
+                        self.errors.append(
+                            f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Variable '{var_name}' is incompatible with variable '{self.var_name}' of datatype '{current_vardec}'")
+                    return True
+            return True
         else:
             # Check if the variable is in the fore_table
             for key in self.fore_table:
                 if var_name == self.fore_table[key]['var_name']:
                     return True
 
-            # Check if the variable is in the function parameter
-            current_vardec = self.symbol_table[self.var_name]['datatype']
-            if var_name in [param['var_name'] for param in
-                            self.parameter_table.get(self.current_function_name, [])]:
-                for param in self.parameter_table.get(self.current_function_name, []):
-                    if var_name == param['var_name']:
-                        parameter_variable_dtype = param['datatype']
-                        if (current_vardec == "Sun" and parameter_variable_dtype == "Luhman") or (
-                                current_vardec == "Luhman" and parameter_variable_dtype == "Sun"):
-                            return True
-                        elif current_vardec != parameter_variable_dtype:
-                            self.errors.append(
-                                f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Variable '{var_name}' is incompatible with variable '{self.var_name}' of datatype '{current_vardec}'")
-                        return True
-                return True
             # If the variable is not found in any fore_table entry
             if not self.isFunctionCall:
                 self.errors.append(
                     f"(Line {self.line_number}) | Semantic Error: (Undeclared Variable) Variable '{var_name}' is not declared")
                 return None, False
+
 
     #  Check if the variable contains the right type (condition)
     def check_variable_type_usage(self):
@@ -22010,13 +22030,13 @@ class SemanticAnalyzer:
                           and (id_value == "True" or id_value == "False")):
                         self.errors.append(
                             f"(Line {self.line_number}) | Semantic Error: (Invalid Operator) Value of variable '{self.current_match}' is '{current_match}'. Boolean Values cannot be compared using '{self.current_relop}'.")
-                    elif current_match == None:
+                    elif current_match == None: # Get Datatype instead
                         self.errors.append(
                             f"(Line {self.line_number}) | Semantic Error: (Type Comparison Mismatch) Variable '{self.current_match}' has no value to be compared")
-                    elif id_value == None:
+                    elif id_value == None:  # Get Datatype instead
                         self.errors.append(
                             f"(Line {self.line_number}) | Semantic Error: (Type Comparison Mismatch) Variable '{id}' has no value to be compared")
-                elif id_value == None:
+                elif id_value == None:  # Get Datatype instead
                     self.errors.append(
                         f"(Line {self.line_number}) | Semantic Error: (Type Comparison Mismatch) Variable '{id}' has no value to be compared")
         elif (self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
@@ -22119,89 +22139,91 @@ class SemanticAnalyzer:
                       and (value == "True" or value == "False")):
                     self.errors.append(
                         f"(Line {self.line_number}) | Semantic Error: (Invalid Operator) Value of variable '{self.current_match}' is '{current_match}'. Boolean Values cannot be compared using '{self.current_relop}'.")
-                elif current_match == None:
+                elif current_match == None:  # Get Datatype instead
                     self.errors.append(
                         f"(Line {self.line_number}) | Semantic Error: (Type Comparison Mismatch) Variable '{self.current_match}' has no value to be compared")
 
-    #  assignment value checking
+    # assignment value checking
     def check_assignment_type(self):
         # Retrieve the scope from the symbol table for the variable
         variable_entry = self.symbol_table.get(self.assignment_variable)
-        datatype = self.symbol_table[self.assignment_variable]['datatype']
         if variable_entry is None:  # no variable assigned yet
             return True
-        # Perform semantic analysis specific to datatypes and their value
+
+        datatype = variable_entry['datatype']
         expected_datatype = variable_entry['datatype']
+
         if self.assignment_variable in self.symbol_table:
             # Perform semantic checks based on datatype
-            if expected_datatype == "Sun" and self.peek_next_token() == "StarsysLiteral":
-                self.errors.append(
-                    f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Value 'StarsysLiteral' is Incompatible with Datatype 'Sun'")
-            elif expected_datatype == "Sun" and self.peek_next_token() == "True":
-                self.errors.append(
-                    f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Value 'True' is Incompatible with Datatype 'Sun'")
-            elif expected_datatype == "Sun" and self.peek_next_token() == "False":
-                self.errors.append(
-                    f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Value 'False' is Incompatible with Datatype 'Sun'")
-            elif expected_datatype == "Luhman" and self.peek_next_token() == "StarsysLiteral":
-                self.errors.append(
-                    f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Value 'StarsysLiteral' is Incompatible with Datatype 'Luhman'")
-            elif expected_datatype == "Luhman" and self.peek_next_token() == "True":
-                self.errors.append(
-                    f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Value 'True' is Incompatible with Datatype 'Luhman'")
-            elif expected_datatype == "Luhman" and self.peek_next_token() == "False":
-                self.errors.append(
-                    f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Value 'False' is Incompatible with Datatype 'Luhman'")
-            elif expected_datatype == "Starsys" and self.peek_next_token() == "LuhmanLiteral":
-                self.errors.append(
-                    f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Value 'LuhmanLiteral' is Incompatible with Datatype 'Starsys'")
-            elif expected_datatype == "Starsys" and self.peek_next_token() == "SunLiteral":
-                self.errors.append(
-                    f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Value 'SunLiteral' is Incompatible with Datatype 'Starsys'")
-            elif expected_datatype == "Starsys" and self.peek_next_token() == "True":
-                self.errors.append(
-                    f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Value 'True' is Incompatible with Datatype 'Starsys'")
-            elif expected_datatype == "Starsys" and self.peek_next_token() == "False":
-                self.errors.append(
-                    f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Value 'False' is Incompatible with Datatype 'Starsys'")
-            elif expected_datatype == "Boolean" and self.peek_next_token() == "SunLiteral":
-                self.errors.append(
-                    f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Value 'SunLiteral' is Incompatible with Datatype 'Boolean'")
-            elif expected_datatype == "Boolean" and self.peek_next_token() == "LuhmanLiteral":
-                self.errors.append(
-                    f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Value 'LuhmanLiteral' is Incompatible with Datatype 'Boolean'")
-            elif expected_datatype == "Boolean" and self.peek_next_token() == "StarsysLiteral":
-                self.errors.append(
-                    f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Value 'StarsysLiteral' is Incompatible with Datatype 'Boolean'")
-            elif re.match(r'Identifier\d*$', self.peek_next_token()):
-                if self.peek_next_lexeme() in self.symbol_table:
-                    id_datatype = self.symbol_table[self.peek_next_lexeme()]['datatype']
-                    if datatype == "Sun" and id_datatype == "Luhman" or datatype == "Luhman" and id_datatype == "Sun":
+            self._check_datatype_compatibility(expected_datatype, self.peek_next_token())
+        elif self.peek_next_lexeme() in [param['var_name'] for param in
+                                         self.parameter_table.get(self.current_function_name, [])]:
+            for param in self.parameter_table.get(self.current_function_name, []):
+                if self.peek_next_lexeme() == param['var_name']:
+                    parameter_variable_dtype = param['datatype']
+                    if (expected_datatype == "Sun" and parameter_variable_dtype == "Luhman") or (
+                            expected_datatype == "Luhman" and parameter_variable_dtype == "Sun"):
                         return True
-                    elif datatype != id_datatype:
+                    elif expected_datatype != parameter_variable_dtype:
                         self.errors.append(
-                            f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Variable '{self.peek_next_lexeme()}' is incompatible with variable '{self.assignment_variable}' of datatype '{datatype}'")
-                elif self.peek_next_lexeme() in [param['var_name'] for param in
-                                               self.parameter_table.get(self.current_function_name, [])]:
-                    for param in self.parameter_table.get(self.current_function_name, []):
-                        if self.peek_next_lexeme() == param['var_name']:
-                            parameter_variable_dtype = param['datatype']
-                            if (expected_datatype == "Sun" and parameter_variable_dtype == "Luhman") or (
-                                    expected_datatype == "Luhman" and parameter_variable_dtype == "Sun"):
-                                return True
-                            elif expected_datatype != parameter_variable_dtype:
-                                self.errors.append(
-                                    f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Variable '{self.peek_next_lexeme()}' is incompatible with variable '{self.assignment_variable}' of datatype '{expected_datatype}'")
-                else:
-                    print(self.parameter_table)
-                    self.errors.append(
-                        f"(Line {self.line_number}) | Semantic Error: (Undeclared variable) Variable '{self.peek_next_lexeme()}' is not declared'")
-
-        # the variable is not declared
+                            f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Variable '{self.peek_next_lexeme()}' is incompatible with variable '{self.assignment_variable}' of datatype '{expected_datatype}'"
+                        )
+                    return True
         else:
-            print(self.parameter_table)
+            # the variable is not declared
             self.errors.append(
-                f"(Line {self.line_number}) | Semantic Error: (Undeclared variable) Variable not declared")
+                f"(Line {self.line_number}) | Semantic Error: (Undeclared Variable) Variable '{self.peek_next_lexeme()}' is not declared"
+            )
+            return None, False
+
+    def _check_datatype_compatibility(self, expected_datatype, token):
+        if expected_datatype == "Sun" and token == "StarsysLiteral":
+            self.errors.append(
+                f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Value 'StarsysLiteral' is Incompatible with Datatype 'Sun'")
+        elif expected_datatype == "Sun" and token == "True":
+            self.errors.append(
+                f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Value 'True' is Incompatible with Datatype 'Sun'")
+        elif expected_datatype == "Sun" and token == "False":
+            self.errors.append(
+                f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Value 'False' is Incompatible with Datatype 'Sun'")
+        elif expected_datatype == "Luhman" and token == "StarsysLiteral":
+            self.errors.append(
+                f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Value 'StarsysLiteral' is Incompatible with Datatype 'Luhman'")
+        elif expected_datatype == "Luhman" and token == "True":
+            self.errors.append(
+                f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Value 'True' is Incompatible with Datatype 'Luhman'")
+        elif expected_datatype == "Luhman" and token == "False":
+            self.errors.append(
+                f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Value 'False' is Incompatible with Datatype 'Luhman'")
+        elif expected_datatype == "Starsys" and token == "LuhmanLiteral":
+            self.errors.append(
+                f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Value 'LuhmanLiteral' is Incompatible with Datatype 'Starsys'")
+        elif expected_datatype == "Starsys" and token == "SunLiteral":
+            self.errors.append(
+                f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Value 'SunLiteral' is Incompatible with Datatype 'Starsys'")
+        elif expected_datatype == "Starsys" and token == "True":
+            self.errors.append(
+                f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Value 'True' is Incompatible with Datatype 'Starsys'")
+        elif expected_datatype == "Starsys" and token == "False":
+            self.errors.append(
+                f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Value 'False' is Incompatible with Datatype 'Starsys'")
+        elif expected_datatype == "Boolean" and token == "SunLiteral":
+            self.errors.append(
+                f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Value 'SunLiteral' is Incompatible with Datatype 'Boolean'")
+        elif expected_datatype == "Boolean" and token == "LuhmanLiteral":
+            self.errors.append(
+                f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Value 'LuhmanLiteral' is Incompatible with Datatype 'Boolean'")
+        elif expected_datatype == "Boolean" and token == "StarsysLiteral":
+            self.errors.append(
+                f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Value 'StarsysLiteral' is Incompatible with Datatype 'Boolean'")
+        elif re.match(r'Identifier\d*$', token):
+            if self.peek_next_lexeme() in self.symbol_table:
+                id_datatype = self.symbol_table[self.peek_next_lexeme()]['datatype']
+                if expected_datatype == "Sun" and id_datatype == "Luhman" or expected_datatype == "Luhman" and id_datatype == "Sun":
+                    return True
+                elif expected_datatype != id_datatype:
+                    self.errors.append(
+                        f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Variable '{self.peek_next_lexeme()}' is incompatible with variable '{self.assignment_variable}' of datatype '{expected_datatype}'")
 
     # check prototype parameter's parameter variable assigned values
     def check_prototype_parameter_assignment_type(self):
@@ -22312,6 +22334,15 @@ class SemanticAnalyzer:
         # Check if variable_entry is None
         elif variable_entry is None:
             return True  # no variable assigned yet
+
+    def check_ifVariable_isParameter(self):
+        if self.peek_previous_lexeme() in [param['var_name'] for param in
+                        self.parameter_table.get(self.current_function_name, [])]:
+            self.output_var = True
+            self.input_var = True
+            return True
+        else:
+            return
 
     # Check if the variable assignment matches the datatype assigned in the parameter for that variable
     def check_function_assignment_type(self):
@@ -22458,7 +22489,6 @@ class SemanticAnalyzer:
         # Retrieve the scope from the symbol table for the variable
         variable_entry1 = self.array_variable_table.get(self.array_variable)
         variable_entry2 = self.array2_variable_table.get(self.array_variable)
-        print(variable_entry1)
         if variable_entry1 is None and variable_entry2 is None:  # no variable assigned yet
             return True
         if variable_entry1 is not None:
