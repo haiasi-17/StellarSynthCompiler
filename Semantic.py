@@ -4138,6 +4138,7 @@ class SemanticAnalyzer:
                 self.value = self.peek_next_lexeme()
                 self.declare_variable(self.var_name, self.datatype, self.scope,
                                       self.value)  # Store in the table (Symbol Table)
+                self.check_value_semantics()
                 self.match(Resources.Value1)
                 # SEMANTIC CHECK
                 if re.match(r'Identifier\d*$', self.peek_previous_token()):
@@ -21840,84 +21841,94 @@ class SemanticAnalyzer:
 
     #  Check if the variable is declared within its scope
     def check_variable_usage(self):
-        # Get the previous lexeme (assumed to be the variable name)
         var_name = self.peek_previous_lexeme()
-        # Check if the variable is in the symbol table
+
+        # Check in the symbol table
         if var_name in self.symbol_table:
-            declared_scope = self.symbol_table[var_name]['scope']
-            # Check if the declared scope matches the current scope
-            if declared_scope == 'global' or declared_scope == self.current_scope or declared_scope.startswith(
-                    'function'):
-                if not self.variable_dec and not self.case_vardec:
-                    return True  # Variable usage is valid within the current scope
-                elif self.variable_dec:
-                    current_vardec = self.symbol_table[self.var_name]['datatype']
-                    compare_vardec = self.symbol_table[var_name]['datatype']
-                    if current_vardec == "Sun" and compare_vardec == "Luhman" or current_vardec == "Luhman" and compare_vardec == "Sun":
-                        return True
-                    elif current_vardec != compare_vardec:
-                        self.errors.append(
-                            f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Variable '{var_name}' is incompatible with variable '{self.var_name}' of datatype '{current_vardec}'")
-                elif self.case_vardec:
-                    compare_case_vardec = self.symbol_table[var_name]['datatype']
-                    if compare_case_vardec != "Sun":
-                        self.errors.append(
-                            f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Variable '{var_name}' is of datatype {compare_case_vardec}. Case statements can only accept variable of datatype 'Sun'")
-                    else:
-                        return True
-            elif not self.isParameterVariable:
-                self.errors.append(
-                    f"(Line {self.line_number}) | Semantic Error: (Undeclared Variable) Variable '{var_name}' is not accessible from the current scope")
-                return None, False
-        # Variable is declared as an array (1D)
+            self._check_scope_and_datatype(var_name)
+        # Check in the array variable tables
         elif var_name in self.array_variable_table:
-            declared_scope = self.array_variable_table[var_name]['scope']
-            # Check if the declared scope matches the current scope
-            if declared_scope == 'global' or declared_scope == self.current_scope or declared_scope.startswith(
-                    'function'):
-                return True  # Variable usage is valid within the current scope
-            else:
-                self.errors.append(
-                    f"(Line {self.line_number}) | Semantic Error: (Undeclared Variable) Variable '{var_name}' is not accessible from the current scope")
-                return None, False
-        # Variable is declared as an array (1D)
+            self._check_array_scope(var_name)
         elif var_name in self.array2_variable_table:
-            declared_scope = self.array2_variable_table[var_name]['scope']
-            # Check if the declared scope matches the current scope
-            if declared_scope == 'global' or declared_scope == self.current_scope or declared_scope.startswith(
-                    'function'):
-                return True  # Variable usage is valid within the current scope
-            else:
-                self.errors.append(
-                    f"(Line {self.line_number}) | Semantic Error: (Undeclared Variable) Variable '{var_name}' is not accessible from the current scope")
-                return None, False
-        elif var_name in [param['var_name'] for param in
-                          self.parameter_table.get(self.current_function_name, [])]:
-            # Check if the variable is in the function parameter
-            current_vardec = self.symbol_table[self.var_name]['datatype']
-            for param in self.parameter_table.get(self.current_function_name, []):
-                if var_name == param['var_name']:
-                    parameter_variable_dtype = param['datatype']
-                    if (current_vardec == "Sun" and parameter_variable_dtype == "Luhman") or (
-                            current_vardec == "Luhman" and parameter_variable_dtype == "Sun"):
-                        return True
-                    elif current_vardec != parameter_variable_dtype:
-                        self.errors.append(
-                            f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Variable '{var_name}' is incompatible with variable '{self.var_name}' of datatype '{current_vardec}'")
-                    return True
+            self._check_array2_scope(var_name)
+        # Check in the function parameters
+        elif var_name in [param['var_name'] for param in self.parameter_table.get(self.current_function_name, [])]:
+            self._check_parameter_scope_and_datatype(var_name)
+        # Check in the fore table
+        elif var_name in [entry['var_name'] for entry in self.fore_table.values()]:
             return True
         else:
-            # Check if the variable is in the fore_table
-            for key in self.fore_table:
-                if var_name == self.fore_table[key]['var_name']:
+            # Undeclared variable error
+            self.errors.append(
+                f"(Line {self.line_number}) | Semantic Error: (Undeclared Variable) Variable '{var_name}' is not declared")
+            return None, False
+        return True
+
+    #  HELPER METHOD FOR CHECK_VARIABLE_USAGE
+    def _check_scope_and_datatype(self, var_name):
+        variable_entry = self.symbol_table[var_name]
+        declared_scope = variable_entry['scope']
+        declared_datatype = variable_entry['datatype']
+
+        if declared_scope == 'global' or declared_scope == self.current_scope or declared_scope.startswith('function'):
+            if self.variable_dec or self.case_vardec:
+                self._check_datatype_compatibility(declared_datatype, var_name)
+            else:
+                return True
+        else:
+            self.errors.append(
+                f"(Line {self.line_number}) | Semantic Error: (Scope Error) Variable '{var_name}' is not accessible from the current scope")
+
+    #  HELPER METHOD FOR CHECK_VARIABLE_USAGE
+    def _check_array_scope(self, var_name):
+        array_entry = self.array_variable_table[var_name]
+        declared_scope = array_entry['scope']
+
+        if declared_scope == 'global' or declared_scope == self.current_scope or declared_scope.startswith('function'):
+            return True
+        else:
+            self.errors.append(
+                f"(Line {self.line_number}) | Semantic Error: (Scope Error) Array variable '{var_name}' is not accessible from the current scope")
+
+    #  HELPER METHOD FOR CHECK_VARIABLE_USAGE
+    def _check_array2_scope(self, var_name):
+        array2_entry = self.array2_variable_table[var_name]
+        declared_scope = array2_entry['scope']
+
+        if declared_scope == 'global' or declared_scope == self.current_scope or declared_scope.startswith('function'):
+            return True
+        else:
+            self.errors.append(
+                f"(Line {self.line_number}) | Semantic Error: (Scope Error) 2D array variable '{var_name}' is not accessible from the current scope")
+
+    #  HELPER METHOD FOR CHECK_VARIABLE_USAGE
+    def _check_parameter_scope_and_datatype(self, var_name):
+        for param in self.parameter_table.get(self.current_function_name, []):
+            if var_name == param['var_name']:
+                parameter_datatype = param['datatype']
+                current_vardec = self.symbol_table[self.var_name]['datatype']
+                if (current_vardec == "Sun" and parameter_datatype == "Luhman") or (
+                        current_vardec == "Luhman" and parameter_datatype == "Sun"):
                     return True
+                elif current_vardec != parameter_datatype:
+                    self.errors.append(
+                        f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Variable '{var_name}' is incompatible with variable '{self.var_name}' of datatype '{current_vardec}'")
+                return True
 
-            # If the variable is not found in any fore_table entry
-            if not self.isFunctionCall:
+    #  HELPER METHOD FOR CHECK_VARIABLE_USAGE
+    def _check_datatype_compatibility(self, declared_datatype, var_name):
+        current_datatype = self.symbol_table[self.var_name]['datatype']
+        if declared_datatype == "Sun" and current_datatype == "Luhman" or declared_datatype == "Luhman" and current_datatype == "Sun":
+            return True
+        elif declared_datatype != current_datatype:
+            self.errors.append(
+                f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Variable '{var_name}' is incompatible with variable '{self.var_name}' of datatype '{declared_datatype}'")
+        elif self.case_vardec:
+            if declared_datatype != "Sun":
                 self.errors.append(
-                    f"(Line {self.line_number}) | Semantic Error: (Undeclared Variable) Variable '{var_name}' is not declared")
-                return None, False
-
+                    f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Variable '{var_name}' is of datatype '{declared_datatype}'. Case statements can only accept variables of datatype 'Sun'")
+            else:
+                return True
 
     #  Check if the variable contains the right type (condition)
     def check_variable_type_usage(self):
