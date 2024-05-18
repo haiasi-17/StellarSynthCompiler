@@ -3352,11 +3352,13 @@ class SemanticAnalyzer:
                     return True  # else: last identifier has no following identifiers (comma)
             #  function assign value path
             elif re.match(r'Identifier\d*$', self.peek_next_token()):
-                self.match("Identifier")  # consume
                 # SEMANTIC CHECK: Dataype values
                 self.value = self.peek_next_lexeme()
                 self.declare_variable(self.var_name, self.datatype, self.scope,
                                       self.value)  # Store in the table (Symbol Table)
+
+                self.match("Identifier")  # consume
+
                 #  is '(' next?
                 if re.match(r'Identifier\d*$', self.peek_previous_token()) and self.peek_next_token() == "(":
 
@@ -3406,7 +3408,7 @@ class SemanticAnalyzer:
                     self.variable_dec = True
                     self.check_variable_usage()
                 #  assign value?
-                elif self.peek_next_token() == ",":
+                if self.peek_next_token() == ",":
                     self.isMultiple = True
                     self.match(",")
                     if re.match(r'Identifier\d*$', self.peek_next_token()):
@@ -4674,11 +4676,13 @@ class SemanticAnalyzer:
                     return True  # else: last identifier has no following identifiers (comma)
             #  function assign value path
             elif re.match(r'Identifier\d*$', self.peek_next_token()):
-                self.match("Identifier")  # consume
                 # SEMANTIC CHECK: Dataype values
                 self.value = self.peek_next_lexeme()
                 self.declare_variable(self.var_name, self.datatype, self.scope,
                                       self.value)  # Store in the table (Symbol Table)
+
+                self.match("Identifier")  # consume
+
                 #  is '(' next?
                 if re.match(r'Identifier\d*$', self.peek_previous_token()) and self.peek_next_token() == "(":
 
@@ -4728,7 +4732,7 @@ class SemanticAnalyzer:
                     self.variable_dec = True
                     self.check_variable_usage()
                 #  assign value?
-                elif self.peek_next_token() == ",":
+                if self.peek_next_token() == ",":
                     self.isMultiple = True
                     self.match(",")
                     if re.match(r'Identifier\d*$', self.peek_next_token()):
@@ -5363,10 +5367,17 @@ class SemanticAnalyzer:
                     or self.peek_next_token() == "SunLiteral"
                     or self.peek_next_token() == "LuhmanLiteral"):
                 self.match(Resources.Value2)  # consume
-                # SEMANTIC CHECK
+
+                #  SEMANTIC CHECK
                 if re.match(r'Identifier\d*$', self.peek_previous_token()):
+                    self.function_parameter_variable()  # is it from a parameter
+                if self.isParameterVariable:
+                    self.function_assignment_variable = self.peek_previous_lexeme()
+                    self.check_function_assignment_type()  # check its type
+                if re.match(r'Identifier\d*$', self.peek_previous_token()) and not self.isParameterVariable:
                     self.variable_dec = True
                     self.check_variable_usage()
+
                 #  is it an array index?
                 if self.peek_next_token() == "{" and (re.match(r'Identifier\d*$', self.peek_previous_token())):
                     #  SEMANTIC CHECK
@@ -21153,7 +21164,7 @@ class SemanticAnalyzer:
                 self.fore_datatype = self.peek_previous_token()
             else:
                 self.errors.append(
-                    f"(Line {self.line_number}) | Semantic Error: (Datatype Mismatch) Datatype {self.peek_previous_token()} cannot be used as a loop variable initial datatype.)")
+                    f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Datatype {self.peek_previous_token()} cannot be used as a loop variable initial datatype.)")
             #  must be followed by an identifier
             if re.match(r'Identifier\d*$', self.peek_next_token()):
                 self.match("Identifier")
@@ -22230,7 +22241,7 @@ class SemanticAnalyzer:
                 # Check if the function_datatype does not match
                 if param_def['function_datatype'] != param_proto['function_datatype']:
                     self.errors.append(
-                        f"(Line {self.line_number}) | Semantic Error: (Datatype Mismatch) Function definition datatype does not match its prototype")
+                        f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Function definition datatype does not match its prototype")
                     return
 
             # Check if all parameters in prototype are present in defined
