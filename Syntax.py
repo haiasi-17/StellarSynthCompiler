@@ -3434,7 +3434,7 @@ class SyntaxAnalyzer:
                     self.match("(")
                     #  must have values inside
                     if (re.match(r'Identifier\d*$', self.peek_next_token()) or self.peek_next_token() == "SunLiteral"
-                            or self.peek_next_token() == "LuhmanLiteral"):
+                            or self.peek_next_token() == "LuhmanLiteral" or self.peek_next_token() == "StarsysLiteral"):
                         self.match(Resources.Value2)  # consume values
                         #  return is an array index path
                         if self.peek_next_token() == "{" and (re.match(r'Identifier\d*$', self.peek_previous_token())):
@@ -3614,7 +3614,7 @@ class SyntaxAnalyzer:
                     self.match("(")
                     #  must have values inside
                     if (re.match(r'Identifier\d*$', self.peek_next_token()) or self.peek_next_token() == "SunLiteral"
-                            or self.peek_next_token() == "LuhmanLiteral"):
+                            or self.peek_next_token() == "LuhmanLiteral" or self.peek_next_token() == "StarsysLiteral"):
                         self.match(Resources.Value2)  # consume values
                         #  return is an array index path
                         if self.peek_next_token() == "{" and (re.match(r'Identifier\d*$', self.peek_previous_token())):
@@ -3792,8 +3792,7 @@ class SyntaxAnalyzer:
                 self.match("Starsys")
                 if self.peek_next_token() == "(":
                     self.match("(")
-                    if self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral" \
-                            or self.peek_next_token() == "True" or self.peek_next_token() == "False":
+                    if self.peek_next_token() == "True" or self.peek_next_token() == "False":
                         self.match(Resources.Value4)  # consume values
                         #  close it with ')'
                         if self.peek_next_token() == ")":
@@ -3803,6 +3802,176 @@ class SyntaxAnalyzer:
                         else:
                             self.errors.append(
                                 f"(Line {self.line_number}) | Syntax Error: Expected ')', but instead got '{self.peek_next_token()}'")
+                    #  must have values inside
+                    elif (re.match(r'Identifier\d*$',
+                                   self.peek_next_token()) or self.peek_next_token() == "SunLiteral"
+                          or self.peek_next_token() == "LuhmanLiteral"):
+                        self.match(Resources.Value2)  # consume values
+                        #  return is an array index path
+                        if self.peek_next_token() == "{" and (
+                                re.match(r'Identifier\d*$', self.peek_previous_token())):
+                            self.match("{")  # consume
+                            #  array index assign path
+                            if (re.match(r'Identifier\d*$', self.peek_next_token())
+                                    or self.peek_next_token() == "SunLiteral"):
+                                self.match(Resources.Value3)  # consume the values
+                                #  size expression
+                                if (
+                                        self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                                        or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                                    self.match_mathop3(Resources.mathop1)  # size is a math expr
+                                    #  close it with "}" if size is fulfilled
+                                    if self.peek_next_token() == "}":
+                                        self.match("}")
+                                        #  close it
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")  # consume ')'
+                                            return True
+                                        # or add another size to become 2D array
+                                        elif self.peek_next_token() == "{":
+                                            self.match_arrID2D_index_parameter("{")
+                                            #  close it
+                                            if self.peek_next_token() == ")":
+                                                self.match(")")  # consume ')'
+                                                return True
+                                            #  error: not closed
+                                            else:
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
+                                        #  error: not followed by ')' or '{'
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax error: Expected ')', 'Lcurlbraces', but instead got '{self.peek_next_token()}'")
+                                    #  not closed with '}'
+                                    else:
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax Error: Expected 'Rcurlbrace', but instead got '{self.peek_next_token()}'")
+                                #  size is single value
+                                elif self.peek_next_token() == "}":
+                                    self.match("}")
+                                    #  close it, single value 1D size
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")  # consume ')'
+                                        return True
+                                    # or add another size to become 2D array
+                                    elif self.peek_next_token() == "{":
+                                        self.match_arrID2D_index_parameter("{")
+                                        #  close it
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")  # consume ')'
+                                            return True
+                                        #  error: not closed
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
+                                    #  error: not followed by a ')' or '{'
+                                    else:
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax error: Expected ')', 'Lcurlbraces', but instead got '{self.peek_next_token()}'")
+                                #  size value is not followed by any of the following (# and Rcurl)
+                                else:
+                                    self.errors.append(
+                                        f"(Line {self.line_number}) | Syntax Error: Expected 'Rcurlbraces', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
+                            #  empty size, proceed to close it with '}'
+                            elif self.peek_next_token() == "}":
+                                self.match("}")
+                                #  close it, 1D empty
+                                if self.peek_next_token() == ")":
+                                    self.match(")")  # consume ')'
+                                    return True
+                                # or add another size to become 2D array
+                                elif self.peek_next_token() == "{":
+                                    self.match_arrID2D_index_parameter("{")
+                                    #  close it
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")  # consume ')'
+                                        return True
+                                    #  error: not closed
+                                    else:
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
+                                #  error: not followed by a '{' or ')'
+                                else:
+                                    self.errors.append(
+                                        f"(Line {self.line_number}) | Syntax error: Expected ')', 'Lcurlbraces', but instead got '{self.peek_next_token()}'")
+                            #  no following
+                            else:
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax error: Expected 'Idnetifier', 'SunLiteral', 'Rcurlbraces', but instead got '{self.peek_next_token()}'")
+                        #  add it
+                        elif self.peek_next_token() == "+":
+                            self.match_mathop2("+")
+                            #  close it
+                            if self.peek_next_token() == ")":
+                                self.match(")")  # consume ')'
+                                return True
+                            #  error: not closed
+                            else:
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
+                        #  subtract it
+                        elif self.peek_next_token() == "-":
+                            self.match_mathop2("-")
+                            #  close it
+                            if self.peek_next_token() == ")":
+                                self.match(")")  # consume ')'
+                                return True
+                            #  error: not closed
+                            else:
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
+                        #  multiply it
+                        elif self.peek_next_token() == "*":
+                            self.match_mathop2("*")
+                            #  close it
+                            if self.peek_next_token() == ")":
+                                self.match(")")  # consume ')'
+                                return True
+                            #  error: not closed
+                            else:
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
+                        #  divide it
+                        elif self.peek_next_token() == "/":
+                            self.match_mathop2("/")
+                            #  close it
+                            if self.peek_next_token() == ")":
+                                self.match(")")  # consume ')'
+                                return True
+                            #  error: not closed
+                            else:
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
+                        #  modulo it
+                        elif self.peek_next_token() == "%":
+                            self.match_mathop2("%")
+                            #  close it
+                            if self.peek_next_token() == ")":
+                                self.match(")")  # consume ')'
+                                return True
+                            #  error: not closed
+                            else:
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
+                        #  exponentiate it
+                        elif self.peek_next_token() == "**":
+                            self.match_exponent2("**")
+                            #  close it
+                            if self.peek_next_token() == ")":
+                                self.match(")")  # consume ')'
+                                return True
+                            #  error: not closed
+                            else:
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
+                        #  close it (single value)
+                        elif self.peek_next_token() == ")":
+                            self.match(")")  # consume ')'
+                            return True
+                        #  error: not followed by any mathops or a terminator
+                        else:
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Syntax error: Expected ')', , but instead got '{self.peek_next_token()}'")
                     #  error: values are not as expected
                     else:
                         self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected 'SunLiteral', "

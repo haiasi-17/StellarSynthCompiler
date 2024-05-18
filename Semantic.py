@@ -28,6 +28,7 @@ class SemanticAnalyzer:
         self.case_vardec = False
         self.output_var = False
         self.input_var = False
+        self.return_var = False
         # assignment cecking
         self.assignment_variable = None
         # array checking 1D
@@ -3688,10 +3689,16 @@ class SemanticAnalyzer:
             elif self.peek_next_token() == "Sun":
                 self.match("Sun")
                 if self.peek_next_token() == "(":
+                    # SEMANTIC CHECK: Dataype values
+                    self.value = "SunLiteral"
+                    self.declare_variable(self.var_name, self.datatype, self.scope,
+                                          self.value)  # Store in the table (Symbol Table)
+                    self.check_value_semantics()
+
                     self.match("(")
                     #  must have values inside
                     if (re.match(r'Identifier\d*$', self.peek_next_token()) or self.peek_next_token() == "SunLiteral"
-                            or self.peek_next_token() == "LuhmanLiteral"):
+                            or self.peek_next_token() == "LuhmanLiteral" or self.peek_next_token() == "StarsysLiteral"):
                         self.match(Resources.Value2)  # consume values
                         #  return is an array index path
                         if self.peek_next_token() == "{" and (re.match(r'Identifier\d*$', self.peek_previous_token())):
@@ -3868,10 +3875,16 @@ class SemanticAnalyzer:
             elif self.peek_next_token() == "Luhman":
                 self.match("Luhman")
                 if self.peek_next_token() == "(":
+                    # SEMANTIC CHECK: Dataype values
+                    self.value = "LuhmanLiteral"
+                    self.declare_variable(self.var_name, self.datatype, self.scope,
+                                          self.value)  # Store in the table (Symbol Table)
+                    self.check_value_semantics()
+
                     self.match("(")
                     #  must have values inside
                     if (re.match(r'Identifier\d*$', self.peek_next_token()) or self.peek_next_token() == "SunLiteral"
-                            or self.peek_next_token() == "LuhmanLiteral"):
+                            or self.peek_next_token() == "LuhmanLiteral" or self.peek_next_token() == "StarsysLiteral"):
                         self.match(Resources.Value2)  # consume values
                         #  return is an array index path
                         if self.peek_next_token() == "{" and (re.match(r'Identifier\d*$', self.peek_previous_token())):
@@ -4048,9 +4061,14 @@ class SemanticAnalyzer:
             elif self.peek_next_token() == "Starsys":
                 self.match("Starsys")
                 if self.peek_next_token() == "(":
+                    # SEMANTIC CHECK: Dataype values
+                    self.value = "StarsysLiteral"
+                    self.declare_variable(self.var_name, self.datatype, self.scope,
+                                          self.value)  # Store in the table (Symbol Table)
+                    self.check_value_semantics()
+
                     self.match("(")
-                    if self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral" \
-                            or self.peek_next_token() == "True" or self.peek_next_token() == "False":
+                    if self.peek_next_token() == "True" or self.peek_next_token() == "False":
                         self.match(Resources.Value4)  # consume values
                         #  close it with ')'
                         if self.peek_next_token() == ")":
@@ -4060,6 +4078,176 @@ class SemanticAnalyzer:
                         else:
                             self.errors.append(
                                 f"(Line {self.line_number}) | Syntax Error: Expected ')', but instead got '{self.peek_next_token()}'")
+                    #  must have values inside
+                    elif (re.match(r'Identifier\d*$',
+                                 self.peek_next_token()) or self.peek_next_token() == "SunLiteral"
+                            or self.peek_next_token() == "LuhmanLiteral"):
+                        self.match(Resources.Value2)  # consume values
+                        #  return is an array index path
+                        if self.peek_next_token() == "{" and (
+                        re.match(r'Identifier\d*$', self.peek_previous_token())):
+                            self.match("{")  # consume
+                            #  array index assign path
+                            if (re.match(r'Identifier\d*$', self.peek_next_token())
+                                    or self.peek_next_token() == "SunLiteral"):
+                                self.match(Resources.Value3)  # consume the values
+                                #  size expression
+                                if (
+                                        self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                                        or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                                    self.match_mathop3(Resources.mathop1)  # size is a math expr
+                                    #  close it with "}" if size is fulfilled
+                                    if self.peek_next_token() == "}":
+                                        self.match("}")
+                                        #  close it
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")  # consume ')'
+                                            return True
+                                        # or add another size to become 2D array
+                                        elif self.peek_next_token() == "{":
+                                            self.match_arrID2D_index_parameter("{")
+                                            #  close it
+                                            if self.peek_next_token() == ")":
+                                                self.match(")")  # consume ')'
+                                                return True
+                                            #  error: not closed
+                                            else:
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
+                                        #  error: not followed by ')' or '{'
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax error: Expected ')', 'Lcurlbraces', but instead got '{self.peek_next_token()}'")
+                                    #  not closed with '}'
+                                    else:
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax Error: Expected 'Rcurlbrace', but instead got '{self.peek_next_token()}'")
+                                #  size is single value
+                                elif self.peek_next_token() == "}":
+                                    self.match("}")
+                                    #  close it, single value 1D size
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")  # consume ')'
+                                        return True
+                                    # or add another size to become 2D array
+                                    elif self.peek_next_token() == "{":
+                                        self.match_arrID2D_index_parameter("{")
+                                        #  close it
+                                        if self.peek_next_token() == ")":
+                                            self.match(")")  # consume ')'
+                                            return True
+                                        #  error: not closed
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
+                                    #  error: not followed by a ')' or '{'
+                                    else:
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax error: Expected ')', 'Lcurlbraces', but instead got '{self.peek_next_token()}'")
+                                #  size value is not followed by any of the following (# and Rcurl)
+                                else:
+                                    self.errors.append(
+                                        f"(Line {self.line_number}) | Syntax Error: Expected 'Rcurlbraces', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
+                            #  empty size, proceed to close it with '}'
+                            elif self.peek_next_token() == "}":
+                                self.match("}")
+                                #  close it, 1D empty
+                                if self.peek_next_token() == ")":
+                                    self.match(")")  # consume ')'
+                                    return True
+                                # or add another size to become 2D array
+                                elif self.peek_next_token() == "{":
+                                    self.match_arrID2D_index_parameter("{")
+                                    #  close it
+                                    if self.peek_next_token() == ")":
+                                        self.match(")")  # consume ')'
+                                        return True
+                                    #  error: not closed
+                                    else:
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
+                                #  error: not followed by a '{' or ')'
+                                else:
+                                    self.errors.append(
+                                        f"(Line {self.line_number}) | Syntax error: Expected ')', 'Lcurlbraces', but instead got '{self.peek_next_token()}'")
+                            #  no following
+                            else:
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax error: Expected 'Idnetifier', 'SunLiteral', 'Rcurlbraces', but instead got '{self.peek_next_token()}'")
+                        #  add it
+                        elif self.peek_next_token() == "+":
+                            self.match_mathop2("+")
+                            #  close it
+                            if self.peek_next_token() == ")":
+                                self.match(")")  # consume ')'
+                                return True
+                            #  error: not closed
+                            else:
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
+                        #  subtract it
+                        elif self.peek_next_token() == "-":
+                            self.match_mathop2("-")
+                            #  close it
+                            if self.peek_next_token() == ")":
+                                self.match(")")  # consume ')'
+                                return True
+                            #  error: not closed
+                            else:
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
+                        #  multiply it
+                        elif self.peek_next_token() == "*":
+                            self.match_mathop2("*")
+                            #  close it
+                            if self.peek_next_token() == ")":
+                                self.match(")")  # consume ')'
+                                return True
+                            #  error: not closed
+                            else:
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
+                        #  divide it
+                        elif self.peek_next_token() == "/":
+                            self.match_mathop2("/")
+                            #  close it
+                            if self.peek_next_token() == ")":
+                                self.match(")")  # consume ')'
+                                return True
+                            #  error: not closed
+                            else:
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
+                        #  modulo it
+                        elif self.peek_next_token() == "%":
+                            self.match_mathop2("%")
+                            #  close it
+                            if self.peek_next_token() == ")":
+                                self.match(")")  # consume ')'
+                                return True
+                            #  error: not closed
+                            else:
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
+                        #  exponentiate it
+                        elif self.peek_next_token() == "**":
+                            self.match_exponent2("**")
+                            #  close it
+                            if self.peek_next_token() == ")":
+                                self.match(")")  # consume ')'
+                                return True
+                            #  error: not closed
+                            else:
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
+                        #  close it (single value)
+                        elif self.peek_next_token() == ")":
+                            self.match(")")  # consume ')'
+                            return True
+                        #  error: not followed by any mathops or a terminator
+                        else:
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Syntax error: Expected ')', , but instead got '{self.peek_next_token()}'")
                     #  error: values are not as expected
                     else:
                         self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected 'SunLiteral', "
@@ -5212,7 +5400,7 @@ class SemanticAnalyzer:
                 if self.isParameterVariable:
                     self.function_assignment_variable = self.peek_previous_lexeme()
                     self.check_function_assignment_type() # check its type
-                if re.match(r'Identifier\d*$', self.peek_previous_token()):
+                if re.match(r'Identifier\d*$', self.peek_previous_token()) and not self.isParameterVariable:
                     self.variable_dec = True
                     self.check_variable_usage()
                 #  is it an array index?
@@ -5459,6 +5647,16 @@ class SemanticAnalyzer:
                 if (re.match(r'Identifier\d*$', self.peek_next_token())
                         or "SunLiteral"):
                     self.match(Resources.Value3)  # consume
+                    #  SEMANTIC CHECK
+                    if re.match(r'Identifier\d*$', self.peek_previous_token()):
+                        self.function_parameter_variable()  # is it from a parameter
+                    if self.isParameterVariable:
+                        self.function_assignment_variable = self.peek_previous_lexeme()
+                        self.check_function_assignment_type()  # check its type
+                    if re.match(r'Identifier\d*$', self.peek_previous_token()) and not self.isParameterVariable:
+                        self.variable_dec = True
+                        self.check_variable_usage()
+
                     if self.peek_next_token() == "+":
                         self.match_mathop3("+")  # consume
                     elif self.peek_next_token() == "**":
@@ -11813,6 +12011,7 @@ class SemanticAnalyzer:
                         # SEMANTIC CHECK
                         if re.match(r'Identifier\d*$', self.peek_next_token()):
                             self.current_value = self.peek_next_lexeme()
+
                         else:
                             self.current_value = self.peek_next_token()
                         self.check_assignment_type()
@@ -11826,6 +12025,15 @@ class SemanticAnalyzer:
                                                                 'value': self.current_value}
 
                     self.match(Resources.Value2)  # consume values
+                    #  SEMANTIC CHECK
+                    if re.match(r'Identifier\d*$', self.peek_previous_token()):
+                        self.function_parameter_variable()  # is it from a parameter
+                    if self.isParameterVariable:
+                        self.function_assignment_variable = self.peek_previous_lexeme()
+                        self.check_function_assignment_type()  # check its type
+                    if re.match(r'Identifier\d*$', self.peek_previous_token()) and not self.isParameterVariable:
+                        self.variable_dec = True
+                        self.check_variable_usage()
                     # terminate it?
                     if self.peek_next_token() == "#":
                         self.match("#")
@@ -17587,7 +17795,11 @@ class SemanticAnalyzer:
                 self.match(Resources.Value2)  # consume values
                 # SEMANTIC CHECK
                 if re.match(r'Identifier\d*$', self.peek_previous_token()):
-                    self.check_variable_usage()
+                    self.variable_dec = True
+                    self.check_ifVariable_isParameter()
+
+                    if not self.return_var:
+                        self.check_variable_usage()
                 #  return is an array index path
                 if self.peek_next_token() == "{":
                     #  SEMANTIC CHECK
@@ -20265,6 +20477,7 @@ class SemanticAnalyzer:
                     #  close it, and no next if-other bc this is the 'other'
                     if self.peek_next_token() == "]":
                         self.match("]")
+                        return True
                     #  error: not closed
                     elif (
                             self.peek_previous_token() == "#" or self.peek_previous_token() == "[" or self.peek_previous_token() == "]") and self.peek_next_token() != "]":
@@ -20284,6 +20497,7 @@ class SemanticAnalyzer:
                     #  close it, and no next if-other bc this is the 'other'
                     if self.peek_next_token() == "]":
                         self.match("]")
+                        return True
                     #  error: not closed
                     elif (
                             self.peek_previous_token() == "#" or self.peek_previous_token() == "[" or self.peek_previous_token() == "]") and self.peek_next_token() != "]":
@@ -20300,28 +20514,6 @@ class SemanticAnalyzer:
             #  close if condition
             if self.peek_next_token() == "]":
                 self.match("]")
-                #  is it followed by an Other/Other-If condition?
-                if self.peek_next_token() == "Other":
-                    self.match("Other")
-                    #  is it an Other-If?
-                    if self.peek_next_token() == "If":
-                        self.match("If")
-                        if self.peek_next_token() == "(":
-                            self.parse_if_stmnt()
-                        #  Other-If statement is not followed by '('
-                        else:
-                            self.errors.append(
-                                f"(Line {self.line_number}) | Syntax Error: Expected ')', but instead got '{self.peek_next_token()}'")
-                    #  is it an Other Condition?
-                    elif self.peek_next_token() == "[":
-                        self.parse_else_stmnt()
-                    #  error: expected '[' or 'If' after 'Other'
-                    else:
-                        self.errors.append(
-                            f"(Line {self.line_number}) | Syntax Error: Expected '[', 'If', but instead got '{self.peek_next_token()}'")
-                #  it is not followed by Other keyword
-                else:
-                    return True
             #  if condition is not closed
             elif (
                     self.peek_previous_token() == "#" or self.peek_previous_token() == "[" or self.peek_previous_token() == "]") and self.peek_next_token() != "]":
@@ -20336,7 +20528,7 @@ class SemanticAnalyzer:
                     self.peek_previous_token() == "#" or self.peek_previous_token() == "[" or self.peek_previous_token() == "]") and self.peek_next_token() != "]":
                 self.notMainError = False
                 self.errors.append(
-                    f"(Line {self.line_number}) | Syntax Error: Expected ']', but instead got '{self.peek_next_token()}'")
+                    f"(Line {self.line_number}) | Syntax Error: Expected ']', 'Deviate', 'Proceed', but instead got '{self.peek_next_token()}'")
         #  error: expected '[' or 'If' after 'Other'
         else:
             self.errors.append(
@@ -21577,6 +21769,7 @@ class SemanticAnalyzer:
             # self.errors.append(f"Syntax Error: Expected 'Import', 'ISS', 'Static', 'Boolean', 'Autom', 'Luhman', "
             # f"'Starsys', 'Void', 'Class', 'Sun' after 'Formulate'")
 
+        print(self.symbol_table)
         # SEMANTIC CHECK
         self.check_undefined_functions()
 
@@ -21623,7 +21816,7 @@ class SemanticAnalyzer:
                 if variable_info['var_name'] == var_name and not self.prototype_function_exist:
                     # Variable with the same name already exists in this function, report an error
                     self.errors.append(
-                        f"(Line {self.line_number}) | Semantic Error: (Redeclaration Error) Variable '{var_name}' is already declared in the same scope")
+                        f"(Line {self.line_number}) | Semantic Error: (Redeclaration Error) Variable '{var_name}' is already declared as a parameter")
                     return
 
             # If the variable doesn't exist in this function, append it to the list
@@ -21643,7 +21836,7 @@ class SemanticAnalyzer:
                 if variable_info['var_name'] == var_name and not self.function_exist:
                     # Variable with the same name already exists in this function, report an error
                     self.errors.append(
-                        f"(Line {self.line_number}) | Semantic Error: (Redeclaration Error) Variable '{var_name}' is already declared as a parameter")
+                        f"(Line {self.line_number}) | Semantic Error: (Redeclaration Error) Variable '{var_name}' is already defined as a parameter")
                     return
 
             # If the variable doesn't exist in this function, append it to the list
@@ -21841,94 +22034,84 @@ class SemanticAnalyzer:
 
     #  Check if the variable is declared within its scope
     def check_variable_usage(self):
+        # Get the previous lexeme (assumed to be the variable name)
         var_name = self.peek_previous_lexeme()
 
-        # Check in the symbol table
-        if var_name in self.symbol_table:
-            self._check_scope_and_datatype(var_name)
-        # Check in the array variable tables
-        elif var_name in self.array_variable_table:
-            self._check_array_scope(var_name)
-        elif var_name in self.array2_variable_table:
-            self._check_array2_scope(var_name)
-        # Check in the function parameters
-        elif var_name in [param['var_name'] for param in self.parameter_table.get(self.current_function_name, [])]:
-            self._check_parameter_scope_and_datatype(var_name)
-        # Check in the fore table
-        elif var_name in [entry['var_name'] for entry in self.fore_table.values()]:
+        # Check if the variable is a parameter
+        if var_name in [param['var_name'] for param in
+                          self.parameter_table.get(self.current_function_name, [])]:
+            self.isParameterVariable = True
+            # Check if the variable is in the function parameter
+            current_vardec = self.symbol_table[self.var_name]['datatype']
+            for param in self.parameter_table.get(self.current_function_name, []):
+                if var_name == param['var_name']:
+                    parameter_variable_dtype = param['datatype']
+                    if (current_vardec == "Sun" and parameter_variable_dtype == "Luhman") or (
+                            current_vardec == "Luhman" and parameter_variable_dtype == "Sun"):
+                        return True
+                    elif current_vardec != parameter_variable_dtype:
+                        self.errors.append(
+                            f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Variable '{var_name}' is incompatible with variable '{self.var_name}' of datatype '{current_vardec}'")
+                    return True
             return True
+        # Check if the variable is in the symbol table
+        elif var_name in self.symbol_table:
+            declared_scope = self.symbol_table[var_name]['scope']
+            # Check if the declared scope matches the current scope
+            if declared_scope == 'global' or declared_scope == self.current_scope or declared_scope.startswith(
+                    'function'):
+                if not self.variable_dec and not self.case_vardec:
+                    return True  # Variable usage is valid within the current scope
+                elif self.variable_dec:
+                    current_vardec = self.symbol_table[self.var_name]['datatype']
+                    compare_vardec = self.symbol_table[var_name]['datatype']
+                    if current_vardec == "Sun" and compare_vardec == "Luhman" or current_vardec == "Luhman" and compare_vardec == "Sun":
+                        return True
+                    elif current_vardec != compare_vardec:
+                        self.errors.append(
+                            f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Variable '{var_name}' is incompatible with variable '{self.var_name}' of datatype '{current_vardec}'")
+                elif self.case_vardec:
+                    compare_case_vardec = self.symbol_table[var_name]['datatype']
+                    if compare_case_vardec != "Sun":
+                        self.errors.append(
+                            f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Variable '{var_name}' is of datatype {compare_case_vardec}. Case statements can only accept variable of datatype 'Sun'")
+                    else:
+                        return True
+            elif not self.isParameterVariable:
+                self.errors.append(
+                    f"(Line {self.line_number}) | Semantic Error: (Undeclared Variable) Variable '{var_name}' is not accessible from the current scope")
+                return None, False
+        # Variable is declared as an array (1D)
+        elif var_name in self.array_variable_table:
+            declared_scope = self.array_variable_table[var_name]['scope']
+            # Check if the declared scope matches the current scope
+            if declared_scope == 'global' or declared_scope == self.current_scope or declared_scope.startswith(
+                    'function'):
+                return True  # Variable usage is valid within the current scope
+            else:
+                self.errors.append(
+                    f"(Line {self.line_number}) | Semantic Error: (Undeclared Variable) Variable '{var_name}' is not accessible from the current scope")
+                return None, False
+        # Variable is declared as an array (1D)
+        elif var_name in self.array2_variable_table:
+            declared_scope = self.array2_variable_table[var_name]['scope']
+            # Check if the declared scope matches the current scope
+            if declared_scope == 'global' or declared_scope == self.current_scope or declared_scope.startswith(
+                    'function'):
+                return True  # Variable usage is valid within the current scope
+            else:
+                self.errors.append(
+                    f"(Line {self.line_number}) | Semantic Error: (Undeclared Variable) Variable '{var_name}' is not accessible from the current scope")
+                return None, False
         else:
-            # Undeclared variable error
+            # Check if the variable is in the fore_table
+            for key in self.fore_table:
+                if var_name == self.fore_table[key]['var_name']:
+                    return True
+
             self.errors.append(
                 f"(Line {self.line_number}) | Semantic Error: (Undeclared Variable) Variable '{var_name}' is not declared")
             return None, False
-        return True
-
-    #  HELPER METHOD FOR CHECK_VARIABLE_USAGE
-    def _check_scope_and_datatype(self, var_name):
-        variable_entry = self.symbol_table[var_name]
-        declared_scope = variable_entry['scope']
-        declared_datatype = variable_entry['datatype']
-
-        if declared_scope == 'global' or declared_scope == self.current_scope or declared_scope.startswith('function'):
-            if self.variable_dec or self.case_vardec:
-                self._check_datatype_compatibility(declared_datatype, var_name)
-            else:
-                return True
-        else:
-            self.errors.append(
-                f"(Line {self.line_number}) | Semantic Error: (Scope Error) Variable '{var_name}' is not accessible from the current scope")
-
-    #  HELPER METHOD FOR CHECK_VARIABLE_USAGE
-    def _check_array_scope(self, var_name):
-        array_entry = self.array_variable_table[var_name]
-        declared_scope = array_entry['scope']
-
-        if declared_scope == 'global' or declared_scope == self.current_scope or declared_scope.startswith('function'):
-            return True
-        else:
-            self.errors.append(
-                f"(Line {self.line_number}) | Semantic Error: (Scope Error) Array variable '{var_name}' is not accessible from the current scope")
-
-    #  HELPER METHOD FOR CHECK_VARIABLE_USAGE
-    def _check_array2_scope(self, var_name):
-        array2_entry = self.array2_variable_table[var_name]
-        declared_scope = array2_entry['scope']
-
-        if declared_scope == 'global' or declared_scope == self.current_scope or declared_scope.startswith('function'):
-            return True
-        else:
-            self.errors.append(
-                f"(Line {self.line_number}) | Semantic Error: (Scope Error) 2D array variable '{var_name}' is not accessible from the current scope")
-
-    #  HELPER METHOD FOR CHECK_VARIABLE_USAGE
-    def _check_parameter_scope_and_datatype(self, var_name):
-        for param in self.parameter_table.get(self.current_function_name, []):
-            if var_name == param['var_name']:
-                parameter_datatype = param['datatype']
-                current_vardec = self.symbol_table[self.var_name]['datatype']
-                if (current_vardec == "Sun" and parameter_datatype == "Luhman") or (
-                        current_vardec == "Luhman" and parameter_datatype == "Sun"):
-                    return True
-                elif current_vardec != parameter_datatype:
-                    self.errors.append(
-                        f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Variable '{var_name}' is incompatible with variable '{self.var_name}' of datatype '{current_vardec}'")
-                return True
-
-    #  HELPER METHOD FOR CHECK_VARIABLE_USAGE
-    def _check_datatype_compatibility(self, declared_datatype, var_name):
-        current_datatype = self.symbol_table[self.var_name]['datatype']
-        if declared_datatype == "Sun" and current_datatype == "Luhman" or declared_datatype == "Luhman" and current_datatype == "Sun":
-            return True
-        elif declared_datatype != current_datatype:
-            self.errors.append(
-                f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Variable '{var_name}' is incompatible with variable '{self.var_name}' of datatype '{declared_datatype}'")
-        elif self.case_vardec:
-            if declared_datatype != "Sun":
-                self.errors.append(
-                    f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Variable '{var_name}' is of datatype '{declared_datatype}'. Case statements can only accept variables of datatype 'Sun'")
-            else:
-                return True
 
     #  Check if the variable contains the right type (condition)
     def check_variable_type_usage(self):
@@ -21946,7 +22129,7 @@ class SemanticAnalyzer:
                                 self.current_match == "SunLiteral" or self.current_match == "LuhmanLiteral" or self.current_match == "True" or self.current_match == "False")):
                     self.errors.append(
                         f"(Line {self.line_number}) | Semantic Error: (Type Comparison Mismatch) Variable '{id}' is a Starsys. Starsysliteral cannot be compared to {self.current_match}.")
-                elif (id_value != "StarsysLiteral" and (self.current_relop == "<="
+                elif (id_value != "StarsysLiteral" and id_value is not None and (self.current_relop == "<="
                                                         or self.current_relop == ">=" or self.current_relop == "<"
                                                         or self.current_relop == ">" or self.current_relop == "+"
                                                         or self.current_relop == "-" or self.current_relop == "*"
@@ -22041,15 +22224,37 @@ class SemanticAnalyzer:
                           and (id_value == "True" or id_value == "False")):
                         self.errors.append(
                             f"(Line {self.line_number}) | Semantic Error: (Invalid Operator) Value of variable '{self.current_match}' is '{current_match}'. Boolean Values cannot be compared using '{self.current_relop}'.")
-                    elif current_match == None: # Get Datatype instead
-                        self.errors.append(
-                            f"(Line {self.line_number}) | Semantic Error: (Type Comparison Mismatch) Variable '{self.current_match}' has no value to be compared")
-                    elif id_value == None:  # Get Datatype instead
-                        self.errors.append(
-                            f"(Line {self.line_number}) | Semantic Error: (Type Comparison Mismatch) Variable '{id}' has no value to be compared")
+                    elif current_match == None and id_value == None: # Get Datatype instead
+                        id_datatype = self.symbol_table[id]['datatype']
+                        current_match_datatype = self.symbol_table[self.current_match]['datatype']
+                        if current_match_datatype == "Sun" or current_match_datatype == "Luhman" and id_datatype == "Sun" or id_datatype == "Luhman":
+                            return True
+                        elif current_match_datatype == "Boolean" and id_datatype == "Boolean" and (self.current_relop == "<="
+                                                                       or self.current_relop == ">=" or self.current_relop == "<"
+                                                                       or self.current_relop == ">" or self.current_relop == "+"
+                                                                       or self.current_relop == "-" or self.current_relop == "*"
+                                                                       or self.current_relop == "/" or self.current_relop == "%"):
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Semantic Error: (Invalid Operator) Boolean Values cannot be compared using '{self.current_relop}'.")
+                        elif current_match_datatype != id_datatype:
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Semantic Error: (Type Comparison Mismatch) Variable '{self.current_match}' is of datatype '{current_match_datatype}'. Datatype '{current_match_datatype}' cannot be compared with datatype '{id_datatype}'")
                 elif id_value == None:  # Get Datatype instead
-                    self.errors.append(
-                        f"(Line {self.line_number}) | Semantic Error: (Type Comparison Mismatch) Variable '{id}' has no value to be compared")
+                    id_datatype = self.symbol_table[id]['datatype']
+                    if id_datatype == "Starsys" and (self.current_match == "SunLiteral" or self.current_match == "LuhmanLiteral" or self.current_match == "True" or self.current_match == "False"):
+                        self.errors.append(
+                            f"(Line {self.line_number}) | Semantic Error: (Type Comparison Mismatch) Variable '{id}' is of datatype '{id_datatype}', therefore cannot be compared with value '{self.current_match}'")
+                    elif (self.current_match == "StarsysLiteral" or self.current_match == "True" or self.current_match == "False") and (id_datatype == "Sun" or id_datatype == "Luhman"):
+                        self.errors.append(
+                            f"(Line {self.line_number}) | Semantic Error: (Type Comparison Mismatch) Variable '{id}' is of datatype '{id_datatype}', therefore cannot be compared with value '{self.current_match}'")
+                    elif id_datatype == "Boolean" and (self.current_match == "True" or self.current_match == "False") and (self.current_relop == "<="
+                                                                       or self.current_relop == ">=" or self.current_relop == "<"
+                                                                       or self.current_relop == ">" or self.current_relop == "+"
+                                                                       or self.current_relop == "-" or self.current_relop == "*"
+                                                                       or self.current_relop == "/" or self.current_relop == "%"):
+                        self.errors.append(
+                            f"(Line {self.line_number}) | Semantic Error: (Invalid Operator) Boolean Values cannot be compared using '{self.current_relop}'.")
+
         elif (self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
               or self.peek_previous_token() == "StarsysLiteral" or self.peek_previous_token() == "True"
               or self.peek_previous_token() == "False"):
@@ -22113,7 +22318,7 @@ class SemanticAnalyzer:
                         and (value == "SunLiteral" or value == "LuhmanLiteral" or value == "True" or value == "False")):
                     self.errors.append(
                         f"(Line {self.line_number}) | Semantic Error: (Type Comparison Mismatch) Variable '{self.current_match}' is a Starsys. Starsysliteral cannot be compared to {value}")
-                elif (current_match != "StarsysLiteral" and (self.current_relop == "<="
+                elif (current_match != "StarsysLiteral" and current_match is not None and (self.current_relop == "<="
                                                              or self.current_relop == ">=" or self.current_relop == "<"
                                                              or self.current_relop == ">" or self.current_relop == "+"
                                                              or self.current_relop == "-" or self.current_relop == "*"
@@ -22151,8 +22356,23 @@ class SemanticAnalyzer:
                     self.errors.append(
                         f"(Line {self.line_number}) | Semantic Error: (Invalid Operator) Value of variable '{self.current_match}' is '{current_match}'. Boolean Values cannot be compared using '{self.current_relop}'.")
                 elif current_match == None:  # Get Datatype instead
-                    self.errors.append(
-                        f"(Line {self.line_number}) | Semantic Error: (Type Comparison Mismatch) Variable '{self.current_match}' has no value to be compared")
+                    current_match_datatype = self.symbol_table[self.current_match]['datatype']
+                    if current_match_datatype == "Starsys" and (
+                            value == "SunLiteral" or value== "LuhmanLiteral" or value == "True" or value == "False"):
+                        self.errors.append(
+                            f"(Line {self.line_number}) | Semantic Error: (Type Comparison Mismatch) Variable '{self.current_match}' is of datatype '{current_match_datatype}', therefore cannot be compared with value '{value}'")
+                    elif (value == "StarsysLiteral" or value == "True" or value == "False") and (current_match_datatype == "Sun" or current_match_datatype == "Luhman"):
+                        self.errors.append(
+                            f"(Line {self.line_number}) | Semantic Error: (Type Comparison Mismatch) Variable '{self.current_match}' is of datatype '{current_match_datatype}', therefore cannot be compared with value '{value}'")
+                    elif current_match_datatype == "Boolean" and (
+                            value == "True" or value == "False") and (
+                            self.current_relop == "<="
+                            or self.current_relop == ">=" or self.current_relop == "<"
+                            or self.current_relop == ">" or self.current_relop == "+"
+                            or self.current_relop == "-" or self.current_relop == "*"
+                            or self.current_relop == "/" or self.current_relop == "%"):
+                        self.errors.append(
+                            f"(Line {self.line_number}) | Semantic Error: (Invalid Operator) Boolean Values cannot be compared using '{self.current_relop}'.")
 
     # assignment value checking
     def check_assignment_type(self):
@@ -22351,6 +22571,7 @@ class SemanticAnalyzer:
                         self.parameter_table.get(self.current_function_name, [])]:
             self.output_var = True
             self.input_var = True
+            self.return_var = True
             return True
         else:
             return
@@ -22604,45 +22825,46 @@ class SemanticAnalyzer:
         variable_entry = self.symbol_table.get(self.var_name)
         # Perform semantic analysis specific to datatypes and their value
         expected_datatype = variable_entry['datatype']
+        value = self.symbol_table[self.var_name]['value']
         if self.var_name in self.symbol_table:
             # Perform semantic checks based on datatype
-            if expected_datatype == "Sun" and self.peek_next_token() == "StarsysLiteral":
+            if expected_datatype == "Sun" and (self.peek_next_token() == "StarsysLiteral" or value == "StarsysLiteral"):
                 self.errors.append(
                     f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Value 'StarsysLiteral' is Incompatible with Datatype 'Sun'")
-            elif expected_datatype == "Sun" and self.peek_next_token() == "True":
+            elif expected_datatype == "Sun" and (self.peek_next_token() == "True" or value == "True"):
                 self.errors.append(
                     f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Value 'True' is Incompatible with Datatype 'Sun'")
-            elif expected_datatype == "Sun" and self.peek_next_token() == "False":
+            elif expected_datatype == "Sun" and (self.peek_next_token() == "False" or value == "False"):
                 self.errors.append(
                     f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Value 'False' is Incompatible with Datatype 'Sun'")
-            elif expected_datatype == "Luhman" and self.peek_next_token() == "StarsysLiteral":
+            elif expected_datatype == "Luhman" and (self.peek_next_token() == "StarsysLiteral" or value == "StarsysLiteral"):
                 self.errors.append(
                     f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Value 'StarsysLiteral' is Incompatible with Datatype 'Luhman'")
-            elif expected_datatype == "Luhman" and self.peek_next_token() == "True":
+            elif expected_datatype == "Luhman" and (self.peek_next_token() == "True" or value == "True"):
                 self.errors.append(
                     f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Value 'True' is Incompatible with Datatype 'Luhman'")
-            elif expected_datatype == "Luhman" and self.peek_next_token() == "False":
+            elif expected_datatype == "Luhman" and (self.peek_next_token() == "False" or value == "False"):
                 self.errors.append(
                     f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Value 'False' is Incompatible with Datatype 'Luhman'")
-            elif expected_datatype == "Starsys" and self.peek_next_token() == "LuhmanLiteral":
+            elif expected_datatype == "Starsys" and (self.peek_next_token() == "LuhmanLiteral" or value == "LuhmanLiteral"):
                 self.errors.append(
                     f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Value 'LuhmanLiteral' is Incompatible with Datatype 'Starsys'")
-            elif expected_datatype == "Starsys" and self.peek_next_token() == "SunLiteral":
+            elif expected_datatype == "Starsys" and (self.peek_next_token() == "SunLiteral" or value == "SunLiteral"):
                 self.errors.append(
                     f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Value 'SunLiteral' is Incompatible with Datatype 'Starsys'")
-            elif expected_datatype == "Starsys" and self.peek_next_token() == "True":
+            elif expected_datatype == "Starsys" and (self.peek_next_token() == "True" or value == "True"):
                 self.errors.append(
                     f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Value 'True' is Incompatible with Datatype 'Starsys'")
-            elif expected_datatype == "Starsys" and self.peek_next_token() == "False":
+            elif expected_datatype == "Starsys" and (self.peek_next_token() == "False" or value == "False"):
                 self.errors.append(
                     f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Value 'False' is Incompatible with Datatype 'Starsys'")
-            elif expected_datatype == "Boolean" and self.peek_next_token() == "SunLiteral":
+            elif expected_datatype == "Boolean" and (self.peek_next_token() == "SunLiteral" or value == "SunLiteral"):
                 self.errors.append(
                     f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Value 'SunLiteral' is Incompatible with Datatype 'Boolean'")
-            elif expected_datatype == "Boolean" and self.peek_next_token() == "LuhmanLiteral":
+            elif expected_datatype == "Boolean" and (self.peek_next_token() == "LuhmanLiteral" or value == "LuhmanLiteral"):
                 self.errors.append(
                     f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Value 'LuhmanLiteral' is Incompatible with Datatype 'Boolean'")
-            elif expected_datatype == "Boolean" and self.peek_next_token() == "StarsysLiteral":
+            elif expected_datatype == "Boolean" and (self.peek_next_token() == "StarsysLiteral" or value == "StarsysLiteral"):
                 self.errors.append(
                     f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Value 'StarsysLiteral' is Incompatible with Datatype 'Boolean'")
         # the variable is not declared
