@@ -113,9 +113,6 @@ class SyntaxAnalyzer:
                 else:
                     self.errors.append(f"(Line {self.line_number}) | Syntax error: Expected 'Identifier' "
                                        f"after '{self.peek_previous_token()}'")
-            elif self.peek_next_token() == "~":
-                self.errors.append(
-                    f"(Line {self.line_number}) | Syntax error: Expected ',', but instead got '{self.peek_next_token()}'")
             else:
                 return True  # else: last identifier has no following identifiers (comma)
         else:
@@ -4043,9 +4040,9 @@ class SyntaxAnalyzer:
                     self.parenthError = True
                     return False
             #  check if it is followed by these values
-            elif (re.match(r'Identifier\d*$', self.peek_next_token()) or self.peek_next_token() == "SunLiteral"
-                  or self.peek_next_token() == "LuhmanLiteral" or self.peek_next_token() == "StarsysLiteral"
-                  or self.peek_next_token() == "True" or self.peek_next_token() == "False"):
+            elif (self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral"
+                  or self.peek_next_token() == "StarsysLiteral" or self.peek_next_token() == "True"
+                  or self.peek_next_token() == "False"):
                 self.match(Resources.Value1)
                 if self.peek_next_token() == ",":
                     self.isMultiple = True
@@ -4349,6 +4346,250 @@ class SyntaxAnalyzer:
                         return True  # else: last identifier has no following identifiers (comma)
                 else:
                     return True  # else: last identifier has no following identifiers (comma)
+            #  function assign value path
+            elif re.match(r'Identifier\d*$', self.peek_next_token()):
+                self.match("Identifier")  # consume
+                #  is '(' next?
+                if self.peek_next_token() == "(":
+                    self.match("(")
+                    #  assign values
+                    if (self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral"
+                            or self.peek_next_token() == "StarsysLiteral" or re.match(r'Identifier\d*$',
+                                                                                      self.peek_next_token())
+                            or self.peek_next_token() == "True" or self.peek_next_token() == "False"):
+                        self.matchValue_mult(Resources.Value1)
+                        # close it
+                        if self.peek_next_token() == ")":
+                            self.match(")")
+                            return True
+                        #  error: expected ')'
+                        else:
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
+                    #  not followed by values (close it)
+                    elif self.peek_next_token() == ")":
+                        self.match(")")
+                        return True
+                    # error: not followed by any values
+                    else:
+                        self.errors.append(
+                            f"(Line {self.line_number}) | Syntax error: Expected ')', 'SunLiteral', 'LuhmanLiteral', 'StarsysLiteral', 'Identifier', but instead got '{self.peek_next_token()}'")
+                #  assign value?
+                elif self.peek_next_token() == ",":
+                    self.isMultiple = True
+                    self.match(",")
+                    if re.match(r'Identifier\d*$', self.peek_next_token()):
+                        self.matchID_mult("Identifier")
+                        if self.peek_next_token() == "=":
+                            self.match_mult_assign("=")
+                        else:
+                            return True  # else: last identifier has no assigned value (=)
+                    else:
+                        self.errors.append(
+                            f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', but instead got '{self.peek_next_token()}'")
+                #  add is next
+                elif self.peek_next_token() == "+":
+                    self.match_mathop("+")
+                #  exponentiation is next
+                elif self.peek_next_token() == "**":
+                    self.match_exponent("**")
+                #  subtract is next
+                elif self.peek_next_token() == "-":
+                    self.match_mathop("-")
+                #  multiply is next
+                elif self.peek_next_token() == "*":
+                    self.match_mathop("*")
+                #  divide is next
+                elif self.peek_next_token() == "/":
+                    self.match_mathop("/")
+                #  modulo is next
+                elif self.peek_next_token() == "%":
+                    self.match_mathop("%")
+                #  array index assign path
+                elif self.peek_next_token() == "{":
+                    self.arrayError = True
+                    self.match("{")
+                    #  array index assign path
+                    if (re.match(r'Identifier\d*$', self.peek_next_token())
+                            or self.peek_next_token() == "SunLiteral"):
+                        self.match(Resources.Value3)  # consume the values
+                        #  size expression
+                        if (
+                                self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                                or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                            self.match_mathop3(Resources.mathop1)  # size is a math expr
+                            #  close it with "}" if size is fulfilled
+                            if self.peek_next_token() == "}":
+                                self.match("}")
+                                # Terminate it
+                                if self.peek_next_token() == "#":
+                                    return
+                                #  add is next
+                                elif self.peek_next_token() == "+":
+                                    self.match_mathop("+")
+                                #  exponentiation is next
+                                elif self.peek_next_token() == "**":
+                                    self.match_exponent("**")
+                                #  subtract is next
+                                elif self.peek_next_token() == "-":
+                                    self.match_mathop("-")
+                                #  multiply is next
+                                elif self.peek_next_token() == "*":
+                                    self.match_mathop("*")
+                                #  divide is next
+                                elif self.peek_next_token() == "/":
+                                    self.match_mathop("/")
+                                #  modulo is next
+                                elif self.peek_next_token() == "%":
+                                    self.match_mathop("%")
+                                #  assign value?
+                                elif self.peek_next_token() == ",":
+                                    self.isMultiple = True
+                                    self.arrayError = False
+                                    self.match(",")
+                                    if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                        self.matchID_mult("Identifier")
+                                        if self.peek_next_token() == "=":
+                                            self.match_mult_assign("=")
+                                        else:
+                                            return True  # else: last identifier has no assigned value (=)
+                                    else:
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', but instead got '{self.peek_next_token()}'")
+                                # add another size to become 2D array
+                                elif self.peek_next_token() == "{":
+                                    self.match_arrID2D_assign("{")
+                                    # Terminate it
+                                    if self.peek_next_token() == "#":
+                                        return
+                                    #  add is next
+                                    elif self.peek_next_token() == "+":
+                                        self.match_mathop("+")
+                                    #  exponentiation is next
+                                    elif self.peek_next_token() == "**":
+                                        self.match_exponent("**")
+                                    #  subtract is next
+                                    elif self.peek_next_token() == "-":
+                                        self.match_mathop("-")
+                                    #  multiply is next
+                                    elif self.peek_next_token() == "*":
+                                        self.match_mathop("*")
+                                    #  divide is next
+                                    elif self.peek_next_token() == "/":
+                                        self.match_mathop("/")
+                                    #  modulo is next
+                                    elif self.peek_next_token() == "%":
+                                        self.match_mathop("%")
+                                    #  assign value?
+                                    elif self.peek_next_token() == ",":
+                                        self.isMultiple = True
+                                        self.arrayError = False
+                                        self.match(",")
+                                        if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                            self.matchID_mult("Identifier")
+                                            if self.peek_next_token() == "=":
+                                                self.match_mult_assign("=")
+                                            else:
+                                                return True  # else: last identifier has no assigned value (=)
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', but instead got '{self.peek_next_token()}'")
+                                    #  not terminated or followed
+                                    else:
+                                        return False
+                                #  not terminated or followed
+                                else:
+                                    return False
+                            #  not closed with '}'
+                            else:
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax Error: Expected 'Rcurlbrace', but instead got '{self.peek_next_token()}'")
+                        #  size is single value
+                        elif self.peek_next_token() == "}":
+                            self.match("}")
+                            # Terminate it
+                            if self.peek_next_token() == "#":
+                                return
+                            #  add is next
+                            elif self.peek_next_token() == "+":
+                                self.match_mathop("+")
+                            #  exponentiation is next
+                            elif self.peek_next_token() == "**":
+                                self.match_exponent("**")
+                            #  subtract is next
+                            elif self.peek_next_token() == "-":
+                                self.match_mathop("-")
+                            #  multiply is next
+                            elif self.peek_next_token() == "*":
+                                self.match_mathop("*")
+                            #  divide is next
+                            elif self.peek_next_token() == "/":
+                                self.match_mathop("/")
+                            #  modulo is next
+                            elif self.peek_next_token() == "%":
+                                self.match_mathop("%")
+                            #  assign value?
+                            elif self.peek_next_token() == ",":
+                                self.isMultiple = True
+                                self.arrayError = False
+                                self.match(",")
+                                if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                    self.matchID_mult("Identifier")
+                                    if self.peek_next_token() == "=":
+                                        self.match_mult_assign("=")
+                                    else:
+                                        return True  # else: last identifier has no assigned value (=)
+                                else:
+                                    self.errors.append(
+                                        f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', but instead got '{self.peek_next_token()}'")
+                            # add another size to become 2D array
+                            elif self.peek_next_token() == "{":
+                                self.match_arrID2D_assign("{")
+                                # Terminate it
+                                if self.peek_next_token() == "#":
+                                    return
+                                #  add is next
+                                elif self.peek_next_token() == "+":
+                                    self.match_mathop("+")
+                                #  exponentiation is next
+                                elif self.peek_next_token() == "**":
+                                    self.match_exponent("**")
+                                #  subtract is next
+                                elif self.peek_next_token() == "-":
+                                    self.match_mathop("-")
+                                #  multiply is next
+                                elif self.peek_next_token() == "*":
+                                    self.match_mathop("*")
+                                #  divide is next
+                                elif self.peek_next_token() == "/":
+                                    self.match_mathop("/")
+                                #  modulo is next
+                                elif self.peek_next_token() == "%":
+                                    self.match_mathop("%")
+                                #  assign value?
+                                elif self.peek_next_token() == ",":
+                                    self.isMultiple = True
+                                    self.arrayError = False
+                                    self.match(",")
+                                    if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                        self.matchID_mult("Identifier")
+                                        if self.peek_next_token() == "=":
+                                            self.match_mult_assign("=")
+                                        else:
+                                            return True  # else: last identifier has no assigned value (=)
+                                    else:
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', but instead got '{self.peek_next_token()}'")
+                                #  not terminated or followed
+                                else:
+                                    return False
+                            #  not terminated or followed
+                            else:
+                                return False
+                        #  size value is not followed by any of the following (# and Rcurl)
+                        else:
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Syntax Error: Expected 'Rcurlbraces', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
             #  type conversion path
             elif self.peek_next_token() == "Sun":
                 self.match("Sun")
@@ -8507,62 +8748,6 @@ class SyntaxAnalyzer:
             else:
                 self.errors.append(
                     f"(Line {self.line_number}) | Syntax Error: Expected '[', but instead got '{self.peek_next_token()}'")
-
-    #  method that parse the import statement
-    def parse_import_statement(self):
-        while self.peek_next_token() in ["Import"]:
-            if self.peek_next_token() == "Import":
-                self.match("Import")
-                if re.match(r'Identifier\d*$', self.peek_next_token()):
-                    self.match("Identifier")
-                    if self.peek_next_token() == "#":
-                        self.match("#")
-                    elif self.peek_next_token() == "~":  # proceed to tilde syntax
-                        self.parse_import_statement1()
-                    # multiple?
-                    elif self.peek_next_token() == ",":
-                        self.match(",")
-                        # must be followed by an identifier
-                        if re.match(r'Identifier\d*$', self.peek_next_token()):
-                            self.matchID_mult("Identifier")
-                            # terminate?
-                            if self.peek_next_token() == "#":
-                                self.match("#")
-                            # not terminated
-                            elif self.peek_next_token() != "#" and re.match(r'Identifier\d*$',
-                                                                            self.peek_previous_token()):
-                                print("12")
-                                self.errors.append(
-                                    f"(Line {self.line_number}) | Syntax error: Expected '#', ',', but instead got '{self.peek_next_token()}'")
-                        else:
-                            self.errors.append(
-                                f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', but instead got '{self.peek_next_token()}'")
-                    else:
-                        self.errors.append(
-                            f"(Line {self.line_number}) | Syntax error: Expected '~', 'comma', '#', but instead got '{self.peek_next_token()}'")
-                else:
-                    self.errors.append(
-                        f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', but instead got '{self.peek_next_token()}'")
-            else:
-                break
-
-    #  method that also parse the import statement (tilde syntax)
-    def parse_import_statement1(self):
-        if self.peek_next_token() == "~":
-            self.match("~")
-            if re.match(r'Identifier\d*$', self.peek_next_token()):
-                self.matchID_mult("Identifier")
-                if self.peek_next_token() == "#":
-                    self.match("#")
-                else:
-                    self.errors.append(
-                        f"(Line {self.line_number}) | Syntax error: Expected '#', but instead got '{self.peek_next_token()}'")
-            else:
-                self.errors.append(
-                    f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', but instead got '{self.peek_next_token()}'")
-        else:
-            self.errors.append(
-                f"(Line {self.line_number}) | Syntax error: Expected '~', ',', but instead got '{self.peek_next_token()}'")
 
     # method for parsing variable declarations (global)
     def parse_variable_declaration(self):
@@ -20580,15 +20765,13 @@ class SyntaxAnalyzer:
             # Check if there are no statements after Formulate, Disintegrate immediately
             if self.peek_next_token() == "Disintegrate":
                 self.disintegrate_exist = True
-                self.errors.append(f"Syntax Error: Expected 'Import', 'ISS', 'Static', 'Boolean', 'Autom', 'Luhman', "
+                self.errors.append(f"Syntax Error: Expected  'ISS', 'Static', 'Boolean', 'Autom', 'Luhman', "
                                    f"'Starsys', 'Void', 'Class', 'Sun' after 'Formulate'")
             # must be followed by either of the values
             if (self.peek_next_token() == "Static" or self.peek_next_token() == "Sun"
                     or self.peek_next_token() == "Luhman" or self.peek_next_token() == "Starsys"
                     or self.peek_next_token() == "Boolean" or self.peek_next_token() == "Autom"
-                    or self.peek_next_token() == "Void" or self.peek_next_token() == "ISS" or self.peek_next_token() == "Class" or self.peek_next_token() == "Import"):
-                #  parse import statement
-                self.parse_import_statement()
+                    or self.peek_next_token() == "Void" or self.peek_next_token() == "ISS" or self.peek_next_token() == "Class"):
                 # Parse: is it a Sun global variable declaration or a subfunction prototype?
                 while self.peek_next_token() in ["Static", "Sun", "Luhman", "Starsys", "Boolean", "Autom", "Void",
                                                  "ISS", "Class"]:
@@ -20713,21 +20896,18 @@ class SyntaxAnalyzer:
                         break
             else:
                 self.errors.append(
-                    f"Syntax Error: Expected 'Import', 'Sun', 'Luhman', 'Starsys', 'Boolean', 'Autom', 'Static', 'Void', 'Class', 'ISS', but instead got '{self.peek_next_token()}'")
+                    f"Syntax Error: Expected 'Sun', 'Luhman', 'Starsys', 'Boolean', 'Autom', 'Static', 'Void', 'Class', 'ISS', but instead got '{self.peek_next_token()}'")
         else:
             return True
-            # self.errors.append(f"Syntax Error: Expected 'Import', 'ISS', 'Static', 'Boolean', 'Autom', 'Luhman', "
+            # self.errors.append(f"Syntax Error: Expected 'ISS', 'Static', 'Boolean', 'Autom', 'Luhman', "
             # f"'Starsys', 'Void', 'Class', 'Sun' after 'Formulate'")
 
         if self.main_exist < 1:
             print(self.main_exist)
             self.errors.append(
-                f"(Line {self.line_number}) | Syntax error: Expected Universe Function, a Universe Function does not exist")
+                f"(Syntax error: Expected Universe Function, a Universe Function does not exist")
 
-        # check if Import appeared even when not after 'Formulate'
-        if self.peek_next_token() == "Import":
-            self.errors.append(f"Syntax Error: 'Import' syntax unexpected")
-        elif self.peek_next_token() == "Formulate":
+        if self.peek_next_token() == "Formulate":
             self.errors.append(
                 f"Syntax Error: 'Formulate' keyword can only appear once and on the very top of the program")
         else:

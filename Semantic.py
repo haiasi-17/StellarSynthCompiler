@@ -93,6 +93,12 @@ class SemanticAnalyzer:
         # Condition checking
         self.current_relop = None
         self.current_match = None
+        # Parameter Count
+        self.call_function_parameter_count = 0
+        self.function_call_name = None
+        self.function_call_value = None
+        self.function_call_table = {}
+        self.function_call_value_table = {}
 
     #  method that peeks at the next token after the current_token
     def peek_next_token(self):
@@ -206,9 +212,6 @@ class SemanticAnalyzer:
                 else:
                     self.errors.append(f"(Line {self.line_number}) | Syntax error: Expected 'Identifier' "
                                        f"after '{self.peek_previous_token()}'")
-            elif self.peek_next_token() == "~":
-                self.errors.append(
-                    f"(Line {self.line_number}) | Syntax error: Expected ',', but instead got '{self.peek_next_token()}'")
             elif self.peek_next_token() == "=":
                 return True  # else: last identifier has no following identifiers (comma)
             elif self.peek_next_token() == "#":
@@ -241,14 +244,25 @@ class SemanticAnalyzer:
                     self.check_undefined_functions()
                     self.function_call = False
                     self.isFunctionCall = True
+                    self.function_call_name = self.peek_previous_lexeme()
 
                     self.match("(")  # consume '('
                     # has value/argument
+
                     if (self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral"
                             or self.peek_next_token() == "StarsysLiteral" or re.match(r'Identifier\d*$',
                                                                                       self.peek_next_token())
                             or self.peek_next_token() == "True" or self.peek_next_token() == "False"):
+
+                        # SEMANTIC CHECK
+                        self.call_function_parameter_count = 1
+                        self.check_function_call_value(self.function_call_name, self.peek_next_token())
+
                         self.matchValue_mult(Resources.Value1)
+
+                        self.check_function_call_parameter_count(self.function_call_name,
+                                                                 self.call_function_parameter_count)
+
                         # close it
                         if self.peek_next_token() == ")":
                             self.match(")")
@@ -3274,6 +3288,7 @@ class SemanticAnalyzer:
 
     #  method that handles multiple assigning values. ex: a = 12, b = 12, c = 12
     def match_mult_assign(self, expected_token):
+
         self.get_next_token()
         while self.current_token == "Space":
             self.get_next_token()
@@ -3342,22 +3357,37 @@ class SemanticAnalyzer:
                 self.value = self.peek_next_lexeme()
                 self.declare_variable(self.var_name, self.datatype, self.scope,
                                       self.value)  # Store in the table (Symbol Table)
-                # SEMANTIC CHECK
-                if re.match(r'Identifier\d*$', self.peek_previous_token()):
-                    self.variable_dec = True
-                    self.check_variable_usage()
                 #  is '(' next?
-                if self.peek_next_token() == "(":
+                if re.match(r'Identifier\d*$', self.peek_previous_token()) and self.peek_next_token() == "(":
+
+                    # SEMANTIC CHECK
+                    self.function_call = True
+                    self.check_undefined_functions()
+                    self.function_call = False
+                    self.isFunctionCall = True
+
+                    self.function_call_name = self.peek_previous_lexeme()
+
                     self.match("(")
                     #  assign values
                     if (self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral"
                             or self.peek_next_token() == "StarsysLiteral" or re.match(r'Identifier\d*$',
                                                                                       self.peek_next_token())
                             or self.peek_next_token() == "True" or self.peek_next_token() == "False"):
+
+                        # SEMANTIC CHECK
+                        self.call_function_parameter_count = 1
+                        self.check_function_call_value(self.function_call_name, self.peek_next_token())
+
                         self.matchValue_mult(Resources.Value1)
+
+                        self.check_function_call_parameter_count(self.function_call_name,
+                                                                 self.call_function_parameter_count)
                         # close it
                         if self.peek_next_token() == ")":
                             self.match(")")
+                            # SEMANTIC CHECK
+                            self.check_function_call_type()
                             return True
                         #  error: expected ')'
                         else:
@@ -3371,6 +3401,10 @@ class SemanticAnalyzer:
                     else:
                         self.errors.append(
                             f"(Line {self.line_number}) | Syntax error: Expected ')', 'SunLiteral', 'LuhmanLiteral', 'StarsysLiteral', 'Identifier', but instead got '{self.peek_next_token()}'")
+                # SEMANTIC CHECK
+                if re.match(r'Identifier\d*$', self.peek_previous_token()) and not self.isParameterVariable:
+                    self.variable_dec = True
+                    self.check_variable_usage()
                 #  assign value?
                 elif self.peek_next_token() == ",":
                     self.isMultiple = True
@@ -4279,10 +4313,15 @@ class SemanticAnalyzer:
                 #  if the next is a comma proceed to check if it is followed by an identifier
                 if self.peek_next_token() == ",":
                     self.match(",")
+                    self.call_function_parameter_count += 1
                     if (self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral"
                             or self.peek_next_token() == "StarsysLiteral" or re.match(r'Identifier\d*$',
                                                                                       self.peek_next_token())
                             or self.peek_next_token() == "True" or self.peek_next_token() == "False"):
+
+                        # SEMANTIC CHECK
+                        self.check_function_call_value(self.function_call_name, self.peek_next_token())
+
                         self.matchValue_mult(Resources.Value1)
                     # else: if it is not followed by an id, it shows the error
                     else:
@@ -4319,19 +4358,15 @@ class SemanticAnalyzer:
                     self.parenthError = True
                     return False
             #  check if it is followed by these values
-            elif (re.match(r'Identifier\d*$', self.peek_next_token()) or self.peek_next_token() == "SunLiteral"
-                  or self.peek_next_token() == "LuhmanLiteral" or self.peek_next_token() == "StarsysLiteral"
-                  or self.peek_next_token() == "True" or self.peek_next_token() == "False"):
+            elif (self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral"
+                  or self.peek_next_token() == "StarsysLiteral" or self.peek_next_token() == "True"
+                  or self.peek_next_token() == "False"):
                 # SEMANTIC CHECK: Dataype values
                 self.value = self.peek_next_lexeme()
                 self.declare_variable(self.var_name, self.datatype, self.scope,
                                       self.value)  # Store in the table (Symbol Table)
                 self.check_value_semantics()
                 self.match(Resources.Value1)
-                # SEMANTIC CHECK
-                if re.match(r'Identifier\d*$', self.peek_previous_token()):
-                    self.variable_dec = True
-                    self.check_variable_usage()
 
                 if self.peek_next_token() == ",":
                     self.isMultiple = True
@@ -4637,6 +4672,277 @@ class SemanticAnalyzer:
                         return True  # else: last identifier has no following identifiers (comma)
                 else:
                     return True  # else: last identifier has no following identifiers (comma)
+            #  function assign value path
+            elif re.match(r'Identifier\d*$', self.peek_next_token()):
+                self.match("Identifier")  # consume
+                # SEMANTIC CHECK: Dataype values
+                self.value = self.peek_next_lexeme()
+                self.declare_variable(self.var_name, self.datatype, self.scope,
+                                      self.value)  # Store in the table (Symbol Table)
+                #  is '(' next?
+                if re.match(r'Identifier\d*$', self.peek_previous_token()) and self.peek_next_token() == "(":
+
+                    # SEMANTIC CHECK
+                    self.function_call = True
+                    self.check_undefined_functions()
+                    self.function_call = False
+                    self.isFunctionCall = True
+
+                    self.function_call_name = self.peek_previous_lexeme()
+
+                    self.match("(")
+                    #  assign values
+                    if (self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral"
+                            or self.peek_next_token() == "StarsysLiteral" or re.match(r'Identifier\d*$',
+                                                                                      self.peek_next_token())
+                            or self.peek_next_token() == "True" or self.peek_next_token() == "False"):
+
+                        # SEMANTIC CHECK
+                        self.call_function_parameter_count = 1
+                        self.check_function_call_value(self.function_call_name, self.peek_next_token())
+
+                        self.matchValue_mult(Resources.Value1)
+
+                        self.check_function_call_parameter_count(self.function_call_name,
+                                                                 self.call_function_parameter_count)
+                        # close it
+                        if self.peek_next_token() == ")":
+                            self.match(")")
+                            # SEMANTIC CHECK
+                            self.check_function_call_type()
+                            return True
+                        #  error: expected ')'
+                        else:
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
+                    #  not followed by values (close it)
+                    elif self.peek_next_token() == ")":
+                        self.match(")")
+                        return True
+                    # error: not followed by any values
+                    else:
+                        self.errors.append(
+                            f"(Line {self.line_number}) | Syntax error: Expected ')', 'SunLiteral', 'LuhmanLiteral', 'StarsysLiteral', 'Identifier', 'True', 'False' but instead got '{self.peek_next_token()}'")
+                # SEMANTIC CHECK
+                if re.match(r'Identifier\d*$', self.peek_previous_token()) and not self.isParameterVariable:
+                    self.variable_dec = True
+                    self.check_variable_usage()
+                #  assign value?
+                elif self.peek_next_token() == ",":
+                    self.isMultiple = True
+                    self.match(",")
+                    if re.match(r'Identifier\d*$', self.peek_next_token()):
+                        self.matchID_mult("Identifier")
+                        if self.peek_next_token() == "=":
+                            self.match_mult_assign("=")
+                        else:
+                            return True  # else: last identifier has no assigned value (=)
+                    else:
+                        self.errors.append(
+                            f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', but instead got '{self.peek_next_token()}'")
+                #  add is next
+                elif self.peek_next_token() == "+":
+                    self.match_mathop("+")
+                #  exponentiation is next
+                elif self.peek_next_token() == "**":
+                    self.match_exponent("**")
+                #  subtract is next
+                elif self.peek_next_token() == "-":
+                    self.match_mathop("-")
+                #  multiply is next
+                elif self.peek_next_token() == "*":
+                    self.match_mathop("*")
+                #  divide is next
+                elif self.peek_next_token() == "/":
+                    self.match_mathop("/")
+                #  modulo is next
+                elif self.peek_next_token() == "%":
+                    self.match_mathop("%")
+                #  array index assign path
+                elif self.peek_next_token() == "{":
+                    self.arrayError = True
+                    self.match("{")
+                    #  array index assign path
+                    if (re.match(r'Identifier\d*$', self.peek_next_token())
+                            or self.peek_next_token() == "SunLiteral"):
+                        self.match(Resources.Value3)  # consume the values
+                        #  size expression
+                        if (
+                                self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                                or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                            self.match_mathop3(Resources.mathop1)  # size is a math expr
+                            #  close it with "}" if size is fulfilled
+                            if self.peek_next_token() == "}":
+                                self.match("}")
+                                # Terminate it
+                                if self.peek_next_token() == "#":
+                                    return
+                                #  add is next
+                                elif self.peek_next_token() == "+":
+                                    self.match_mathop("+")
+                                #  exponentiation is next
+                                elif self.peek_next_token() == "**":
+                                    self.match_exponent("**")
+                                #  subtract is next
+                                elif self.peek_next_token() == "-":
+                                    self.match_mathop("-")
+                                #  multiply is next
+                                elif self.peek_next_token() == "*":
+                                    self.match_mathop("*")
+                                #  divide is next
+                                elif self.peek_next_token() == "/":
+                                    self.match_mathop("/")
+                                #  modulo is next
+                                elif self.peek_next_token() == "%":
+                                    self.match_mathop("%")
+                                #  assign value?
+                                elif self.peek_next_token() == ",":
+                                    self.isMultiple = True
+                                    self.arrayError = False
+                                    self.match(",")
+                                    if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                        self.matchID_mult("Identifier")
+                                        if self.peek_next_token() == "=":
+                                            self.match_mult_assign("=")
+                                        else:
+                                            return True  # else: last identifier has no assigned value (=)
+                                    else:
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', but instead got '{self.peek_next_token()}'")
+                                # add another size to become 2D array
+                                elif self.peek_next_token() == "{":
+                                    self.match_arrID2D_assign("{")
+                                    # Terminate it
+                                    if self.peek_next_token() == "#":
+                                        return
+                                    #  add is next
+                                    elif self.peek_next_token() == "+":
+                                        self.match_mathop("+")
+                                    #  exponentiation is next
+                                    elif self.peek_next_token() == "**":
+                                        self.match_exponent("**")
+                                    #  subtract is next
+                                    elif self.peek_next_token() == "-":
+                                        self.match_mathop("-")
+                                    #  multiply is next
+                                    elif self.peek_next_token() == "*":
+                                        self.match_mathop("*")
+                                    #  divide is next
+                                    elif self.peek_next_token() == "/":
+                                        self.match_mathop("/")
+                                    #  modulo is next
+                                    elif self.peek_next_token() == "%":
+                                        self.match_mathop("%")
+                                    #  assign value?
+                                    elif self.peek_next_token() == ",":
+                                        self.isMultiple = True
+                                        self.arrayError = False
+                                        self.match(",")
+                                        if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                            self.matchID_mult("Identifier")
+                                            if self.peek_next_token() == "=":
+                                                self.match_mult_assign("=")
+                                            else:
+                                                return True  # else: last identifier has no assigned value (=)
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', but instead got '{self.peek_next_token()}'")
+                                    #  not terminated or followed
+                                    else:
+                                        return False
+                                #  not terminated or followed
+                                else:
+                                    return False
+                            #  not closed with '}'
+                            else:
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax Error: Expected 'Rcurlbrace', but instead got '{self.peek_next_token()}'")
+                        #  size is single value
+                        elif self.peek_next_token() == "}":
+                            self.match("}")
+                            # Terminate it
+                            if self.peek_next_token() == "#":
+                                return
+                            #  add is next
+                            elif self.peek_next_token() == "+":
+                                self.match_mathop("+")
+                            #  exponentiation is next
+                            elif self.peek_next_token() == "**":
+                                self.match_exponent("**")
+                            #  subtract is next
+                            elif self.peek_next_token() == "-":
+                                self.match_mathop("-")
+                            #  multiply is next
+                            elif self.peek_next_token() == "*":
+                                self.match_mathop("*")
+                            #  divide is next
+                            elif self.peek_next_token() == "/":
+                                self.match_mathop("/")
+                            #  modulo is next
+                            elif self.peek_next_token() == "%":
+                                self.match_mathop("%")
+                            #  assign value?
+                            elif self.peek_next_token() == ",":
+                                self.isMultiple = True
+                                self.arrayError = False
+                                self.match(",")
+                                if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                    self.matchID_mult("Identifier")
+                                    if self.peek_next_token() == "=":
+                                        self.match_mult_assign("=")
+                                    else:
+                                        return True  # else: last identifier has no assigned value (=)
+                                else:
+                                    self.errors.append(
+                                        f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', but instead got '{self.peek_next_token()}'")
+                            # add another size to become 2D array
+                            elif self.peek_next_token() == "{":
+                                self.match_arrID2D_assign("{")
+                                # Terminate it
+                                if self.peek_next_token() == "#":
+                                    return
+                                #  add is next
+                                elif self.peek_next_token() == "+":
+                                    self.match_mathop("+")
+                                #  exponentiation is next
+                                elif self.peek_next_token() == "**":
+                                    self.match_exponent("**")
+                                #  subtract is next
+                                elif self.peek_next_token() == "-":
+                                    self.match_mathop("-")
+                                #  multiply is next
+                                elif self.peek_next_token() == "*":
+                                    self.match_mathop("*")
+                                #  divide is next
+                                elif self.peek_next_token() == "/":
+                                    self.match_mathop("/")
+                                #  modulo is next
+                                elif self.peek_next_token() == "%":
+                                    self.match_mathop("%")
+                                #  assign value?
+                                elif self.peek_next_token() == ",":
+                                    self.isMultiple = True
+                                    self.arrayError = False
+                                    self.match(",")
+                                    if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                        self.matchID_mult("Identifier")
+                                        if self.peek_next_token() == "=":
+                                            self.match_mult_assign("=")
+                                        else:
+                                            return True  # else: last identifier has no assigned value (=)
+                                    else:
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', but instead got '{self.peek_next_token()}'")
+                                #  not terminated or followed
+                                else:
+                                    return False
+                            #  not terminated or followed
+                            else:
+                                return False
+                        #  size value is not followed by any of the following (# and Rcurl)
+                        else:
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Syntax Error: Expected 'Rcurlbraces', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
             #  type conversion path
             elif self.peek_next_token() == "Sun":
                 self.match("Sun")
@@ -8917,60 +9223,6 @@ class SemanticAnalyzer:
                 self.errors.append(
                     f"(Line {self.line_number}) | Syntax Error: Expected '[', but instead got '{self.peek_next_token()}'")
 
-    #  method that parse the import statement
-    def parse_import_statement(self):
-        while self.peek_next_token() in ["Import"]:
-            if self.peek_next_token() == "Import":
-                self.match("Import")
-                if re.match(r'Identifier\d*$', self.peek_next_token()):
-                    self.match("Identifier")
-                    if self.peek_next_token() == "#":
-                        self.match("#")
-                    elif self.peek_next_token() == "~":  # proceed to tilde syntax
-                        self.parse_import_statement1()
-                    # multiple?
-                    elif self.peek_next_token() == ",":
-                        self.match(",")
-                        # must be followed by an identifier
-                        if re.match(r'Identifier\d*$', self.peek_next_token()):
-                            self.matchID_mult("Identifier")
-                            # terminate?
-                            if self.peek_next_token() == "#":
-                                self.match("#")
-                            # not terminated
-                            elif self.peek_next_token() != "#" and re.match(r'Identifier\d*$',
-                                                                            self.peek_previous_token()):
-                                self.errors.append(
-                                    f"(Line {self.line_number}) | Syntax error: Expected '#', ',', but instead got '{self.peek_next_token()}'")
-                        else:
-                            self.errors.append(
-                                f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', but instead got '{self.peek_next_token()}'")
-                    else:
-                        self.errors.append(
-                            f"(Line {self.line_number}) | Syntax error: Expected '~', 'comma', '#', but instead got '{self.peek_next_token()}'")
-                else:
-                    self.errors.append(
-                        f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', but instead got '{self.peek_next_token()}'")
-            else:
-                break
-
-    #  method that also parse the import statement (tilde syntax)
-    def parse_import_statement1(self):
-        if self.peek_next_token() == "~":
-            self.match("~")
-            if re.match(r'Identifier\d*$', self.peek_next_token()):
-                self.matchID_mult("Identifier")
-                if self.peek_next_token() == "#":
-                    self.match("#")
-                else:
-                    self.errors.append(
-                        f"(Line {self.line_number}) | Syntax error: Expected '#', but instead got '{self.peek_next_token()}'")
-            else:
-                self.errors.append(
-                    f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', but instead got '{self.peek_next_token()}'")
-        else:
-            self.errors.append(
-                f"(Line {self.line_number}) | Syntax error: Expected '~', ',', but instead got '{self.peek_next_token()}'")
 
     # method for parsing variable declarations (global)
     def parse_variable_declaration(self):
@@ -11897,6 +12149,7 @@ class SemanticAnalyzer:
                 self.check_undefined_functions()
                 self.function_call = False
                 self.isFunctionCall = True
+                self.function_call_name = self.peek_previous_lexeme()
 
                 self.match("(")
                 #  has values inside?
@@ -11904,7 +12157,14 @@ class SemanticAnalyzer:
                         or self.peek_next_token() == "StarsysLiteral"
                         or re.match(r'Identifier\d*$', self.peek_next_token()) or self.peek_next_token() == "True"
                         or self.peek_next_token() == "False"):
+                    # SEMANTIC CHECK
+                    self.call_function_parameter_count = 1
+                    self.check_function_call_value(self.function_call_name, self.peek_next_token())
+
                     self.matchValue_mult(Resources.Value1)
+                    print("here")
+                    self.check_function_call_parameter_count(self.function_call_name, self.call_function_parameter_count)
+
                     # close it
                     if self.peek_next_token() == ")":
                         self.match(")")
@@ -21626,15 +21886,14 @@ class SemanticAnalyzer:
             # Check if there are no statements after Formulate, Disintegrate immediately
             if self.peek_next_token() == "Disintegrate":
                 self.disintegrate_exist = True
-                self.errors.append(f"Syntax Error: Expected 'Import', 'ISS', 'Static', 'Boolean', 'Autom', 'Luhman', "
+                self.errors.append(f"Syntax Error: Expected 'ISS', 'Static', 'Boolean', 'Autom', 'Luhman', "
                                    f"'Starsys', 'Void', 'Class', 'Sun' after 'Formulate'")
             # must be followed by either of the values
             if (self.peek_next_token() == "Static" or self.peek_next_token() == "Sun"
                     or self.peek_next_token() == "Luhman" or self.peek_next_token() == "Starsys"
                     or self.peek_next_token() == "Boolean" or self.peek_next_token() == "Autom"
-                    or self.peek_next_token() == "Void" or self.peek_next_token() == "ISS" or self.peek_next_token() == "Class" or self.peek_next_token() == "Import"):
-                #  parse import statement
-                self.parse_import_statement()
+                    or self.peek_next_token() == "Void" or self.peek_next_token() == "ISS" or self.peek_next_token() == "Class"):
+
                 # Parse: is it a Sun global variable declaration or a subfunction prototype?
                 while self.peek_next_token() in ["Static", "Sun", "Luhman", "Starsys", "Boolean", "Autom", "Void",
                                                  "ISS", "Class"]:
@@ -21763,20 +22022,16 @@ class SemanticAnalyzer:
                         break
             else:
                 self.errors.append(
-                    f"Syntax Error: Expected 'Import', 'Sun', 'Luhman', 'Starsys', 'Boolean', 'Autom', 'Static', 'Void', 'Class', 'ISS', but instead got '{self.peek_next_token()}'")
+                    f"Syntax Error: Expected 'Sun', 'Luhman', 'Starsys', 'Boolean', 'Autom', 'Static', 'Void', 'Class', 'ISS', but instead got '{self.peek_next_token()}'")
         else:
             return True
-            # self.errors.append(f"Syntax Error: Expected 'Import', 'ISS', 'Static', 'Boolean', 'Autom', 'Luhman', "
+            # self.errors.append(f"Syntax Error: Expected 'ISS', 'Static', 'Boolean', 'Autom', 'Luhman', "
             # f"'Starsys', 'Void', 'Class', 'Sun' after 'Formulate'")
 
-        print(self.symbol_table)
         # SEMANTIC CHECK
         self.check_undefined_functions()
 
-        # check if Import appeared even when not after 'Formulate'
-        if self.peek_next_token() == "Import":
-            self.errors.append(f"Syntax Error: 'Import' syntax unexpected")
-        elif self.peek_next_token() == "Formulate":
+        if self.peek_next_token() == "Formulate":
             self.errors.append(
                 f"Syntax Error: 'Formulate' keyword can only appear once and on the very top of the program")
         else:
@@ -22008,6 +22263,79 @@ class SemanticAnalyzer:
                 self.errors.append(
                     f"Semantic Error: (Unknown Function) Function '{function_call_name}' does not exist"
                 )
+
+    def check_function_call_value(self, func_name, value):
+        if func_name in self.function_call_value_table:
+            # If the variable doesn't exist in this table key, append it to the list
+            self.function_call_value_table[func_name].append({'value': value})
+        else:
+            self.function_call_value_table[func_name] = [{'value': value}]
+
+    def check_function_call_parameter_count(self, func_name, parameter_count):
+        if func_name in self.prototype_parameter_table:
+            self.function_call_table[func_name] = [{'parameter_count': parameter_count}]
+            # Retrieve the expected number of parameters the function is supposed to have
+            expected_parameter_count = len(self.prototype_parameter_table[func_name])
+
+            # Retrieve the call count from the function call table
+            call_count = self.function_call_table[func_name][0]['parameter_count']
+
+            # Check if the call count exceeds the expected parameter count
+            if call_count > expected_parameter_count:
+                self.errors.append(
+                    f"(Line {self.line_number}) | Semantic error: (Out of Bounds) The number of arguments has exceeded the number of parameters of function '{func_name}' can have"
+                )
+            if call_count < expected_parameter_count:
+                self.errors.append(
+                    f"(Line {self.line_number}) | Semantic error: (Insufficient Arguments) The number of arguments is less than the number of parameters of function '{func_name}'"
+                )
+
+            # Check if the argument types match the expected parameter types
+            for i, expected_param in enumerate(self.prototype_parameter_table[func_name]):
+                if i < len(self.function_call_value_table[func_name]):
+                    argument_value = self.function_call_value_table[func_name][i]['value']
+                    expected_datatype = expected_param['datatype']
+
+                    # Map literals to their corresponding data types
+                    if argument_value.endswith('Literal'):
+                        argument_datatype = argument_value[:-7]  # Strip 'Literal' to get the datatype
+
+                        # Allow 'Sun' and 'Luhman' interchangeability
+                        if ((argument_datatype == "Sun" and expected_datatype == "Luhman") or
+                                (argument_datatype == "Luhman" and expected_datatype == "Sun")):
+                            continue
+
+                        if argument_datatype != expected_datatype:
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Semantic error: (Type Mismatch) Argument {i + 1} is of datatype '{argument_datatype}', function '{func_name}' expected a value of datatype '{expected_datatype}'"
+                            )
+                    # Allow Boolean Values Match
+                    elif (argument_value == "True" or argument_value == "False") and expected_datatype == "Boolean":
+                        print(expected_datatype)
+                        continue
+                    if (argument_value == "True" or argument_value == "False") and expected_datatype != "Boolean":
+                        self.errors.append(
+                            f"(Line {self.line_number}) | Semantic error: (Type Mismatch) Argument {i + 1} has value '{argument_value}', function '{func_name}' expected a value of datatype '{expected_datatype}'"
+                        )
+
+    def check_function_call_type(self):
+        # Check if var_name exists in the symbol table
+        if self.var_name in self.symbol_table:
+            datatype = self.symbol_table[self.var_name]['datatype']
+
+            # Check if the function_call_name exists in the prototype_parameter_table
+            if self.function_call_name in self.prototype_parameter_table:
+                # Retrieve the list of parameter entries for the function
+                function_parameters = self.prototype_parameter_table[self.function_call_name]
+                if function_parameters:
+                    # Extract the function_datatype from the first parameter entry
+                    expected_datatype = function_parameters[0]['function_datatype']
+
+                    # Compare the datatypes
+                    if datatype != expected_datatype:
+                        self.errors.append(
+                            f"(Line {self.line_number}) | Semantic error: (Type Mismatch) Function '{self.function_call_name}' is of datatype '{expected_datatype}'."
+                        )
 
     # Check if parameter variable is declared again in the function
     def check_variable_redeclaration(self):
@@ -22871,6 +23199,7 @@ class SemanticAnalyzer:
         else:
             self.errors.append(
                 f"(Line {self.line_number}) | Semantic Error: Variable not declared")
+
 
 
 if __name__ == "__main__":
