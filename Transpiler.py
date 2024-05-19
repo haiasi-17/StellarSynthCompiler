@@ -34,39 +34,61 @@ class Transpiler:
     def stellarTranslator(self):
         self.currentToken = self.tokens[self.tokenIndex][0]
         while self.tokenIndex < (len(self.tokens)-1):
-        # Remove Formulate and Disintegrate from the beginning of the program.
+        
+            # Remove Formulate and Disintegrate from the beginning of the program.
             if self.currentToken == "Formulate" or self.currentToken == "Disintegrate":
                 self.tokens.pop(self.tokenIndex)
                 self.currentToken = self.tokens[self.tokenIndex][0] # Do not increment as the number of tokens decreases because of the removed element.
                 continue 
-            # Import with no '~ Ident1, Ident2' is functional theoretically, but errors because it can't find the module.
-            elif self.currentToken == "Import":
-                self.tokens[self.tokenIndex][0] = self.tokens[self.tokenIndex][1] = Resources.StellarCPlusPlusDict[self.currentToken] 
-                self.translatedTokens.append(self.tokens[self.tokenIndex])
-                self.go_next_token()
-                continue
             
             # Convert exponentiation operator to c++ pow function
             elif self.currentToken == "**": 
-                # i = a+4**10 -> i = a+pow(4,10) Check
-                # i = 3+(a+4)**10 -> i = pow((a+4),10) Check
-                # i = 3+(a+4)**(b+10) -> i = pow((a+4),(b+10)) Check
-                # i = 3+a**(b+10) -> i = pow(a,(b+10)) Check
-                # i = 3+(a+(4-2))**10 = pow((a+(4-2)), 10) Check
-                # i = 3+10**(a+(4-2)) = pow(10, (a+(4-2))) Check
-                # i = 3+(b-(2-10))**(a+(4-2)) = pow((b-(2-10), (a+(4-2))) Check
+                # i = a+4**10                                       -> i = a+pow(4,10) Check
+                # i = 3+(a+4)**10                                   -> i = 3+pow((a+4),10) Check
+                # i = 3+(a+4)**(b+10)                               -> i = 3+pow((a+4),(b+10)) Check
+                # i = 3+a**(b+10)                                   -> i = 3+pow(a,(b+10)) Check
+                # i = 3+(a+(4-2))**10                               -> i = 3+pow((a+(4-2)), 10) Check
+                # i = 3+10**(a+(4-2))                               -> i = 3+pow(10, (a+(4-2))) Check
+                # i = 3+(b-(2-10))**(a+(4-2))                       -> i = 3+pow((b-(2-10), (a+(4-2))) Check
+                
+                
+                # i = a + 4 ** 10                                   -> i = a +pow(4,10) Check
+                # i = 3 + ( a + 4 ) ** 10                           -> i = pow((a+4),10) 
+                # i = 3 + ( a + 4 ) ** ( b + 10 )                   -> i = pow((a+4),(b+10)) 
+                # i = 3 + a ** ( b + 10 )                           -> i = pow(a,(b+10)) 
+                # i = 3 + ( a + ( 4 - 2 ) ) ** 10                   -> i = pow((a+(4-2)), 10) 
+                # i = 3 + 10 ** ( a + ( 4 - 2 ) )                   -> i = pow(10, (a+(4-2))) 
+                # i = 3 + ( b - ( 2 - 10 ) ) ** ( a + ( 4 - 2 ) )   -> i = pow((b-(2-10), (a+(4-2))) 
                 
                 # Check to see if the previous token of the exponentiation operator is a parenthesis.
                 self.go_back_token()
+                self.goBackTokenCount +=1
+                
+                while self.currentToken in Resources.whitespaces:
+                    self.go_back_token()
+                    self.goBackTokenCount += 1
+                    
                 if self.currentToken == ")": self.prevTokenParenth = True
+                
+                # Go back to exponentiation operator token
+                while self.goBackTokenCount > 0:
+                    self.go_next_token()
+                    self.goBackTokenCount -= 1
                 
                 # Check to see if the next token of the exponentiation operator is a parenthesis.
                 self.go_next_token()
-                self.go_next_token()
+                self.goNextTokenCount +=1
+                
+                while self.currentToken in Resources.whitespaces:
+                    self.go_next_token()
+                    self.goNextTokenCount += 1
+                    
                 if self.currentToken == "(": self.nextTokenParenth = True
                 
                 # Go back to exponentiation operator token
-                self.go_back_token()
+                while self.goNextTokenCount > 0:
+                    self.go_back_token()
+                    self.goNextTokenCount -= 1
                 
                 # Check if there are parentheses
                 if self.prevTokenParenth is True or self.nextTokenParenth is True:
@@ -74,6 +96,23 @@ class Transpiler:
                     # Check if the parentheses comes before the exponentiation operator
                     if self.prevTokenParenth is True:
                         self.go_back_token()
+                        self.goBackTokenCount +=1
+                        
+                        # Skip whitespaces
+                        while self.currentToken in Resources.whitespaces:
+                            self.go_back_token()
+                            self.goBackTokenCount += 1
+                            
+                            #adadaadadadadadada
+                            
+                            
+                            
+                            
+                            
+                            
+                            
+                            
+                                
                         if self.currentToken == ")":
                             self.parenthCount += 1
                             self.removeTokenCount += 1
@@ -296,6 +335,8 @@ class Transpiler:
                 
                 # No parenthesis in this expression
                 else:
+                    self.removeTokenCount += 1
+                    
                     # Go back to the token before the exponentiation operator
                     self.go_back_token()
                     self.removeTokenCount += 1
@@ -303,7 +344,7 @@ class Transpiler:
                     # If whitespace, skip until token is reached.
                     while self.currentToken in Resources.whitespaces:
                         self.go_back_token()
-                        self.removeTokenCount+=1
+                        self.removeTokenCount +=1
                     
                     # Store the operandone
                     self.operandOne = self.tokens[self.tokenIndex][0]
@@ -311,14 +352,14 @@ class Transpiler:
                     # Go back to exponentiation operator
                     while self.currentToken != "**":   
                         self.go_next_token()
-                        
+                    
                     # Go to the token after the exponentiation operator
-                        self.go_next_token()
+                    self.go_next_token()
                     
                     # If whitespace, skip until token is reached.
-                    while self.currentToken in Resources.whitespaces:
+                    while self.currentToken in Resources.whitespaces or self.currentToken == "Space":
                         self.go_next_token()
-                        
+                    
                     # Store the operandtwo
                     self.operandTwo = self.tokens[self.tokenIndex][0]
                     
@@ -530,7 +571,7 @@ class Transpiler:
             fout.write(convertedcppCode)
             
         # Compile the program and create exe into its folder under cpp folder.
-        compile_cmd = "g++ -std=c++20 -fmodules-ts {} -o {}".format(file_path, f_exec)
+        compile_cmd = "g++ -std=c++20 {} -o {}".format(file_path, f_exec)
         subprocess.call(compile_cmd, shell=True)
 
         # Generate the Gimple Representation into its folder under cpp folder.
@@ -538,7 +579,7 @@ class Transpiler:
         gimple_cmd = "g++ -fdump-tree-gimple -c {} -o {}".format(file_path, gimple_file_path)
         subprocess.call(gimple_cmd, shell=True)
         
-        return f_exec, file_path
+        return f_exec
     
         """
         This part of the program does not accept input, only outputs. If you want this, Remove return f_exec. and modify lines 450-464 in compiler2.
