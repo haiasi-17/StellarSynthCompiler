@@ -100,6 +100,7 @@ class SemanticAnalyzer:
         self.function_call_value = None
         self.function_call_table = {}
         self.function_call_value_table = {}
+        self.instance_variable_table = {}
         self.assign_flag = False
 
     #  method that peeks at the next token after the current_token
@@ -10971,7 +10972,8 @@ class SemanticAnalyzer:
                 if not re.match(r'Identifier\d*$', self.peek_next_token()):
                     self.declare_class(self.class_name, self.class_scope)
                 else:
-                    pass
+                    self.instance_variable_table = [self.peek_next_lexeme()]
+                    self.check_class_instance()
 
                 #  access specifier path derived: Class MyClass : Private BaseClass
                 if self.peek_next_token() == ":":
@@ -11129,7 +11131,11 @@ class SemanticAnalyzer:
                 self.match("Identifier")
                 # SEMANTIC CHECK
                 self.struct_name = self.peek_previous_lexeme()
-                self.declare_struct(self.struct_name, self.struct_scope)
+                if not re.match(r'Identifier\d*$', self.peek_next_token()):
+                    self.declare_struct(self.struct_name, self.struct_scope)
+                else:
+                    self.instance_variable_table = [self.peek_next_lexeme()]
+                    self.check_struct_instance()
 
                 #  access specifier path derived: ISS MyStruct : Private BaseStruct
                 if self.peek_next_token() == ":":
@@ -12889,6 +12895,12 @@ class SemanticAnalyzer:
                 return True  # else: last identifier has no following identifiers (comma)
 
     def instance_path(self, expected_token):
+        # SEMANTIC CHECK
+        print(self.instance_variable_table)
+        if self.peek_previous_lexeme() not in self.instance_variable_table:
+            self.errors.append(
+                f"(Line {self.line_number}) | Semantic error: (Undeclared Variable) Instance variable '{self.peek_previous_lexeme()}' is not declared")
+
         self.get_next_token()
         while self.current_token == "Space":
             self.get_next_token()
@@ -12901,13 +12913,28 @@ class SemanticAnalyzer:
                     self.instance_path(".")
                 #  call a function (id.id()#)
                 elif self.peek_next_token() == "(":
+
+                    # SEMANTIC CHECK
+                    self.function_call = True
+                    self.check_undefined_functions()
+                    self.function_call = False
+                    self.isFunctionCall = True
+                    self.function_call_name = self.peek_previous_lexeme()
+
                     self.match("(")
                     #  has values inside?
                     if (self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral"
                             or self.peek_next_token() == "StarsysLiteral"
                             or re.match(r'Identifier\d*$', self.peek_next_token()) or self.peek_next_token() == "True"
                             or self.peek_next_token() == "False"):
+                        # SEMANTIC CHECK
+                        self.call_function_parameter_count = 1
+                        self.check_function_call_value(self.function_call_name, self.peek_next_token())
+
                         self.matchValue_mult(Resources.Value1)
+
+                        self.check_function_call_parameter_count(self.function_call_name,
+                                                                 self.call_function_parameter_count)
                         # close it
                         if self.peek_next_token() == ")":
                             self.match(")")
@@ -12924,6 +12951,12 @@ class SemanticAnalyzer:
                                 f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
                     #  no values inside
                     elif self.peek_next_token() == ")":
+                        # SEMANTIC CHECK
+                        self.call_function_parameter_count = 1
+                        self.check_function_call_value(self.function_call_name, "null")
+                        self.check_function_call_parameter_count(self.function_call_name,
+                                                                 self.call_function_parameter_count)
+
                         self.match(")")
                         #  terminate it
                         if self.peek_next_token() == "#":
@@ -22424,6 +22457,20 @@ class SemanticAnalyzer:
 
     # SEMANIC CHECKS
 
+    def check_class_instance(self):
+        if self.peek_previous_lexeme() in self.class_table:
+            return True
+        else:
+            self.errors.append(
+                f"(Line {self.line_number}) | Semantic Error: (Unknown Class) Class '{self.peek_previous_lexeme()}' does not exist")
+
+    def check_struct_instance(self):
+        if self.peek_previous_lexeme() in self.struct_table:
+            return True
+        else:
+            self.errors.append(
+                f"(Line {self.line_number}) | Semantic Error: (Unknown ISS) ISS '{self.peek_previous_lexeme()}' does not exist")
+
     # Check if the parameters in the function prototype matches the ones in its definition
     def compare_function_parameters(self, function_name):
         # Check if the function name exists in both parameter tables
@@ -22515,6 +22562,7 @@ class SemanticAnalyzer:
                             self.errors.append(
                                 f"(Line {self.line_number}) | Semantic error: (Type Mismatch) Argument {i + 1} is of datatype '{argument_datatype}', function '{func_name}' expected a value of datatype '{expected_datatype}'"
                             )
+
                             
                     # Allow Boolean Values Match
                     elif (argument_value == "True" or argument_value == "False") and expected_datatype == "Boolean":
