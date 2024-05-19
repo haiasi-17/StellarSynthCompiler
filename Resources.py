@@ -228,7 +228,6 @@ StellarCPlusPlusDict = {
     "Luhman"        : "float",
     "Fore"          : "for",
     "If"            : "if",
-    "Import"        : "import", # Python style import not c++
     "Sun"           : "long long",
     "Gotolerate"    : "noexcept",
     "Private"       : "private",
@@ -299,16 +298,6 @@ Remarks:
     # Issue:
         # Currently does accept input in the ui but only on set conditions (Is followed by a disp statement that outputs something that ends in : or ?). 
         # UNSOLVED: We need to find a way that knows definitely when a cin is called during runtime. this way we can call the necessary method to accept and send input.
-
-    Transpiler:
-        To do:
-        stderr output ui
-        arddec default value
-        float value in rules scientific notation 5 max decimal digits fractional
-        int limit rules
-        documentation rules
-        input 
-        import
     
     Features that differ in the C++ Language:
         Scope Resolution Operator -> Not Tested
@@ -317,6 +306,7 @@ Remarks:
                     2. C++ does not use . operator to access its contents.
                     3. No solution in how to check if module exists yet
                     4. does not function with ~ operator.
+                    5. REMOVE IMPORT
                     
         Default Value -> Partially Functional
                     1. Vardec have implemented rules.
@@ -342,7 +332,18 @@ Remarks:
                     2. Explicit is covered na. However, there might be inconsistencies with c++ type conversion with our rules.
                         > For instance, may need to revise float and int rules regarding output. cuz integer division and all that. 
                         > ISSUE: Like if its decimal places are zero, then it wont include them even if it is declared as float.
-
+    
+    
+    To do:
+        remove import
+        pow whitespace
+        stderr output ui
+        arddec default value
+        float value in rules scientific notation 5 max decimal digits fractional
+        int limit rules
+        documentation rules
+        input 
+        bool conversion does not work in documentation reflect.
         
         
 """
