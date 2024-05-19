@@ -308,7 +308,9 @@ class SemanticAnalyzer:
                             f"(Line {self.line_number}) | Syntax Error: Expected ')', 'SunLiteral', 'LuhmanLiteral', 'StarsysLiteral', 'Identifier', 'True', 'False', but instead got '{self.peek_next_token()}'")
                 # SEMANTIC CHECK
                 if re.match(r'Identifier\d*$', self.peek_previous_token()) and not self.isParameterVariable:
-                    self.variable_dec = True
+                    if self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*" or self.peek_next_token() == "/" or self.peek_next_token() == "%" or self.peek_next_token() == "**":
+                        self.variable_dec = True
+                        
                     self.check_ifVariable_isParameter()
 
                     if not self.output_var:
@@ -828,11 +830,10 @@ class SemanticAnalyzer:
                 self.match("Identifier")  # consume
                 # SEMANTIC CHECK
                 if re.match(r'Identifier\d*$', self.peek_previous_token()) and not self.isParameterVariable:
-                    self.variable_dec = True
                     self.check_ifVariable_isParameter()
 
-                if not self.input_var:
-                    self.check_variable_usage()
+                    if not self.input_var:
+                        self.check_variable_usage()
 
                 #  if the next is a '>>' proceed to check if it is followed by an identifier
                 if self.peek_next_token() == ">>":
@@ -11023,7 +11024,6 @@ class SemanticAnalyzer:
                 elif re.match(r'Identifier\d*$', self.peek_next_token()):
                     self.match("Identifier")
 
-                    
                     #  terminate
                     if self.peek_next_token() == "#":
                         self.match("#")
