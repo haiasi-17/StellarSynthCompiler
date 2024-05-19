@@ -293,7 +293,7 @@ Remarks:
         # SOLVED BY CREATING SEPARATE INPUT CONSOLE WIDGET FOR INPUTS ONLY.
     
     # Issue:
-        # Having multiple strings end with : or ? leads to multiple request for input bugs.
+        # Having multiple strings end with : leads to multiple request for input bugs.
         # UNSOLVED: To resolve this, find a way to correctly determine when a cin request comes in, so for every cin request there is a send input.
 
     # Issue:
@@ -301,6 +301,15 @@ Remarks:
         # UNSOLVED: We need to find a way that knows definitely when a cin is called during runtime. this way we can call the necessary method to accept and send input.
 
     Transpiler:
+        To do:
+        stderr output ui
+        arddec default value
+        float value in rules scientific notation 5 max decimal digits fractional
+        int limit rules
+        documentation rules
+        input 
+        import
+    
     Features that differ in the C++ Language:
         Scope Resolution Operator -> Not Tested
         Importation -> Non-functional. 
@@ -315,6 +324,7 @@ Remarks:
                             > This is because int is translated to long long, but Sun with identifier token Universe is translated as int still.
                             > If it is used as Sun Universe = y# i will result in int Universe = y#.
                             > Not intended, only for Int main.
+                        > Solved: Redeclaration Error In Semantic.
                     2. Arrdec not yet functional.
                         
         Displaying -> Partially Functional

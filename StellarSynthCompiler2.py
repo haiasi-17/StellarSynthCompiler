@@ -539,8 +539,11 @@ class CreateButtons(customtkinter.CTkButton):
     def run_cpp_executable(self, executable_path):
         
         # Creates a process that runs the c++ exe file.
-        self.process = subprocess.Popen(executable_path, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        
+        try:
+            self.process = subprocess.Popen(executable_path, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        except Exception as e:
+            print(f"Error writing to process: {e}")
+            
         def update_console(output):
             def safeupdate():
                 # Ensure GUI changes happen in the main thread
