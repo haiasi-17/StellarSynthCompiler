@@ -313,7 +313,7 @@ class SemanticAnalyzer:
                         
                     self.check_ifVariable_isParameter()
 
-                    if not self.output_var:
+                    if not self.output_var and self.peek_next_token() != ".":
                         self.check_variable_usage()
                 #  if the next is a '<<' proceed to check if it is followed by any of the given values
                 if self.peek_next_token() == "<<":
@@ -370,6 +370,15 @@ class SemanticAnalyzer:
                             f"(Line {self.line_number}) | Syntax error: Expected '#', '<<', but instead got '{self.peek_next_token()}'")
                 #  access module/s, function path
                 elif self.peek_next_token() == "." and re.match(r'Identifier\d*$', self.peek_previous_token()):
+                    # SEMANTIC CHECK
+                    variable = self.peek_previous_lexeme()
+                    variable_declared = any(
+                        variable in instance_list for instance_list in self.instance_variable_table.values())
+
+                    if not variable_declared:
+                        self.errors.append(
+                            f"(Line {self.line_number}) | Semantic error: (Undeclared Variable) Instance variable '{variable}' is not declared"
+                        )
                     self.instance_path_output(".")  # >>>>call method
                     #  terminate it?
                     if self.peek_next_token() == "#":
@@ -9433,7 +9442,6 @@ class SemanticAnalyzer:
             else:
                 self.current_scope = 'function'
             self.matchID_mult("Identifier")
-            print(self.symbol_table)
             #  SEMANTIC CHECK
             if self.current_lexeme == "Universe":
                 self.peek_next_token()
@@ -11300,7 +11308,6 @@ class SemanticAnalyzer:
 
     # for struct and class
     def match_assignment(self, expected_token):
-        print(self.current_scope)
         self.get_next_token()
         while self.current_token == "Space":
             self.get_next_token()
@@ -12914,7 +12921,6 @@ class SemanticAnalyzer:
 
     def instance_path(self, expected_token):
         # SEMANTIC CHECK
-        print(self.instance_variable_table)
         variable = self.peek_previous_lexeme()
         variable_declared = any(variable in instance_list for instance_list in self.instance_variable_table.values())
 
@@ -13027,6 +13033,7 @@ class SemanticAnalyzer:
         self.get_next_token()
         while self.current_token == "Space":
             self.get_next_token()
+
         if re.match(r'Identifier\d*$', self.peek_next_token()):
             self.match("Identifier")
             #  access the module of the module?
@@ -13034,13 +13041,29 @@ class SemanticAnalyzer:
                 self.instance_path_output(".")
             #  call a function (id.id()#)
             elif self.peek_next_token() == "(":
+
+                # SEMANTIC CHECK
+                self.function_call = True
+                self.check_undefined_functions()
+                self.function_call = False
+                self.isFunctionCall = True
+                self.function_call_name = self.peek_previous_lexeme()
+
                 self.match("(")
                 #  has values inside?
                 if (self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral"
                         or self.peek_next_token() == "StarsysLiteral"
                         or re.match(r'Identifier\d*$', self.peek_next_token()) or self.peek_next_token() == "True"
                         or self.peek_next_token() == "False"):
+
+                    # SEMANTIC CHECK
+                    self.call_function_parameter_count = 1
+                    self.check_function_call_value(self.function_call_name, self.peek_next_token())
+
                     self.matchValue_mult(Resources.Value1)
+
+                    self.check_function_call_parameter_count(self.function_call_name,
+                                                             self.call_function_parameter_count)
                     # close it
                     if self.peek_next_token() == ")":
                         self.match(")")
@@ -13059,6 +13082,13 @@ class SemanticAnalyzer:
                             f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
                 #  no values inside
                 elif self.peek_next_token() == ")":
+
+                    # SEMANTIC CHECK
+                    self.call_function_parameter_count = 1
+                    self.check_function_call_value(self.function_call_name, "null")
+                    self.check_function_call_parameter_count(self.function_call_name,
+                                                             self.call_function_parameter_count)
+
                     self.match(")")
                     #  terminate it (no more next)
                     if self.peek_next_token() == "#":
