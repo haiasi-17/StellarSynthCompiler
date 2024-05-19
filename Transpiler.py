@@ -296,15 +296,36 @@ class Transpiler:
                 
                 # No parenthesis in this expression
                 else:
-                    # Store the operands of the exponentiation operator
-                    self.operandOne = self.tokens[self.tokenIndex-1][0]
-                    self.operandTwo = self.tokens[self.tokenIndex+1][0]
+                    # Go back to the token before the exponentiation operator
+                    self.go_back_token()
+                    self.removeTokenCount += 1
+                    
+                    # If whitespace, skip until token is reached.
+                    while self.currentToken in Resources.whitespaces:
+                        self.go_back_token()
+                        self.removeTokenCount+=1
+                    
+                    # Store the operandone
+                    self.operandOne = self.tokens[self.tokenIndex][0]
+                    
+                    # Go back to exponentiation operator
+                    while self.currentToken != "**":   
+                        self.go_next_token()
+                        
+                    # Go to the token after the exponentiation operator
+                        self.go_next_token()
+                    
+                    # If whitespace, skip until token is reached.
+                    while self.currentToken in Resources.whitespaces:
+                        self.go_next_token()
+                        
+                    # Store the operandtwo
+                    self.operandTwo = self.tokens[self.tokenIndex][0]
                     
                     # Remove operandOne from translatedTokens
-                    self.translatedTokens.pop(len(self.translatedTokens)-1)
-                    
-                    # Go to the token after the exponentiation operator
-                    self.go_next_token()
+                    while self.removeTokenCount > 0:
+                        self.translatedTokens.pop()
+                        self.removeTokenCount -= 1
                     
                     # Construct the expression
                     self.expoString = f"pow({self.operandOne}, {self.operandTwo})"
@@ -517,7 +538,7 @@ class Transpiler:
         gimple_cmd = "g++ -fdump-tree-gimple -c {} -o {}".format(file_path, gimple_file_path)
         subprocess.call(gimple_cmd, shell=True)
         
-        return f_exec
+        return f_exec, file_path
     
         """
         This part of the program does not accept input, only outputs. If you want this, Remove return f_exec. and modify lines 450-464 in compiler2.

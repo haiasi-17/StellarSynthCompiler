@@ -4,9 +4,7 @@
 #include <iomanip>
 using namespace std;
 
-
 int main(){
-    long long a[2] = {1,2};
-    cout << a[0] << a[1] << a[2]<< endl;
-	system("pause");
+ long long i = 3+(2+4)pow((2+4), (1+10));
+	cout << i<< endl;
 }

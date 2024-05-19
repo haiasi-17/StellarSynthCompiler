@@ -46,7 +46,7 @@ class Lexer:
             elif (self.current_char.isupper() and self.not_keyword_flag is True) or self.current_char.islower():
                 self.process_identifier()
                 continue
-            elif self.current_char == "=" or self.current_char == "!" or self.current_char == "<" or self.current_char == ">" or self.current_char == "+" or self.current_char == "-" or self.current_char == "*" or self.current_char == "/" or self.current_char == "%" or self.current_char == "&" or self.current_char == "|" or self.current_char == "~":
+            elif self.current_char == "=" or self.current_char == "!" or self.current_char == "<" or self.current_char == ">" or self.current_char == "+" or self.current_char == "-" or self.current_char == "*" or self.current_char == "/" or self.current_char == "%" or self.current_char == "&" or self.current_char == "|":
                 self.process_operator()
                 continue
             elif self.current_char.isdigit():
@@ -557,42 +557,7 @@ class Lexer:
                     self.letter_count += 1
                     self.current_lexeme += self.current_char
                     break
-                elif self.current_char == 'm':
-                    self.letter_count += 1
-                    self.current_lexeme += self.current_char
-                    self.advance()
-                    if self.current_char == 'p':
-                        self.letter_count += 1
-                        self.current_lexeme += self.current_char
-                        self.advance()
-                        if self.current_char == 'o':
-                            self.letter_count += 1
-                            self.current_lexeme += self.current_char
-                            self.advance()
-                            if self.current_char == 'r':
-                                self.letter_count += 1
-                                self.current_lexeme += self.current_char
-                                self.advance()
-                                if self.current_char == 't':
-                                    self.letter_count += 1
-                                    self.current_lexeme += self.current_char
-                                    break
-                                else:
-                                    self.letter_not_match()
-                                    break
-                            else:
-                                self.letter_not_match()
-                                break
-                        else:
-                            self.letter_not_match()
-                            break
-                    else:
-                        self.letter_not_match()
-                        break
-                else:
-                    self.letter_not_match()
-                    break
-
+                
             elif self.current_char == 'L':
                 self.letter_count += 1
                 self.current_lexeme += self.current_char
@@ -1252,7 +1217,7 @@ class Lexer:
         if self.current_char in Resources.ComAlpha + ["_"] + Resources.DigitsWithZero and self.not_keyword_flag is False:
             self.not_keyword_flag = True
         self.retreat()
-
+        
         if self.not_keyword_flag is True:
             if self.letter_count > 0:
                 for i in range(self.letter_count):
@@ -1381,8 +1346,6 @@ class Lexer:
         elif self.current_char == "/":
             self.current_lexeme += self.current_char
         elif self.current_char == "%":
-            self.current_lexeme += self.current_char
-        elif self.current_char == "~":
             self.current_lexeme += self.current_char
 
         self.advance()

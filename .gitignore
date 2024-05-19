@@ -1,0 +1,6 @@
+
+*.pyc
+*.cpp
+*.exe
+*.gimple
+*.s

@@ -91,7 +91,7 @@ Luhman_delim =          (Space + Tab + Newline + RParenth + RSqrBrkt + Terminato
 Starsys_delim =         Space + Tab + Newline + RParenth + Comma + Terminator + LessThan + RSqrBrkt + Colon
 Boolean_delim =         Space + Tab + Newline + Terminator + RParenth + Ampersand + VerticalBar + ExclaMark + Comma + RSqrBrkt + Colon
 Identifier_delim =      (Space + Tab + Newline + Terminator + LParenth + RParenth + LCurBrace + RSqrBrkt + MathOp
-                        + Ampersand + VerticalBar + ExclaMark + AssignOp + GreaterThan + LessThan + Comma + Period + Colon + Tilde + LSqrBrkt + RCurBrace)
+                        + Ampersand + VerticalBar + ExclaMark + AssignOp + GreaterThan + LessThan + Comma + Period + Colon + LSqrBrkt + RCurBrace)
 
 WordSymbolDelims =      {
                         "Autom":        sdelim,
@@ -228,7 +228,6 @@ StellarCPlusPlusDict = {
     "Luhman"        : "float",
     "Fore"          : "for",
     "If"            : "if",
-    "Import"        : "import", # Python style import not c++
     "Sun"           : "long long",
     "Gotolerate"    : "noexcept",
     "Private"       : "private",
@@ -293,28 +292,32 @@ Remarks:
         # SOLVED BY CREATING SEPARATE INPUT CONSOLE WIDGET FOR INPUTS ONLY.
     
     # Issue:
-        # Having multiple strings end with : or ? leads to multiple request for input bugs.
+        # Having multiple strings end with : leads to multiple request for input bugs.
         # UNSOLVED: To resolve this, find a way to correctly determine when a cin request comes in, so for every cin request there is a send input.
 
     # Issue:
         # Currently does accept input in the ui but only on set conditions (Is followed by a disp statement that outputs something that ends in : or ?). 
         # UNSOLVED: We need to find a way that knows definitely when a cin is called during runtime. this way we can call the necessary method to accept and send input.
-
-    Transpiler:
-    Features that differ in the C++ Language:
-        Scope Resolution Operator -> Not Tested
-        Importation -> Non-functional. 
+    
+    # Issue:
+        # Importation -> Non-functional. 
                     1. RULES: Modify rules in that it can only appear before declarations.
                     2. C++ does not use . operator to access its contents.
                     3. No solution in how to check if module exists yet
                     4. does not function with ~ operator.
-                    
+                    5. SOLVED: Removed Import
+    
+    
+    Features that differ in the C++ Language:
+        Scope Resolution Operator -> Not Tested
+    
         Default Value -> Partially Functional
                     1. Vardec have implemented rules.
                         > Issue: If the combination Sun Universe is used in other contexts aside from being main function (e.g function prototype, or var dec) it will become a problem.
                             > This is because int is translated to long long, but Sun with identifier token Universe is translated as int still.
                             > If it is used as Sun Universe = y# i will result in int Universe = y#.
                             > Not intended, only for Int main.
+                        > Solved: Redeclaration Error In Semantic.
                     2. Arrdec not yet functional.
                         
         Displaying -> Partially Functional
@@ -326,13 +329,25 @@ Remarks:
                     1. Solution was to use pow and math header.
                     2. RULES: Now, the order precedence is different, as pow is implemented that same as functions may need to revise the rules. 
                     3. NEVERMIND PEMDAS STILL THOUGH but add to rules and read.
+                    4. Space has Erros
                     
         Type Conversion -> Functional with caveat
                     1. Currently utilizing implicit type conversion of c++, no idea how to modify it. 
                     2. Explicit is covered na. However, there might be inconsistencies with c++ type conversion with our rules.
                         > For instance, may need to revise float and int rules regarding output. cuz integer division and all that. 
                         > ISSUE: Like if its decimal places are zero, then it wont include them even if it is declared as float.
-
+    
+    
+    To do:
+        remove import - check
+        pow whitespace
+        stderr output ui
+        arddec default value
+        float value in rules scientific notation 5 max decimal digits fractional
+        int limit rules
+        documentation rules
+        input 
+        bool conversion does not work in documentation reflect.
         
         
 """
