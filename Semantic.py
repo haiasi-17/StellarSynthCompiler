@@ -10977,7 +10977,12 @@ class SemanticAnalyzer:
                     if self.class_name not in self.instance_variable_table:
                         self.instance_variable_table[self.class_name] = [instance_variable_name]
                     else:
-                        self.instance_variable_table[self.class_name].append(instance_variable_name)
+                        if instance_variable_name in self.instance_variable_table[self.class_name]:
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Semantic error: (Redeclaration Error) Instance variable '{instance_variable_name}' is already declared for class '{self.struct_name}'"
+                            )
+                        else:
+                            self.instance_variable_table[self.class_name].append(instance_variable_name)
                     self.check_class_instance()
 
                 #  access specifier path derived: Class MyClass : Private BaseClass
@@ -11142,7 +11147,12 @@ class SemanticAnalyzer:
                     if self.struct_name not in self.instance_variable_table:
                         self.instance_variable_table[self.struct_name] = [instance_variable_name]
                     else:
-                        self.instance_variable_table[self.struct_name].append(instance_variable_name)
+                        if instance_variable_name in self.instance_variable_table[self.struct_name]:
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Semantic error: (Redeclaration Error) Instance variable '{instance_variable_name}' is already declared for struct '{self.struct_name}'"
+                            )
+                        else:
+                            self.instance_variable_table[self.struct_name].append(instance_variable_name)
                     self.check_struct_instance()
 
                 #  access specifier path derived: ISS MyStruct : Private BaseStruct
