@@ -10973,7 +10973,11 @@ class SemanticAnalyzer:
                 if not re.match(r'Identifier\d*$', self.peek_next_token()):
                     self.declare_class(self.class_name, self.class_scope)
                 else:
-                    self.instance_variable_table = [self.peek_next_lexeme()]
+                    instance_variable_name = self.peek_next_lexeme()
+                    if self.class_name not in self.instance_variable_table:
+                        self.instance_variable_table[self.class_name] = [instance_variable_name]
+                    else:
+                        self.instance_variable_table[self.class_name].append(instance_variable_name)
                     self.check_class_instance()
 
                 #  access specifier path derived: Class MyClass : Private BaseClass
@@ -11134,7 +11138,11 @@ class SemanticAnalyzer:
                 if not re.match(r'Identifier\d*$', self.peek_next_token()):
                     self.declare_struct(self.struct_name, self.struct_scope)
                 else:
-                    self.instance_variable_table = [self.peek_next_lexeme()]
+                    instance_variable_name = self.peek_next_lexeme()
+                    if self.struct_name not in self.instance_variable_table:
+                        self.instance_variable_table[self.struct_name] = [instance_variable_name]
+                    else:
+                        self.instance_variable_table[self.struct_name].append(instance_variable_name)
                     self.check_struct_instance()
 
                 #  access specifier path derived: ISS MyStruct : Private BaseStruct
@@ -12897,9 +12905,13 @@ class SemanticAnalyzer:
     def instance_path(self, expected_token):
         # SEMANTIC CHECK
         print(self.instance_variable_table)
-        if self.peek_previous_lexeme() not in self.instance_variable_table:
+        variable = self.peek_previous_lexeme()
+        variable_declared = any(variable in instance_list for instance_list in self.instance_variable_table.values())
+
+        if not variable_declared:
             self.errors.append(
-                f"(Line {self.line_number}) | Semantic error: (Undeclared Variable) Instance variable '{self.peek_previous_lexeme()}' is not declared")
+                f"(Line {self.line_number}) | Semantic error: (Undeclared Variable) Instance variable '{variable}' is not declared"
+            )
 
         self.get_next_token()
         while self.current_token == "Space":
