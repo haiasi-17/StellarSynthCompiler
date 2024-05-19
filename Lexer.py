@@ -1252,7 +1252,7 @@ class Lexer:
         if self.current_char in Resources.ComAlpha + ["_"] + Resources.DigitsWithZero and self.not_keyword_flag is False:
             self.not_keyword_flag = True
         self.retreat()
-
+        
         if self.not_keyword_flag is True:
             if self.letter_count > 0:
                 for i in range(self.letter_count):
@@ -1289,6 +1289,7 @@ class Lexer:
 
         elif self.current_char in Resources.Identifier_delim:
             self.identifier_count += 1
+            print(self.current_char)
             self.Tokens.append([self.current_lexeme, f"Identifier{self.identifier_count}"])
             self.current_lexeme = ""
             self.not_keyword_flag = False
