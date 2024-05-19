@@ -253,7 +253,7 @@ class CreateMenu(tk.Menu):
         filemenu = tk.Menu(self.mainmenu, tearoff=0, foreground='gray14', activeforeground= "gray84", activebackground="gray20")
         self.mainmenu.add_cascade(label="File", menu=filemenu)
 
-        filemenu.add_command(label="New")
+        filemenu.add_command(label="Run")
         filemenu.add_command(label="Open", command=self.open_file)
         filemenu.add_command(label="Save", command=self.save_file)
         filemenu.add_separator()
@@ -263,8 +263,9 @@ class CreateMenu(tk.Menu):
 
         master.config(menu=self.mainmenu)
 
-    def new_file(self):
+    def command_run(self):
         pass
+        
     def open_file(self):
         try:
             self.text_editor.texteditor.delete('1.0', tk.END)
@@ -330,6 +331,7 @@ class CreateButtons(customtkinter.CTkButton):
         self.createbutton("Syntax", 1, self.run_syntax)
         self.createbutton("Semantic", 2, self.run_semantic)
         self.createbutton("Run", 3, self.run_Compile)
+        self.createbutton("Cmd", 4, self.cmd_Compile) # Temorary. Opens CMD 
     
     def delete_previous_executable(self):
         """Delete the previous executable file, if it exists and is not in use."""
@@ -521,26 +523,97 @@ class CreateButtons(customtkinter.CTkButton):
                             threading.Thread(target=self.run_cpp_executable, args=(executableFile,), daemon=True).start()
                         except Exception as e:
                             print("Error executing subprocess:", e)
-                        
-                        """
-                        if errors:
-                            self.console1.console.insert(tk.END, f"StellarSynth -> {transerrors}\n", tags="Error")
-                        else:
-                            self.console1.console.insert(tk.END, f"-"*40)
-                            self.console1.console.insert(tk.END, f"\n{transoutput}\n")
-                            self.console1.console.insert(tk.END, f"-"*40)
-                        """
+                    
             
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"Compile Error: {e}")
+            
+        self.console1.console.configure(state="disabled")
+        
+    def cmd_Compile(self):
+        self.console1.console.configure(state="normal")
+        self.console1.console.tag_config("Error", foreground="#d50000")
+        self.console1.console.tag_config("Complete", foreground="green")
+        contents = self.text_editor.texteditor.get("1.0", "end-1c")
+        
+        try:
+            # Clear both consoles in case the run button is pressed again.
+            self.console1.console.delete("1.0", tk.END)
+            self.inputConsole1.inputConsole.delete("1.0", tk.END)
+            
+            errors, tokens = Lexer.read_text(contents)
+            if errors:
+                self.console1.console.insert(tk.END,
+                                             "StellarSynth -> Lexical Analysis Error. Cannot proceed with Syntax Analysis.\n",
+                                             tags="Error")
+                return
+            if not tokens:
+                self.console1.console.insert(tk.END, "StellarSynth -> Tokens list is empty.\n")
+            else:
+                syntax_analyzer = Syntax.SyntaxAnalyzer(tokens)
+                syntax_analyzer.parse_top_program()
+
+                if syntax_analyzer.errors:
+                    self.console1.console.insert(tk.END, f"StellarSynth -> Syntax Analysis Error. Cannot proceed with Semantic Analysis.\n", tags="Error")
+                else:
+                    semantic_analyzer = Semantic.SemanticAnalyzer(tokens)
+                    semantic_analyzer.parse_top_program()
+
+                    if semantic_analyzer.errors:
+                        self.console1.console.insert(tk.END, f"StellarSynth -> Semantic Analysis Error. Cannot proceed with compilation.\n", tags="Error")
+                    else:
+                        transpilerInstance = Transpiler.Transpiler(tokens, self.menu.filename)
+                        transpilerInstance.stellarTranslator()
+                         # Kill any existing process
+                        if hasattr(self, "process") and self.process and self.process.poll() is None:
+                            try:
+                                print("Terminating existing process...")
+                                self.process.terminate()
+                                self.process.wait()
+                            except Exception as e:
+                                print(f"Error terminating the process: {e}")
+                                
+                        # Attempt to delete the previous exe file.
+                        self.delete_previous_executable()
+                        # Create new Exe file
+                        executableFile = transpilerInstance.writetoCPPFile()
+                        # Assign exe file to previous for next deletion.
+                        self.previous_executable = executableFile
+                        print(executableFile)
+                        
+                        try:
+                            # Check if the file exists
+                            if not os.path.isfile(executableFile):
+                                print("Error: Executable file does not exist at the specified path.")
+                            else:
+                                # Construct the command to open a new cmd console and run the C++ executable
+                                command = f'start cmd /k {executableFile}'
+
+                                # Print the command for debugging purposes
+                                print(f"Running command: {command}")
+
+                                # Run the command
+                                subprocess.run(["cmd", "/c", command])       
+                        except Exception as e:
+                            print("Error executing subprocess:", e)
+                        
+        except Exception as e:
+            print(f"Compile Error: {e}")
             
         self.console1.console.configure(state="disabled")
     
     def run_cpp_executable(self, executable_path):
         
+        # Create a clean environment
+        new_env = os.environ.copy()
+        
         # Creates a process that runs the c++ exe file.
         try:
-            self.process = subprocess.Popen(executable_path, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            self.process = subprocess.Popen(
+            executable_path, shell=True, stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+            env=new_env
+        )
         except Exception as e:
             print(f"Error writing to process: {e}")
             
