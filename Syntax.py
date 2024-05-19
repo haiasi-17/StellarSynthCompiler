@@ -3433,7 +3433,7 @@ class SyntaxAnalyzer:
                     if (re.match(r'Identifier\d*$', self.peek_next_token()) or self.peek_next_token() == "SunLiteral"
                             or self.peek_next_token() == "LuhmanLiteral" or self.peek_next_token() == "StarsysLiteral"):
                         self.match(Resources.Value2)  # consume values
-                        #  return is an array index path
+                        #  an array index path
                         if self.peek_next_token() == "{" and (re.match(r'Identifier\d*$', self.peek_previous_token())):
                             self.match("{")  # consume
                             #  array index assign path
@@ -3460,7 +3460,7 @@ class SyntaxAnalyzer:
                                                 self.match(")")  # consume ')'
                                                 return True
                                             #  error: not closed
-                                            else:
+                                            elif self.peek_next_token() != ")" and self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral" or re.match(r'Identifier\d*$', self.peek_previous_token()):
                                                 self.errors.append(
                                                     f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
                                         #  error: not followed by ')' or '{'
@@ -3486,7 +3486,7 @@ class SyntaxAnalyzer:
                                             self.match(")")  # consume ')'
                                             return True
                                         #  error: not closed
-                                        else:
+                                        elif self.peek_next_token() != ")" and self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral" or re.match(r'Identifier\d*$', self.peek_previous_token()):
                                             self.errors.append(
                                                 f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
                                     #  error: not followed by a ')' or '{'
@@ -3512,7 +3512,7 @@ class SyntaxAnalyzer:
                                         self.match(")")  # consume ')'
                                         return True
                                     #  error: not closed
-                                    else:
+                                    elif self.peek_next_token() != ")" and self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral" or re.match(r'Identifier\d*$', self.peek_previous_token()):
                                         self.errors.append(
                                             f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
                                 #  error: not followed by a '{' or ')'
@@ -3531,7 +3531,7 @@ class SyntaxAnalyzer:
                                 self.match(")")  # consume ')'
                                 return True
                             #  error: not closed
-                            else:
+                            elif self.peek_next_token() != ")" and self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral" or re.match(r'Identifier\d*$', self.peek_previous_token()):
                                 self.errors.append(
                                     f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
                         #  subtract it
@@ -3542,7 +3542,7 @@ class SyntaxAnalyzer:
                                 self.match(")")  # consume ')'
                                 return True
                             #  error: not closed
-                            else:
+                            elif self.peek_next_token() != ")" and self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral" or re.match(r'Identifier\d*$', self.peek_previous_token()):
                                 self.errors.append(
                                     f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
                         #  multiply it
@@ -3553,7 +3553,7 @@ class SyntaxAnalyzer:
                                 self.match(")")  # consume ')'
                                 return True
                             #  error: not closed
-                            else:
+                            elif self.peek_next_token() != ")" and self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral" or re.match(r'Identifier\d*$', self.peek_previous_token()):
                                 self.errors.append(
                                     f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
                         #  divide it
@@ -3564,7 +3564,7 @@ class SyntaxAnalyzer:
                                 self.match(")")  # consume ')'
                                 return True
                             #  error: not closed
-                            else:
+                            elif self.peek_next_token() != ")" and self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral" or re.match(r'Identifier\d*$', self.peek_previous_token()):
                                 self.errors.append(
                                     f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
                         #  modulo it
@@ -3575,7 +3575,7 @@ class SyntaxAnalyzer:
                                 self.match(")")  # consume ')'
                                 return True
                             #  error: not closed
-                            else:
+                            elif self.peek_next_token() != ")" and self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral" or re.match(r'Identifier\d*$', self.peek_previous_token()):
                                 self.errors.append(
                                     f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
                         #  exponentiate it
@@ -3586,7 +3586,7 @@ class SyntaxAnalyzer:
                                 self.match(")")  # consume ')'
                                 return True
                             #  error: not closed
-                            else:
+                            elif self.peek_next_token() != ")" and self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral" or re.match(r'Identifier\d*$', self.peek_previous_token()):
                                 self.errors.append(
                                     f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
                         #  close it (single value)
@@ -3596,7 +3596,7 @@ class SyntaxAnalyzer:
                         #  error: not followed by any mathops or a terminator
                         else:
                             self.errors.append(
-                                f"(Line {self.line_number}) | Syntax error: Expected ')', , but instead got '{self.peek_next_token()}'")
+                                f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
                     #  error: no values inside
                     else:
                         self.errors.append(
@@ -3640,7 +3640,7 @@ class SyntaxAnalyzer:
                                                 self.match(")")  # consume ')'
                                                 return True
                                             #  error: not closed
-                                            else:
+                                            elif self.peek_next_token() != ")" and self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral" or re.match(r'Identifier\d*$', self.peek_previous_token()):
                                                 self.errors.append(
                                                     f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
                                         #  error: not followed by ')' or '{'
@@ -3666,7 +3666,7 @@ class SyntaxAnalyzer:
                                             self.match(")")  # consume ')'
                                             return True
                                         #  error: not closed
-                                        else:
+                                        elif self.peek_next_token() != ")" and self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral" or re.match(r'Identifier\d*$', self.peek_previous_token()):
                                             self.errors.append(
                                                 f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
                                     #  error: not followed by a ')' or '{'
@@ -3692,7 +3692,7 @@ class SyntaxAnalyzer:
                                         self.match(")")  # consume ')'
                                         return True
                                     #  error: not closed
-                                    else:
+                                    elif self.peek_next_token() != ")" and self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral" or re.match(r'Identifier\d*$', self.peek_previous_token()):
                                         self.errors.append(
                                             f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
                                 #  error: not followed by a '{' or ')'
@@ -3711,7 +3711,7 @@ class SyntaxAnalyzer:
                                 self.match(")")  # consume ')'
                                 return True
                             #  error: not closed
-                            else:
+                            elif self.peek_next_token() != ")" and self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral" or re.match(r'Identifier\d*$', self.peek_previous_token()):
                                 self.errors.append(
                                     f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
                         #  subtract it
@@ -3722,7 +3722,7 @@ class SyntaxAnalyzer:
                                 self.match(")")  # consume ')'
                                 return True
                             #  error: not closed
-                            else:
+                            elif self.peek_next_token() != ")" and self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral" or re.match(r'Identifier\d*$', self.peek_previous_token()):
                                 self.errors.append(
                                     f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
                         #  multiply it
@@ -3733,7 +3733,7 @@ class SyntaxAnalyzer:
                                 self.match(")")  # consume ')'
                                 return True
                             #  error: not closed
-                            else:
+                            elif self.peek_next_token() != ")" and self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral" or re.match(r'Identifier\d*$', self.peek_previous_token()):
                                 self.errors.append(
                                     f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
                         #  divide it
@@ -3744,7 +3744,7 @@ class SyntaxAnalyzer:
                                 self.match(")")  # consume ')'
                                 return True
                             #  error: not closed
-                            else:
+                            elif self.peek_next_token() != ")" and self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral" or re.match(r'Identifier\d*$', self.peek_previous_token()):
                                 self.errors.append(
                                     f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
                         #  modulo it
@@ -3755,7 +3755,7 @@ class SyntaxAnalyzer:
                                 self.match(")")  # consume ')'
                                 return True
                             #  error: not closed
-                            else:
+                            elif self.peek_next_token() != ")" and self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral" or re.match(r'Identifier\d*$', self.peek_previous_token()):
                                 self.errors.append(
                                     f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
                         #  exponentiate it
@@ -3766,7 +3766,7 @@ class SyntaxAnalyzer:
                                 self.match(")")  # consume ')'
                                 return True
                             #  error: not closed
-                            else:
+                            elif self.peek_next_token() != ")" and self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral" or re.match(r'Identifier\d*$', self.peek_previous_token()):
                                 self.errors.append(
                                     f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
                         #  close it (single value)
@@ -3776,7 +3776,7 @@ class SyntaxAnalyzer:
                         #  error: not followed by any mathops or a terminator
                         else:
                             self.errors.append(
-                                f"(Line {self.line_number}) | Syntax error: Expected ')', , but instead got '{self.peek_next_token()}'")
+                                f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
                     #  error: no values inside
                     else:
                         self.errors.append(
@@ -3832,7 +3832,7 @@ class SyntaxAnalyzer:
                                                 self.match(")")  # consume ')'
                                                 return True
                                             #  error: not closed
-                                            else:
+                                            elif self.peek_next_token() != ")" and self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral" or re.match(r'Identifier\d*$', self.peek_previous_token()):
                                                 self.errors.append(
                                                     f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
                                         #  error: not followed by ')' or '{'
@@ -3858,7 +3858,7 @@ class SyntaxAnalyzer:
                                             self.match(")")  # consume ')'
                                             return True
                                         #  error: not closed
-                                        else:
+                                        elif self.peek_next_token() != ")" and self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral" or re.match(r'Identifier\d*$', self.peek_previous_token()):
                                             self.errors.append(
                                                 f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
                                     #  error: not followed by a ')' or '{'
@@ -3884,7 +3884,7 @@ class SyntaxAnalyzer:
                                         self.match(")")  # consume ')'
                                         return True
                                     #  error: not closed
-                                    else:
+                                    elif self.peek_next_token() != ")" and self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral" or re.match(r'Identifier\d*$', self.peek_previous_token()):
                                         self.errors.append(
                                             f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
                                 #  error: not followed by a '{' or ')'
@@ -3903,7 +3903,8 @@ class SyntaxAnalyzer:
                                 self.match(")")  # consume ')'
                                 return True
                             #  error: not closed
-                            else:
+                            elif self.peek_next_token() != ")" and self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral" or re.match(
+                                    r'Identifier\d*$', self.peek_previous_token()):
                                 self.errors.append(
                                     f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
                         #  subtract it
@@ -3914,7 +3915,7 @@ class SyntaxAnalyzer:
                                 self.match(")")  # consume ')'
                                 return True
                             #  error: not closed
-                            else:
+                            elif self.peek_next_token() != ")" and self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral" or re.match(r'Identifier\d*$', self.peek_previous_token()):
                                 self.errors.append(
                                     f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
                         #  multiply it
@@ -3925,7 +3926,7 @@ class SyntaxAnalyzer:
                                 self.match(")")  # consume ')'
                                 return True
                             #  error: not closed
-                            else:
+                            elif self.peek_next_token() != ")" and self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral" or re.match(r'Identifier\d*$', self.peek_previous_token()):
                                 self.errors.append(
                                     f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
                         #  divide it
@@ -3936,7 +3937,7 @@ class SyntaxAnalyzer:
                                 self.match(")")  # consume ')'
                                 return True
                             #  error: not closed
-                            else:
+                            elif self.peek_next_token() != ")" and self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral" or re.match(r'Identifier\d*$', self.peek_previous_token()):
                                 self.errors.append(
                                     f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
                         #  modulo it
@@ -3947,7 +3948,7 @@ class SyntaxAnalyzer:
                                 self.match(")")  # consume ')'
                                 return True
                             #  error: not closed
-                            else:
+                            elif self.peek_next_token() != ")" and self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral" or re.match(r'Identifier\d*$', self.peek_previous_token()):
                                 self.errors.append(
                                     f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
                         #  exponentiate it
@@ -3958,7 +3959,7 @@ class SyntaxAnalyzer:
                                 self.match(")")  # consume ')'
                                 return True
                             #  error: not closed
-                            else:
+                            elif self.peek_next_token() != ")" and self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral" or re.match(r'Identifier\d*$', self.peek_previous_token()):
                                 self.errors.append(
                                     f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
                         #  close it (single value)
@@ -3968,7 +3969,7 @@ class SyntaxAnalyzer:
                         #  error: not followed by any mathops or a terminator
                         else:
                             self.errors.append(
-                                f"(Line {self.line_number}) | Syntax error: Expected ')', , but instead got '{self.peek_next_token()}'")
+                                f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
                     #  error: values are not as expected
                     else:
                         self.errors.append(f"(Line {self.line_number}) | Syntax Error: Expected 'SunLiteral', "
@@ -5331,7 +5332,7 @@ class SyntaxAnalyzer:
                     self.parenthError = True
                     return False
             elif (re.match(r'Identifier\d*$', self.peek_next_token())
-                  or "SunLiteral" or "LuhmanLiteral"):
+                  or self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral"):
                 self.match(Resources.Value2)  # consume
                 #  is it an array index?
                 if self.peek_next_token() == "{" and (re.match(r'Identifier\d*$', self.peek_previous_token())):
@@ -5542,7 +5543,7 @@ class SyntaxAnalyzer:
 
     # expr for array size
     def match_mathop3(self, expected_token):
-        if (self.peek_previous_token() != "SunLiteral" and not
+        if (self.peek_previous_token() != "SunLiteral" or not
         re.match(r'Identifier\d*$', self.peek_previous_token())):
             self.errors.append(
                 f"(Line {self.line_number}) | Syntax Error: Expected 'Identifier', 'SunLiteral' before {self.peek_next_token()}")
@@ -20898,7 +20899,8 @@ class SyntaxAnalyzer:
                 self.errors.append(
                     f"Syntax Error: Expected 'Sun', 'Luhman', 'Starsys', 'Boolean', 'Autom', 'Static', 'Void', 'Class', 'ISS', but instead got '{self.peek_next_token()}'")
         else:
-            return True
+            self.errors.append(
+                f"Syntax Error: Expected 'Formulate' but instead got '{self.peek_next_token()}'")
             # self.errors.append(f"Syntax Error: Expected 'ISS', 'Static', 'Boolean', 'Autom', 'Luhman', "
             # f"'Starsys', 'Void', 'Class', 'Sun' after 'Formulate'")
 
