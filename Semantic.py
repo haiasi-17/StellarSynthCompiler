@@ -29,6 +29,7 @@ class SemanticAnalyzer:
         self.output_var = False
         self.input_var = False
         self.return_var = False
+        self.classISS_scope = False
         # assignment cecking
         self.assignment_variable = None
         # array checking 1D
@@ -99,6 +100,7 @@ class SemanticAnalyzer:
         self.function_call_value = None
         self.function_call_table = {}
         self.function_call_value_table = {}
+        self.assign_flag = False
 
     #  method that peeks at the next token after the current_token
     def peek_next_token(self):
@@ -282,6 +284,13 @@ class SemanticAnalyzer:
                                 f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
                     # empty, no argument
                     elif self.peek_next_token() == ")":
+
+                        # SEMANTIC CHECK
+                        self.call_function_parameter_count = 1
+                        self.check_function_call_value(self.function_call_name, "null")
+                        self.check_function_call_parameter_count(self.function_call_name,
+                                                                 self.call_function_parameter_count)
+
                         self.match(")")
                         # follow it with '<<'
                         if self.peek_next_token() == "<<":
@@ -3382,14 +3391,24 @@ class SemanticAnalyzer:
                         self.check_function_call_value(self.function_call_name, self.peek_next_token())
 
                         self.matchValue_mult(Resources.Value1)
-
                         self.check_function_call_parameter_count(self.function_call_name,
                                                                  self.call_function_parameter_count)
                         # close it
                         if self.peek_next_token() == ")":
                             self.match(")")
                             # SEMANTIC CHECK
-                            self.check_function_call_type()
+                            # Check if the function_call_name exists in the prototype_parameter_table
+                            if self.function_call_name in self.prototype_parameter_table:
+                                # Retrieve the list of parameter entries for the function
+                                function_parameters = self.prototype_parameter_table[self.function_call_name]
+                                if function_parameters:
+                                    # Extract the function_datatype from the first parameter entry
+                                    expected_datatype = function_parameters[0]['function_datatype']
+                                    if expected_datatype == "Void":
+                                        self.assign_flag = True
+                                        self.check_function_call_type()
+                                    else:
+                                        self.check_function_call_type()
                             return True
                         #  error: expected ')'
                         else:
@@ -3397,6 +3416,27 @@ class SemanticAnalyzer:
                                 f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
                     #  not followed by values (close it)
                     elif self.peek_next_token() == ")":
+
+                        # SEMANTIC CHECK
+                        self.call_function_parameter_count = 1
+                        self.check_function_call_value(self.function_call_name, "null")
+                        self.check_function_call_parameter_count(self.function_call_name,
+                                                                 self.call_function_parameter_count)
+
+                        # SEMANTIC CHECK
+                        # Check if the function_call_name exists in the prototype_parameter_table
+                        if self.function_call_name in self.prototype_parameter_table:
+                            # Retrieve the list of parameter entries for the function
+                            function_parameters = self.prototype_parameter_table[self.function_call_name]
+                            if function_parameters:
+                                # Extract the function_datatype from the first parameter entry
+                                expected_datatype = function_parameters[0]['function_datatype']
+                                if expected_datatype == "Void":
+                                    self.assign_flag = True
+                                    self.check_function_call_type()
+                                else:
+                                    self.check_function_call_type()
+
                         self.match(")")
                         return True
                     # error: not followed by any values
@@ -4713,7 +4753,18 @@ class SemanticAnalyzer:
                         if self.peek_next_token() == ")":
                             self.match(")")
                             # SEMANTIC CHECK
-                            self.check_function_call_type()
+                            # Check if the function_call_name exists in the prototype_parameter_table
+                            if self.function_call_name in self.prototype_parameter_table:
+                                # Retrieve the list of parameter entries for the function
+                                function_parameters = self.prototype_parameter_table[self.function_call_name]
+                                if function_parameters:
+                                    # Extract the function_datatype from the first parameter entry
+                                    expected_datatype = function_parameters[0]['function_datatype']
+                                    if expected_datatype == "Void":
+                                        self.assign_flag = True
+                                        self.check_function_call_type()
+                                    else:
+                                        self.check_function_call_type()
                             return True
                         #  error: expected ')'
                         else:
@@ -4721,6 +4772,27 @@ class SemanticAnalyzer:
                                 f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
                     #  not followed by values (close it)
                     elif self.peek_next_token() == ")":
+
+                        # SEMANTIC CHECK
+                        self.call_function_parameter_count = 1
+                        self.check_function_call_value(self.function_call_name, "null")
+                        self.check_function_call_parameter_count(self.function_call_name,
+                                                                 self.call_function_parameter_count)
+
+                        # SEMANTIC CHECK
+                        # Check if the function_call_name exists in the prototype_parameter_table
+                        if self.function_call_name in self.prototype_parameter_table:
+                            # Retrieve the list of parameter entries for the function
+                            function_parameters = self.prototype_parameter_table[self.function_call_name]
+                            if function_parameters:
+                                # Extract the function_datatype from the first parameter entry
+                                expected_datatype = function_parameters[0]['function_datatype']
+                                if expected_datatype == "Void":
+                                    self.assign_flag = True
+                                    self.check_function_call_type()
+                                else:
+                                    self.check_function_call_type()
+
                         self.match(")")
                         return True
                     # error: not followed by any values
@@ -8313,6 +8385,15 @@ class SemanticAnalyzer:
             if (re.match(r'Identifier\d*$', self.peek_next_token())
                     or "SunLiteral" or "LuhmanLiteral"):
                 self.match(Resources.Value2)
+                #  SEMANTIC CHECK
+                if re.match(r'Identifier\d*$', self.peek_previous_token()):
+                    self.function_parameter_variable()  # is it from a parameter
+                if self.isParameterVariable:
+                    self.function_assignment_variable = self.peek_previous_lexeme()
+                    self.check_function_assignment_type()  # check its type
+                if re.match(r'Identifier\d*$', self.peek_previous_token()) and not self.isParameterVariable:
+                    self.variable_dec = True
+                    self.check_variable_usage()
                 # add is next
                 if self.peek_next_token() == "+":
                     self.match_mathop("+")
@@ -8339,6 +8420,13 @@ class SemanticAnalyzer:
                             return True  # terminate
                 #  is it an array index?
                 elif self.peek_next_token() == "{" and (re.match(r'Identifier\d*$', self.peek_previous_token())):
+                    #  SEMANTIC CHECK
+                    if self.peek_previous_lexeme() in self.symbol_table and (
+                            self.peek_previous_lexeme() not in self.array_variable_table or self.array_variable_table is None) and not self.isParameterVariable:
+                        self.errors.append(
+                            f"(Line {self.line_number}) | Semantic Error: (Assignment Mismatch) Variable '{self.peek_previous_lexeme()}' is not declared as an array.")
+                    else:
+                        self.array_variable = self.peek_previous_lexeme()
                     self.match("{")
                     #  array index assign path
                     if (re.match(r'Identifier\d*$', self.peek_next_token())
@@ -8591,6 +8679,15 @@ class SemanticAnalyzer:
             if (re.match(r'Identifier\d*$', self.peek_next_token())
                     or "SunLiteral" or "LuhmanLiteral"):
                 self.match(Resources.Value2)
+                #  SEMANTIC CHECK
+                if re.match(r'Identifier\d*$', self.peek_previous_token()):
+                    self.function_parameter_variable()  # is it from a parameter
+                if self.isParameterVariable:
+                    self.function_assignment_variable = self.peek_previous_lexeme()
+                    self.check_function_assignment_type()  # check its type
+                if re.match(r'Identifier\d*$', self.peek_previous_token()) and not self.isParameterVariable:
+                    self.variable_dec = True
+                    self.check_variable_usage()
                 # add is next
                 if self.peek_next_token() == "+":
                     self.match_mathop2("+")
@@ -8608,6 +8705,13 @@ class SemanticAnalyzer:
                     self.match_mathop2("%")
                 #  is it an array index?
                 elif self.peek_next_token() == "{" and (re.match(r'Identifier\d*$', self.peek_previous_token())):
+                    #  SEMANTIC CHECK
+                    if self.peek_previous_lexeme() in self.symbol_table and (
+                            self.peek_previous_lexeme() not in self.array_variable_table or self.array_variable_table is None) and not self.isParameterVariable:
+                        self.errors.append(
+                            f"(Line {self.line_number}) | Semantic Error: (Assignment Mismatch) Variable '{self.peek_previous_lexeme()}' is not declared as an array.")
+                    else:
+                        self.array_variable = self.peek_previous_lexeme()
                     self.match("{")
                     #  array index assign path
                     if (re.match(r'Identifier\d*$', self.peek_next_token())
@@ -9322,23 +9426,39 @@ class SemanticAnalyzer:
             self.datatype = self.peek_previous_token()
 
         if re.match(r'Identifier\d*$', self.peek_next_token()):
-            self.current_scope = 'function'
+            if self.classISS_scope:
+                self.current_scope = 'class'
+            else:
+                self.current_scope = 'function'
             self.matchID_mult("Identifier")
+            print(self.symbol_table)
             #  SEMANTIC CHECK
             if self.current_lexeme == "Universe":
                 self.peek_next_token()
             else:
                 self.var_name = self.current_lexeme  # assign variable
-                scope = 'function'
-                self.check_variable_redeclaration()
-                self.scope = scope  # scope
-                self.current_scope = scope  # current scope
+                if self.classISS_scope:
+                    scope = 'class'
+                    self.check_variable_redeclaration()
+                    self.scope = scope  # scope
+                    self.current_scope = scope  # current scope
+                else:
+                    scope = 'function'
+                    self.check_variable_redeclaration()
+                    self.scope = scope  # scope
+                    self.current_scope = scope  # current scope
             #  is it an array declaration?
             if self.peek_next_token() == "{":
-                scope = 'function'
-                self.scope = scope  # scope
-                self.array_datatype = self.datatype  # array datatype
-                self.match_arr_dec("{")
+                if self.classISS_scope:
+                    scope = 'class'
+                    self.scope = scope  # scope
+                    self.array_datatype = self.datatype  # array datatype
+                    self.match_arr_dec("{")
+                else:
+                    scope = 'function'
+                    self.scope = scope  # scope
+                    self.array_datatype = self.datatype  # array datatype
+                    self.match_arr_dec("{")
             #  is it a subfunction definition?
             elif self.peek_next_token() == "(":
                 self.function_datatype = self.datatype
@@ -9574,22 +9694,37 @@ class SemanticAnalyzer:
             self.datatype = self.peek_previous_token()
 
         if re.match(r'Identifier\d*$', self.peek_next_token()):
-            self.current_scope = 'function'
+            if self.classISS_scope:
+                self.current_scope = 'class'
+            else:
+                self.current_scope = 'function'
             self.matchID_mult("Identifier")
             if self.current_lexeme == "Universe":
                 self.peek_next_token()
             else:
                 self.var_name = self.current_lexeme  # assign variable
-                scope = 'function'
-                self.check_variable_redeclaration()
-                self.scope = scope  # scope
-                self.current_scope = scope  # current scope
+                if self.classISS_scope:
+                    scope = 'class'
+                    self.check_variable_redeclaration()
+                    self.scope = scope  # scope
+                    self.current_scope = scope  # current scope
+                else:
+                    scope = 'function'
+                    self.check_variable_redeclaration()
+                    self.scope = scope  # scope
+                    self.current_scope = scope  # current scope
             #  is it an array declaration?
             if self.peek_next_token() == "{":
-                scope = 'function'
-                self.scope = scope  # scope
-                self.array_datatype = self.datatype  # array datatype
-                self.match_arr_dec("{")
+                if self.classISS_scope:
+                    scope = 'class'
+                    self.scope = scope  # scope
+                    self.array_datatype = self.datatype  # array datatype
+                    self.match_arr_dec("{")
+                else:
+                    scope = 'function'
+                    self.scope = scope  # scope
+                    self.array_datatype = self.datatype  # array datatype
+                    self.match_arr_dec("{")
             #  is it a subfunction definition?
             elif self.peek_next_token() == "(":
                 self.function_datatype = self.datatype
@@ -10833,7 +10968,10 @@ class SemanticAnalyzer:
                 self.match("Identifier")
                 # SEMANTIC CHECK
                 self.class_name = self.peek_previous_lexeme()
-                self.declare_class(self.class_name, self.class_scope)
+                if not re.match(r'Identifier\d*$', self.peek_next_token()):
+                    self.declare_class(self.class_name, self.class_scope)
+                else:
+                    pass
 
                 #  access specifier path derived: Class MyClass : Private BaseClass
                 if self.peek_next_token() == ":":
@@ -10882,6 +11020,8 @@ class SemanticAnalyzer:
                 #  class instance path
                 elif re.match(r'Identifier\d*$', self.peek_next_token()):
                     self.match("Identifier")
+
+                    
                     #  terminate
                     if self.peek_next_token() == "#":
                         self.match("#")
@@ -11136,6 +11276,7 @@ class SemanticAnalyzer:
 
     # for struct and class
     def match_assignment(self, expected_token):
+        print(self.current_scope)
         self.get_next_token()
         while self.current_token == "Space":
             self.get_next_token()
@@ -11959,13 +12100,19 @@ class SemanticAnalyzer:
                     if self.isParameterVariable:
                         self.check_function_assignment_type()
                     else:
+                        # SEMANTIC CHECK
+                        self.current_value = self.peek_next_token()
                         self.check_assignment_type()
                         # Check if variable is in the symbol table
                         if self.assignment_variable in self.symbol_table:
                             self.var_name = self.assignment_variable
                             # Update the variable's value and scope in the symbol table
-                            self.symbol_table[self.var_name] = {'scope': self.current_scope,
-                                                                'value': self.peek_next_token()}
+                            datatype = self.symbol_table[self.var_name]['datatype']
+
+                            self.symbol_table[self.var_name] = {'datatype': datatype, 'scope': self.current_scope,
+                                                                'count': 1,
+                                                                'value': self.current_value}
+
                     self.match(Resources.Value6)  # consume values
                     # must be terminated
                     if self.peek_next_token() == "#":
@@ -11981,14 +12128,34 @@ class SemanticAnalyzer:
                     if self.isParameterVariable:
                         self.check_function_assignment_type()
                     else:
+                        # SEMANTIC CHECK
+                        if re.match(r'Identifier\d*$', self.peek_next_token()):
+                            self.current_value = self.peek_next_lexeme()
+
+                        else:
+                            self.current_value = self.peek_next_token()
                         self.check_assignment_type()
                         # Check if variable is in the symbol table
                         if self.assignment_variable in self.symbol_table:
                             self.var_name = self.assignment_variable
                             # Update the variable's value and scope in the symbol table
-                            self.symbol_table[self.var_name] = {'scope': self.current_scope,
-                                                                'value': self.peek_next_token()}
+                            datatype = self.symbol_table[self.var_name]['datatype']
+                            self.symbol_table[self.var_name] = {'datatype': datatype, 'scope': self.current_scope,
+                                                                'count': 1,
+                                                                'value': self.current_value}
+
                     self.match(Resources.Value2)  # consume values
+
+                    #  SEMANTIC CHECK
+                    if re.match(r'Identifier\d*$', self.peek_previous_token()):
+                        self.function_parameter_variable()  # is it from a parameter
+                    if self.isParameterVariable:
+                        self.function_assignment_variable = self.peek_previous_lexeme()
+                        self.check_function_assignment_type()  # check its type
+                    if re.match(r'Identifier\d*$', self.peek_previous_token()) and not self.isParameterVariable:
+                        self.variable_dec = True
+                        self.check_variable_usage()
+
                     # terminate it?
                     if self.peek_next_token() == "#":
                         self.match("#")
@@ -12173,7 +12340,7 @@ class SemanticAnalyzer:
                     self.check_function_call_value(self.function_call_name, self.peek_next_token())
 
                     self.matchValue_mult(Resources.Value1)
-                    print("here")
+
                     self.check_function_call_parameter_count(self.function_call_name, self.call_function_parameter_count)
 
                     # close it
@@ -12192,6 +12359,13 @@ class SemanticAnalyzer:
                             f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
                 #  no values inside
                 elif self.peek_next_token() == ")":
+
+                    # SEMANTIC CHECK
+                    self.call_function_parameter_count = 1
+                    self.check_function_call_value(self.function_call_name, "null")
+                    self.check_function_call_parameter_count(self.function_call_name,
+                                                             self.call_function_parameter_count)
+
                     self.match(")")
                     #  terminate it
                     if self.peek_next_token() == "#":
@@ -14973,6 +15147,7 @@ class SemanticAnalyzer:
                                         f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
                             #  check: if closed, single id no value
                             elif self.peek_next_token() == ")":
+                                self.compare_function_parameters(self.function_name)
                                 self.match(")")
                                 #  followed by '['
                                 if self.peek_next_token() == "[":
@@ -16223,6 +16398,7 @@ class SemanticAnalyzer:
                                         f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
                             #  check: if closed, single id no value
                             elif self.peek_next_token() == ")":
+                                self.compare_function_parameters(self.function_name)
                                 self.match(")")
                                 #  followed by '['
                                 if self.peek_next_token() == "[":
@@ -17492,6 +17668,7 @@ class SemanticAnalyzer:
                                 f"(Line {self.line_number}) | Syntax error: Expected ')', but instead got '{self.peek_next_token()}'")
                     #  check: if closed, single id no value
                     elif self.peek_next_token() == ")":
+                        self.compare_function_parameters(self.function_name)
                         self.match(")")
                         #  followed by '['
                         if self.peek_next_token() == "[":
@@ -19532,6 +19709,7 @@ class SemanticAnalyzer:
                     self.match("Sun")  # consume Sun
                     #  check if there is an identifier after the datatype
                     if re.match(r'Identifier\d*$', self.peek_next_token()):
+                        self.classISS_scope = False
                         self.parse_variable_declaration_func()
                     #  error: no identifier after datatype
                     else:
@@ -19542,6 +19720,7 @@ class SemanticAnalyzer:
                     self.match("Luhman")  # consume Luhman
                     #  check if there is an identifier after the datatype
                     if re.match(r'Identifier\d*$', self.peek_next_token()):
+                        self.classISS_scope = False
                         self.parse_variable_declaration_func()
                     #  error: no identifier after datatype
                     else:
@@ -19552,6 +19731,7 @@ class SemanticAnalyzer:
                     self.match("Starsys")  # consume Starsys
                     #  check if there is an identifier after the datatype
                     if re.match(r'Identifier\d*$', self.peek_next_token()):
+                        self.classISS_scope = False
                         self.parse_variable_declaration_func()
                     else:
                         #  error: no identifier after datatype
@@ -19562,6 +19742,7 @@ class SemanticAnalyzer:
                     self.match("Boolean")  # consume Bool
                     #  check if there is an identifier after the datatype
                     if re.match(r'Identifier\d*$', self.peek_next_token()):
+                        self.classISS_scope = False
                         self.parse_boolean_func()
                     #  error: no identifier after datatype
                     else:
@@ -19576,6 +19757,7 @@ class SemanticAnalyzer:
                 self.match("Sun")  # consume Sun
                 #  check if there is an identifier after the datatype
                 if re.match(r'Identifier\d*$', self.peek_next_token()):
+                    self.classISS_scope = False
                     self.parse_variable_declaration_func()
                 #  error: no identifier after datatype
                 else:
@@ -19586,6 +19768,7 @@ class SemanticAnalyzer:
                 self.match("Luhman")  # consume Luhman
                 #  check if there is an identifier after the datatype
                 if re.match(r'Identifier\d*$', self.peek_next_token()):
+                    self.classISS_scope = False
                     self.parse_variable_declaration_func()
                 #  error: no identifier after datatype
                 else:
@@ -19596,6 +19779,7 @@ class SemanticAnalyzer:
                 self.match("Starsys")  # consume Starsys
                 #  check if there is an identifier after the datatype
                 if re.match(r'Identifier\d*$', self.peek_next_token()):
+                    self.classISS_scope = False
                     self.parse_variable_declaration_func()
                 else:
                     #  error: no identifier after datatype
@@ -19606,6 +19790,7 @@ class SemanticAnalyzer:
                 self.match("Boolean")  # consume Bool
                 #  check if there is an identifier after the datatype
                 if re.match(r'Identifier\d*$', self.peek_next_token()):
+                    self.classISS_scope = False
                     self.parse_boolean_func()
                 #  error: no identifier after datatype
                 else:
@@ -19616,6 +19801,7 @@ class SemanticAnalyzer:
                 self.match("Autom")  # consume Autom
                 #  check if there is an identifier after the datatype
                 if re.match(r'Identifier\d*$', self.peek_next_token()):
+                    self.classISS_scope = False
                     self.parse_auto_dec()
                 #  error: no identifier after datatype
                 else:
@@ -19885,6 +20071,7 @@ class SemanticAnalyzer:
                     self.match("Sun")  # consume Sun
                     #  check if there is an identifier after the datatype
                     if re.match(r'Identifier\d*$', self.peek_next_token()):
+                        self.classISS_scope = True
                         self.parse_variable_declaration_func()
                     #  error: no identifier after datatype
                     else:
@@ -19895,6 +20082,7 @@ class SemanticAnalyzer:
                     self.match("Luhman")  # consume Luhman
                     #  check if there is an identifier after the datatype
                     if re.match(r'Identifier\d*$', self.peek_next_token()):
+                        self.classISS_scope = True
                         self.parse_variable_declaration_func()
                     #  error: no identifier after datatype
                     else:
@@ -19905,6 +20093,7 @@ class SemanticAnalyzer:
                     self.match("Starsys")  # consume Starsys
                     #  check if there is an identifier after the datatype
                     if re.match(r'Identifier\d*$', self.peek_next_token()):
+                        self.classISS_scope = True
                         self.parse_variable_declaration_func()
                     else:
                         #  error: no identifier after datatype
@@ -19915,6 +20104,7 @@ class SemanticAnalyzer:
                     self.match("Boolean")  # consume Bool
                     #  check if there is an identifier after the datatype
                     if re.match(r'Identifier\d*$', self.peek_next_token()):
+                        self.classISS_scope = True
                         self.parse_boolean_func()
                     #  error: no identifier after datatype
                     else:
@@ -19929,6 +20119,7 @@ class SemanticAnalyzer:
                 self.match("Sun")  # consume Sun
                 #  check if there is an identifier after the datatype
                 if re.match(r'Identifier\d*$', self.peek_next_token()):
+                    self.classISS_scope = True
                     self.parse_variable_declaration_func()
                 #  error: no identifier after datatype
                 else:
@@ -19939,6 +20130,7 @@ class SemanticAnalyzer:
                 self.match("Luhman")  # consume Luhman
                 #  check if there is an identifier after the datatype
                 if re.match(r'Identifier\d*$', self.peek_next_token()):
+                    self.classISS_scope = True
                     self.parse_variable_declaration_func()
                 #  error: no identifier after datatype
                 else:
@@ -19949,6 +20141,7 @@ class SemanticAnalyzer:
                 self.match("Starsys")  # consume Starsys
                 #  check if there is an identifier after the datatype
                 if re.match(r'Identifier\d*$', self.peek_next_token()):
+                    self.classISS_scope = True
                     self.parse_variable_declaration_func()
                 else:
                     #  error: no identifier after datatype
@@ -19959,6 +20152,7 @@ class SemanticAnalyzer:
                 self.match("Boolean")  # consume Bool
                 #  check if there is an identifier after the datatype
                 if re.match(r'Identifier\d*$', self.peek_next_token()):
+                    self.classISS_scope = True
                     self.parse_boolean_func()
                 #  error: no identifier after datatype
                 else:
@@ -19969,6 +20163,7 @@ class SemanticAnalyzer:
                 self.match("Autom")  # consume Autom
                 #  check if there is an identifier after the datatype
                 if re.match(r'Identifier\d*$', self.peek_next_token()):
+                    self.classISS_scope = True
                     self.parse_auto_dec()
                 #  error: no identifier after datatype
                 else:
@@ -20047,6 +20242,7 @@ class SemanticAnalyzer:
             #  is it am assignment, constructor, or function call, or module access? (a = a#
             #  : a(Sun a)[  ] : a(value)# : mod.mod1.mod2#/s.func()#)
             elif re.match(r'Identifier\d*$', self.peek_next_token()):
+                self.classISS_scope = True
                 self.match_assignment("Identifier")
             else:
                 break
@@ -22315,19 +22511,19 @@ class SemanticAnalyzer:
                         if ((argument_datatype == "Sun" and expected_datatype == "Luhman") or
                                 (argument_datatype == "Luhman" and expected_datatype == "Sun")):
                             continue
-
                         if argument_datatype != expected_datatype:
                             self.errors.append(
                                 f"(Line {self.line_number}) | Semantic error: (Type Mismatch) Argument {i + 1} is of datatype '{argument_datatype}', function '{func_name}' expected a value of datatype '{expected_datatype}'"
                             )
+                            
                     # Allow Boolean Values Match
                     elif (argument_value == "True" or argument_value == "False") and expected_datatype == "Boolean":
-                        print(expected_datatype)
                         continue
                     if (argument_value == "True" or argument_value == "False") and expected_datatype != "Boolean":
                         self.errors.append(
                             f"(Line {self.line_number}) | Semantic error: (Type Mismatch) Argument {i + 1} has value '{argument_value}', function '{func_name}' expected a value of datatype '{expected_datatype}'"
                         )
+            
 
     def check_function_call_type(self):
         # Check if var_name exists in the symbol table
@@ -22343,7 +22539,11 @@ class SemanticAnalyzer:
                     expected_datatype = function_parameters[0]['function_datatype']
 
                     # Compare the datatypes
-                    if datatype != expected_datatype:
+                    if self.assign_flag and expected_datatype == "Void":
+                        self.errors.append(
+                            f"(Line {self.line_number}) | Semantic error: (Assignment Mismatch) Void function '{self.function_call_name}' cannot be used as a value"
+                        )
+                    if datatype != expected_datatype and not self.assign_flag:
                         self.errors.append(
                             f"(Line {self.line_number}) | Semantic error: (Type Mismatch) Function '{self.function_call_name}' is of datatype '{expected_datatype}'."
                         )
