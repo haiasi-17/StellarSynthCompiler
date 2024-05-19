@@ -23226,25 +23226,45 @@ class SemanticAnalyzer:
             )
         else:
             if self.array_variable in self.array_variable_table:
-                array_size = int(self.peek_previous_lexeme())  # Convert array_size to integer
-                if self.array_variable_table[self.array_variable]['array_size'] == "null":
-                    table_size = "null"
+                if re.match(r'Identifier\d*$', self.peek_previous_token()):
+                    variable_index = self.peek_previous_lexeme()
+
+                    if variable_index in self.symbol_table:
+                        variable_index_datatype = self.symbol_table[variable_index]['datatype']
+
+                        if variable_index_datatype != "Sun":
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Variable '{variable_index}' is of datatype '{variable_index_datatype}', array sizes can only be of datatype 'Sun'"
+                            )
+
+                    elif variable_index in self.fore_table:
+                        variable_index_datatype = self.fore_table[variable_index]['datatype']
+
+                        if variable_index_datatype != "Sun":
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Semantic Error: (Type Mismatch) Variable '{variable_index}' is of datatype '{variable_index_datatype}', array sizes can only be of datatype 'Sun'"
+                            )
+                    
                 else:
-                    table_size = int(
-                        self.array_variable_table[self.array_variable]['array_size'])  # Get size from table
-                if table_size == "null":
-                    value_count = int(
-                        self.array_count_table[self.array_variable]['array_count'])  # Get count of assigned values
-                    if array_size >= value_count:
+                    array_size = int(self.peek_previous_lexeme())  # Convert array_size to integer
+                    if self.array_variable_table[self.array_variable]['array_size'] == "null":
+                        table_size = "null"
+                    else:
+                        table_size = int(
+                            self.array_variable_table[self.array_variable]['array_size'])  # Get size from table
+                    if table_size == "null":
+                        value_count = int(
+                            self.array_count_table[self.array_variable]['array_count'])  # Get count of assigned values
+                        if array_size >= value_count:
+                            self.array_size_error = True
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Semantic Error: (Out of Bounds) Array index out of bounds for variable '{self.array_variable}'"
+                            )
+                    elif array_size >= table_size:
                         self.array_size_error = True
                         self.errors.append(
                             f"(Line {self.line_number}) | Semantic Error: (Out of Bounds) Array index out of bounds for variable '{self.array_variable}'"
                         )
-                elif array_size >= table_size:
-                    self.array_size_error = True
-                    self.errors.append(
-                        f"(Line {self.line_number}) | Semantic Error: (Out of Bounds) Array index out of bounds for variable '{self.array_variable}'"
-                    )
 
     # check array values if it matches array size, 1D
     def check_array_value(self):

@@ -20898,7 +20898,8 @@ class SyntaxAnalyzer:
                 self.errors.append(
                     f"Syntax Error: Expected 'Sun', 'Luhman', 'Starsys', 'Boolean', 'Autom', 'Static', 'Void', 'Class', 'ISS', but instead got '{self.peek_next_token()}'")
         else:
-            return True
+            self.errors.append(
+                f"Syntax Error: Expected 'Formulate' but instead got '{self.peek_next_token()}'")
             # self.errors.append(f"Syntax Error: Expected 'ISS', 'Static', 'Boolean', 'Autom', 'Luhman', "
             # f"'Starsys', 'Void', 'Class', 'Sun' after 'Formulate'")
 
