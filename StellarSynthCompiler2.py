@@ -144,8 +144,6 @@ class CreateTextEditor(customtkinter.CTkTextbox):
         self.linenumber.configure(state='disabled')
         self.master.after(10, self.addlineNumbers)
 
-
-
 class CreateTable(ttk.Treeview):
     def __init__(self, master: any, **kwargs):
         super().__init__(master, **kwargs)
@@ -200,8 +198,6 @@ class CreateConsole(customtkinter.CTkTextbox):
                                            fg_color="black", border_spacing=8)
         self.console.grid(row=0, column=0, columnspan=3, rowspan=3, sticky='nsew')
         
-        
-
 class CreateInputConsole(customtkinter.CTkTextbox):
     def __init__(self, master: any, **kwargs):
         super().__init__(master, **kwargs)
@@ -219,8 +215,6 @@ class CreateInputConsole(customtkinter.CTkTextbox):
                                            wrap='none', border_width=1, border_color="gray20", corner_radius=0,
                                            fg_color="black", border_spacing=8)
         self.inputConsole.grid(row=0, column=0, columnspan=2, rowspan=3, sticky='nsew')
-
-
 
 class CreateLogo(customtkinter.CTkFrame):
     def __init__(self, master: any, **kwargs):
@@ -310,7 +304,6 @@ class CreateMenu(tk.Menu):
         except:
             messagebox.showerror("Error!", "Clearing Unsuccessful.")
 
-
 class CreateButtons(customtkinter.CTkButton):
     def __init__(self, master: any, lexeme_table: CreateTable, text_editor: CreateTextEditor, console: CreateConsole, menu: CreateMenu, inputConsole: CreateInputConsole,
                  **kwargs):
@@ -334,6 +327,7 @@ class CreateButtons(customtkinter.CTkButton):
         self.createbutton("Cmd", 4, self.cmd_Compile) # Temporary. Opens CMD 
         
     def terminate_existing_process(self):
+        # Close existing streams so that process is not in use.
         if self.process:
             if self.process.stdin:
                 self.process.stdin.close()
@@ -341,7 +335,8 @@ class CreateButtons(customtkinter.CTkButton):
                 self.process.stdout.close()
             if self.process.stderr:
                 self.process.stderr.close()
-                    
+                
+        # Terminate Process
         if hasattr(self, "process") and self.process and self.process.poll() is None:
             try:
                 print("Terminating existing process...")
@@ -647,8 +642,6 @@ class CreateButtons(customtkinter.CTkButton):
                 if line:
                     # Update GUI in the main thread
                     update_console(line)
-                    # Sometimes it doesn't work without this print statement.
-                    #print("Output Check: ", repr(outputNoWhiteSpace.endswith((':', '?'))))
                     # Check if the output, with leading and trailing whitespace removed, ends with a colon or question mark indicating an input request (This is a problem as it depends on the disp ending in : or ?)
                     if outputNoWhiteSpace.endswith((':', '?')):
                         # Enable input Console
@@ -666,7 +659,6 @@ class CreateButtons(customtkinter.CTkButton):
         output_thread = threading.Thread(target=read_process_output)
         output_thread.daemon = True
         output_thread.start()
-
 
 class CreateTimer(customtkinter.CTkFrame):
     def __init__(self, master: any, **kwargs):
@@ -690,7 +682,6 @@ class CreateTimer(customtkinter.CTkFrame):
     def Textcreate(self, text, column, font):
         self.Text = customtkinter.CTkLabel(self.Textbox, text=text, justify="left", font=(font), text_color="gray60", corner_radius=5, fg_color="transparent")
         self.Text.grid(row=1,column=column,ipadx=5, ipady=5)
-
 
 if __name__ == "__main__":
     app = App()

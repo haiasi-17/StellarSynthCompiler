@@ -82,7 +82,7 @@ delim23 =               Space + Tab + Newline + RParenth
 delim24 =               Space + Tab + Newline + AlphaNum + LParenth + RegSglQtMark + RegDblQtMark
 delim25 =               Space + Tab + Newline + Colon
 delim26 =               Space + Tab + Newline + ComAlpha + RSqrBrkt + RParenth
-delim27 =               PrintableChar + Newline + Tab # Not in use
+delim27 =               [] # Not in use
 
 Sun_delim =             (Space + Tab + Newline + RParenth + RCurBrace + RSqrBrkt + Terminator + Comma +
                         Ampersand + VerticalBar + ExclaMark + MathOp + AssignOp + GreaterThan + LessThan + Tab + LSqrBrkt + Colon)
@@ -234,7 +234,7 @@ StellarCPlusPlusDict = {
     "Protected"     : "protected",
     "Public"        : "public",
     "Retrieve"      : "return",
-    "ISS"           : "struct", # 
+    "ISS"           : "struct", 
     "Divert"        : "switch",
     "Launch"        : "throw", # Exceptions thrown is class of c++ std
     "True"          : "true",
@@ -287,6 +287,7 @@ Remarks:
     
     Semantic
         Bugs
+    Autom throw error if assigned value is not of the same type as initial type.
 
     StellarSynthUI:
     # Issue:
@@ -296,7 +297,8 @@ Remarks:
     # Issue: 
         # consecutive pressing of running in the compiler leads to issues with the output. This is probably because the previous process isn't terminated or killed or idk.
         # PARTIALLY SOLVED: By implementing process killing measures. A zero is carried over, but doesnt affect the execution of the next program.
-    
+        # SOLVED: Close PIPEs before termination, so the termination goes through because nothing is in use.
+        
     # Issue: 
         # Disp << "Enter b\n" << "Intiendes?"#  doesn't work the newlines at all in string because lines are stripped. 
         # If i don't strip the lines, the input doesnt work because the newlines pad the entry widget. making index method inaccurate.
@@ -317,7 +319,6 @@ Remarks:
                     3. No solution in how to check if module exists yet
                     4. does not function with ~ operator.
                     5. SOLVED: Removed Import
-    
     
     Features that differ in the C++ Language:
         Scope Resolution Operator -> Not Tested
@@ -340,7 +341,7 @@ Remarks:
                     1. Solution was to use pow and math header.
                     2. RULES: Now, the order precedence is different, as pow is implemented that same as functions may need to revise the rules. 
                     3. NEVERMIND PEMDAS STILL THOUGH but add to rules and read.
-                    4. Space has Erros
+                    4. Space has Errors
                     
         Type Conversion -> Functional with caveat
                     1. Currently utilizing implicit type conversion of c++, no idea how to modify it. 
@@ -351,14 +352,14 @@ Remarks:
     
     To do:
         remove import - check
+        input - check
+        bool conversion does not work in documentation reflect. - check
         pow whitespace
         stderr output ui
         arddec default value
         float value in rules scientific notation 5 max decimal digits fractional
         int limit rules
         documentation rules
-        input 
-        bool conversion does not work in documentation reflect.
-        
+       
         
 """
