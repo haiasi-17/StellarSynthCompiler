@@ -312,7 +312,8 @@ class SemanticAnalyzer:
                 if re.match(r'Identifier\d*$', self.peek_previous_token()) and not self.isParameterVariable:
                     if self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*" or self.peek_next_token() == "/" or self.peek_next_token() == "%" or self.peek_next_token() == "**":
                         self.variable_dec = True
-                        
+                    else:
+                        self.variable_dec = False
                     self.check_ifVariable_isParameter()
 
                     if not self.output_var and self.peek_next_token() != ".":
@@ -870,7 +871,7 @@ class SemanticAnalyzer:
                 # SEMANTIC CHECK
                 if re.match(r'Identifier\d*$', self.peek_previous_token()) and not self.isParameterVariable:
                     self.check_ifVariable_isParameter()
-
+                    self.variable_dec = False
                     if not self.input_var:
                         self.check_variable_usage()
 
@@ -12387,7 +12388,7 @@ class SemanticAnalyzer:
                         f"(Line {self.line_number}) | Semantic Error: (Assignment Mismatch) Variable '{self.peek_previous_lexeme()}' is not declared as an array.")
                 elif self.peek_previous_lexeme() not in self.array_variable_table:
                     self.errors.append(
-                        f"(Line {self.line_number}) | Semantic Error: (Undeclared Array Variable) Array Variable '{self.peek_previous_lexeme()}' is not declared.")
+                        f"(Line {self.line_number}) | Semantic Error: (Undeclared Variable) Array Variable '{self.peek_previous_lexeme()}' is not declared.")
                 else:
                     self.check_variable_usage()
                 self.array_index_assign("{")
@@ -13394,7 +13395,7 @@ class SemanticAnalyzer:
                         f"(Line {self.line_number}) | Semantic Error: (Assignment Mismatch) Variable '{self.peek_previous_lexeme()}' is not declared as an array.")
                 elif self.peek_previous_lexeme() not in self.array_variable_table:
                     self.errors.append(
-                        f"(Line {self.line_number}) | Semantic Error: (Undeclared Array Variable) Array Variable '{self.peek_previous_lexeme()}' is not declared.")
+                        f"(Line {self.line_number}) | Semantic Error: (Undeclared Variable) Array Variable '{self.peek_previous_lexeme()}' is not declared.")
                 else:
                     self.check_variable_usage()
                 self.array_index_assign("{")

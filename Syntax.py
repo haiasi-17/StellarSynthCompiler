@@ -3054,6 +3054,7 @@ class SyntaxAnalyzer:
                         self.match("#")
                     #  error: not terminated
                     else:
+                        print("1")
                         self.errors.append(
                             f"(Line {self.line_number}) | Syntax error: Expected '#', ',', '+', '-', '*', '/', '%' but instead got '{self.peek_next_token()}'")
                 else:
@@ -4035,6 +4036,7 @@ class SyntaxAnalyzer:
                         self.match("#")
                     #  error: not terminated
                     else:
+                        print("2")
                         self.errors.append(
                             f"(Line {self.line_number}) | Syntax error: Expected '#', ',', '+', '-', '*', '/', '%' but instead got '{self.peek_next_token()}'")
                 else:
@@ -5645,6 +5647,7 @@ class SyntaxAnalyzer:
                             return True
                     #  error: not followed by mathop or closed with ')'
                     else:
+                        print("H")
                         self.errors.append(
                             f"(Line {self.line_number}) | Syntax Error: Expected ')', '+', '-', '*', '/', '%' "
                             f" but instead got '{self.peek_next_token()}'")
@@ -5682,6 +5685,7 @@ class SyntaxAnalyzer:
                             return True
                     #  error: not followed by mathop or closed with ')'
                     else:
+                        print("E")
                         self.errors.append(
                             f"(Line {self.line_number}) | Syntax Error: Expected ')', '+', '-', '*', '/', '%' "
                             f" but instead got '{self.peek_next_token()}'")
@@ -5732,6 +5736,7 @@ class SyntaxAnalyzer:
                             return True
                     #  error: not followed by mathop or closed with ')'
                     else:
+                        print("L")
                         self.errors.append(
                             f"(Line {self.line_number}) | Syntax Error: Expected ')', '+', '-', '*', '/', '%' "
                             f" but instead got '{self.peek_next_token()}'")
@@ -5782,6 +5787,7 @@ class SyntaxAnalyzer:
                             return True
                     #  error: not followed by mathop or closed with ')'
                     else:
+                        print("O")
                         self.errors.append(
                             f"(Line {self.line_number}) | Syntax Error: Expected ')', '+', '-', '*', '/', '%' "
                             f" but instead got '{self.peek_next_token()}'")
@@ -5832,6 +5838,7 @@ class SyntaxAnalyzer:
                             return True
                     #  error: not followed by mathop or closed with ')'
                     else:
+                        print("W")
                         self.errors.append(
                             f"(Line {self.line_number}) | Syntax Error: Expected ')', '+', '-', '*', '/', '%' "
                             f" but instead got '{self.peek_next_token()}'")
@@ -5882,6 +5889,7 @@ class SyntaxAnalyzer:
                             return True
                     #  error: not followed by mathop or closed with ')'
                     else:
+                        print("R")
                         self.errors.append(
                             f"(Line {self.line_number}) | Syntax Error: Expected ')', '+', '-', '*', '/', '%' "
                             f" but instead got '{self.peek_next_token()}'")
@@ -11473,15 +11481,7 @@ class SyntaxAnalyzer:
                             self.match("#")
                         #  error: not terminated
                         else:
-                            self.errors.append(
-                                f"(Line {self.line_number}) | Syntax error: Expected '#', ',', '+', '-', '*', '/', '%' but instead got '{self.peek_next_token()}'")
-                    elif (self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
-                          or re.match(r'Identifier\d*$', self.peek_previous_token())):
-                        #  terminate it
-                        if self.peek_next_token() == "#":
-                            self.match("#")
-                        #  error: not terminated
-                        else:
+                            print("3")
                             self.errors.append(
                                 f"(Line {self.line_number}) | Syntax error: Expected '#', ',', '+', '-', '*', '/', '%' but instead got '{self.peek_next_token()}'")
                     else:
@@ -23261,7 +23261,7 @@ class SyntaxAnalyzer:
                                             #  Other-If statement is not followed by '('
                                             else:
                                                 self.errors.append(
-                                                    f"(Line {self.line_number}) | Syntax Error: Expected ')', but instead got '{self.peek_next_token()}'")
+                                                    f"(Line {self.line_number}) | Syntax Error: Expected '(', but instead got '{self.peek_next_token()}'")
                                         #  is it an Other Condition?
                                         elif self.peek_next_token() == "[":
                                             self.parse_else_stmnt()
@@ -23292,7 +23292,7 @@ class SyntaxAnalyzer:
                                                     #  Other-If statement is not followed by '('
                                                     else:
                                                         self.errors.append(
-                                                            f"(Line {self.line_number}) | Syntax Error: Expected ')', but instead got '{self.peek_next_token()}'")
+                                                            f"(Line {self.line_number}) | Syntax Error: Expected '(', but instead got '{self.peek_next_token()}'")
                                                 #  is it an Other Condition?
                                                 elif self.peek_next_token() == "[":
                                                     self.parse_else_stmnt()
@@ -23333,7 +23333,7 @@ class SyntaxAnalyzer:
                                                     #  Other-If statement is not followed by '('
                                                     else:
                                                         self.errors.append(
-                                                            f"(Line {self.line_number}) | Syntax Error: Expected ')', but instead got '{self.peek_next_token()}'")
+                                                            f"(Line {self.line_number}) | Syntax Error: Expected '(', but instead got '{self.peek_next_token()}'")
                                                 #  is it an Other Condition?
                                                 elif self.peek_next_token() == "[":
                                                     self.parse_else_stmnt()
@@ -23371,7 +23371,7 @@ class SyntaxAnalyzer:
                                                 #  Other-If statement is not followed by '('
                                                 else:
                                                     self.errors.append(
-                                                        f"(Line {self.line_number}) | Syntax Error: Expected ')', but instead got '{self.peek_next_token()}'")
+                                                        f"(Line {self.line_number}) | Syntax Error: Expected '(', but instead got '{self.peek_next_token()}'")
                                             #  is it an Other Condition?
                                             elif self.peek_next_token() == "[":
                                                 self.parse_else_stmnt()
@@ -23422,7 +23422,7 @@ class SyntaxAnalyzer:
                                         #  Other-If statement is not followed by '('
                                         else:
                                             self.errors.append(
-                                                f"(Line {self.line_number}) | Syntax Error: Expected ')', but instead got '{self.peek_next_token()}'")
+                                                f"(Line {self.line_number}) | Syntax Error: Expected '(', but instead got '{self.peek_next_token()}'")
                                     #  is it an Other Condition?
                                     elif self.peek_next_token() == "[":
                                         self.parse_else_stmnt()
@@ -23453,7 +23453,7 @@ class SyntaxAnalyzer:
                                                 #  Other-If statement is not followed by '('
                                                 else:
                                                     self.errors.append(
-                                                        f"(Line {self.line_number}) | Syntax Error: Expected ')', but instead got '{self.peek_next_token()}'")
+                                                        f"(Line {self.line_number}) | Syntax Error: Expected '(', but instead got '{self.peek_next_token()}'")
                                             #  is it an Other Condition?
                                             elif self.peek_next_token() == "[":
                                                 self.parse_else_stmnt()
@@ -23494,7 +23494,7 @@ class SyntaxAnalyzer:
                                                 #  Other-If statement is not followed by '('
                                                 else:
                                                     self.errors.append(
-                                                        f"(Line {self.line_number}) | Syntax Error: Expected ')', but instead got '{self.peek_next_token()}'")
+                                                        f"(Line {self.line_number}) | Syntax Error: Expected '(', but instead got '{self.peek_next_token()}'")
                                             #  is it an Other Condition?
                                             elif self.peek_next_token() == "[":
                                                 self.parse_else_stmnt()
@@ -23532,7 +23532,7 @@ class SyntaxAnalyzer:
                                             #  Other-If statement is not followed by '('
                                             else:
                                                 self.errors.append(
-                                                    f"(Line {self.line_number}) | Syntax Error: Expected ')', but instead got '{self.peek_next_token()}'")
+                                                    f"(Line {self.line_number}) | Syntax Error: Expected '(', but instead got '{self.peek_next_token()}'")
                                         #  is it an Other Condition?
                                         elif self.peek_next_token() == "[":
                                             self.parse_else_stmnt()
@@ -23579,7 +23579,7 @@ class SyntaxAnalyzer:
                                         #  Other-If statement is not followed by '('
                                         else:
                                             self.errors.append(
-                                                f"(Line {self.line_number}) | Syntax Error: Expected ')', but instead got '{self.peek_next_token()}'")
+                                                f"(Line {self.line_number}) | Syntax Error: Expected '(', but instead got '{self.peek_next_token()}'")
                                     #  is it an Other Condition?
                                     elif self.peek_next_token() == "[":
                                         self.parse_else_stmnt()
@@ -23620,7 +23620,7 @@ class SyntaxAnalyzer:
                                         #  Other-If statement is not followed by '('
                                         else:
                                             self.errors.append(
-                                                f"(Line {self.line_number}) | Syntax Error: Expected ')', but instead got '{self.peek_next_token()}'")
+                                                f"(Line {self.line_number}) | Syntax Error: Expected '(', but instead got '{self.peek_next_token()}'")
                                     #  is it an Other Condition?
                                     elif self.peek_next_token() == "[":
                                         self.parse_else_stmnt()
@@ -23658,7 +23658,7 @@ class SyntaxAnalyzer:
                                     #  Other-If statement is not followed by '('
                                     else:
                                         self.errors.append(
-                                            f"(Line {self.line_number}) | Syntax Error: Expected ')', but instead got '{self.peek_next_token()}'")
+                                            f"(Line {self.line_number}) | Syntax Error: Expected '(', but instead got '{self.peek_next_token()}'")
                                 #  is it an Other Condition?
                                 elif self.peek_next_token() == "[":
                                     self.parse_else_stmnt()
@@ -23689,7 +23689,7 @@ class SyntaxAnalyzer:
                                 #  Other-If statement is not followed by '('
                                 else:
                                     self.errors.append(
-                                        f"(Line {self.line_number}) | Syntax Error: Expected ')', but instead got '{self.peek_next_token()}'")
+                                        f"(Line {self.line_number}) | Syntax Error: Expected '(', but instead got '{self.peek_next_token()}'")
                             #  is it an Other Condition?
                             elif self.peek_next_token() == "[":
                                 self.parse_else_stmnt()
