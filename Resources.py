@@ -63,7 +63,7 @@ delim4 =                Space + Tab + Newline + GreaterThan
 delim5 =                Space + Tab + Newline + LessThan
 delim6 =                Space + Tab + Newline + LSqrBrkt
 delim7 =                Space + Tab + Newline + LParenth + AlphaNum
-delim8 =                Space + Tab + Newline + Terminator + ComAlpha + RParenth + RCurBrace
+delim8 =                Space + Tab + Newline + Terminator + ComAlpha + RParenth
 delim9 =                Space + Tab + Newline
 delim10 =               Space + Tab + Newline + LParenth + LSqrBrkt + Terminator
 delim11 =               Space + Tab + Newline + ComAlpha
@@ -354,7 +354,7 @@ Remarks:
         remove import - check
         input - check
         bool conversion does not work in documentation reflect. - check
-        pow whitespace
+        pow whitespace - Check
         stderr output ui
         arddec default value
         float value in rules scientific notation 5 max decimal digits fractional
