@@ -331,18 +331,36 @@ class CreateButtons(customtkinter.CTkButton):
         self.createbutton("Syntax", 1, self.run_syntax)
         self.createbutton("Semantic", 2, self.run_semantic)
         self.createbutton("Run", 3, self.run_Compile)
-        self.createbutton("Cmd", 4, self.cmd_Compile) # Temorary. Opens CMD 
-    
-    def delete_previous_executable(self):
-        """Delete the previous executable file, if it exists and is not in use."""
-        if self.previous_executable and os.path.isfile(self.previous_executable):
+        self.createbutton("Cmd", 4, self.cmd_Compile) # Temporary. Opens CMD 
+        
+    def terminate_existing_process(self):
+        if self.process:
+            if self.process.stdin:
+                self.process.stdin.close()
+            if self.process.stdout:
+                self.process.stdout.close()
+            if self.process.stderr:
+                self.process.stderr.close()
+                    
+        if hasattr(self, "process") and self.process and self.process.poll() is None:
             try:
-                os.remove(self.previous_executable)
-                print(f"Previous executable {self.previous_executable} deleted successfully.")
-            except PermissionError:
-                print(f"Error: Unable to delete {self.previous_executable}. Make sure it's not being used.")
+                print("Terminating existing process...")
+                self.process.terminate()
+                try:
+                    self.process.wait(timeout=2)  # Wait for process to terminate, with a timeout
+                except subprocess.TimeoutExpired:
+                    print("Process did not terminate in time, killing it...")
+                    self.process.kill()
+                    self.process.wait()
+                    self.process = None
+                finally:
+                    if self.process.poll() is None:  # Check if still running
+                        print("Process still running, killing it...")
+                        self.process.kill()
+                        self.process.wait()
+                    self.process = None  # Clear the process attribute after termination
             except Exception as e:
-                print(f"Error deleting previous executable {self.previous_executable}: {e}")
+                print(f"Error terminating the process: {e}")
 
     def createbutton(self, text, column, command):
         button = customtkinter.CTkButton(self.ButtonFrame, text=text, font=("terminal", 17), fg_color='#381456', hover_color="#4b1a73", border_width=1, border_color="#1a1631", height=40,width=200, command=command)
@@ -502,21 +520,11 @@ class CreateButtons(customtkinter.CTkButton):
                     else:
                         transpilerInstance = Transpiler.Transpiler(tokens, self.menu.filename)
                         transpilerInstance.stellarTranslator()
-                         # Kill any existing process
-                        if hasattr(self, "process") and self.process and self.process.poll() is None:
-                            try:
-                                print("Terminating existing process...")
-                                self.process.terminate()
-                                self.process.wait()
-                            except Exception as e:
-                                print(f"Error terminating the process: {e}")
+                        # Terminate
+                        self.terminate_existing_process()
                                 
-                        # Attempt to delete the previous exe file.
-                        self.delete_previous_executable()
                         # Create new Exe file
                         executableFile = transpilerInstance.writetoCPPFile()
-                        # Assign exe file to previous for next deletion.
-                        self.previous_executable = executableFile
                         
                         try:         
                             # Runs the c++ executable
@@ -564,22 +572,11 @@ class CreateButtons(customtkinter.CTkButton):
                     else:
                         transpilerInstance = Transpiler.Transpiler(tokens, self.menu.filename)
                         transpilerInstance.stellarTranslator()
-                         # Kill any existing process
-                        if hasattr(self, "process") and self.process and self.process.poll() is None:
-                            try:
-                                print("Terminating existing process...")
-                                self.process.terminate()
-                                self.process.wait()
-                            except Exception as e:
-                                print(f"Error terminating the process: {e}")
+                        # Terminate
+                        self.terminate_existing_process()
                                 
-                        # Attempt to delete the previous exe file.
-                        self.delete_previous_executable()
                         # Create new Exe file
                         executableFile = transpilerInstance.writetoCPPFile()
-                        # Assign exe file to previous for next deletion.
-                        self.previous_executable = executableFile
-                        print(executableFile)
                         
                         try:
                             # Check if the file exists
@@ -604,15 +601,11 @@ class CreateButtons(customtkinter.CTkButton):
     
     def run_cpp_executable(self, executable_path):
         
-        # Create a clean environment
-        new_env = os.environ.copy()
-        
         # Creates a process that runs the c++ exe file.
         try:
             self.process = subprocess.Popen(
             executable_path, shell=True, stdin=subprocess.PIPE,
             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
-            env=new_env
         )
         except Exception as e:
             print(f"Error writing to process: {e}")
@@ -655,7 +648,7 @@ class CreateButtons(customtkinter.CTkButton):
                     # Update GUI in the main thread
                     update_console(line)
                     # Sometimes it doesn't work without this print statement.
-                    print("Output Check: ", repr(outputNoWhiteSpace.endswith((':', '?'))))
+                    #print("Output Check: ", repr(outputNoWhiteSpace.endswith((':', '?'))))
                     # Check if the output, with leading and trailing whitespace removed, ends with a colon or question mark indicating an input request (This is a problem as it depends on the disp ending in : or ?)
                     if outputNoWhiteSpace.endswith((':', '?')):
                         # Enable input Console

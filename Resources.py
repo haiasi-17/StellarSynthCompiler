@@ -255,6 +255,7 @@ StellarCPlusPlusDict = {
 }
 
 transdefaultvalueDict= {"int"        : '0',
+                        "long long"  : '0',
                         "float"      : '0.0',
                         "bool"       : 'false',
                         "string"     : "\"\""}
@@ -262,6 +263,16 @@ transdefaultvalueDict= {"int"        : '0',
 whitespaces = [" ", "\t", "\n"]
 
 headerInclude = ["#include <iostream>\n","#include <string>\n", "#include <math.h>\n", "#include <iomanip>\n", "using namespace std;"]
+
+
+
+
+
+
+
+
+
+
 
 
 
