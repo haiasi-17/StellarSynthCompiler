@@ -22533,6 +22533,9 @@ class SyntaxAnalyzer:
                 print(self.peek_previous_token())
                 self.errors.append(
                     f"(Line {self.line_number}) | Syntax Error: Expected '#', '<<' but instead got '{self.peek_next_token()}'")
+            else:
+                self.errors.append(
+                    f"(Line {self.line_number}) | Syntax Error: Expected '#', but instead got '{self.peek_next_token()}'")
         #  not followed by '<<'
         else:
             self.errors.append(
