@@ -53,10 +53,10 @@ class Transpiler:
                 
                 
                 # i = a + 4 ** 10                                   -> i = a +pow(4,10) Check
-                # i = 3 + ( a + 4 ) ** 10                           -> i = pow((a+4),10) 
-                # i = 3 + ( a + 4 ) ** ( b + 10 )                   -> i = pow((a+4),(b+10)) 
-                # i = 3 + a ** ( b + 10 )                           -> i = pow(a,(b+10)) 
-                # i = 3 + ( a + ( 4 - 2 ) ) ** 10                   -> i = pow((a+(4-2)), 10) 
+                # i = 3 + ( a + 4 ) ** 10                           -> i = pow((a+4),10) Check
+                # i = 3 + ( a + 4 ) ** ( b + 10 )                   -> i = pow((a+4),(b+10)) Check
+                # i = 3 + a ** ( b + 10 )                           -> i = pow(a,(b+10))  Check
+                # i = 3 + ( a + ( 4 - 2 ) ) ** 10                   -> i = pow((a+(4-2)), 10) Check
                 # i = 3 + 10 ** ( a + ( 4 - 2 ) )                   -> i = pow(10, (a+(4-2))) 
                 # i = 3 + ( b - ( 2 - 10 ) ) ** ( a + ( 4 - 2 ) )   -> i = pow((b-(2-10), (a+(4-2))) 
                 
@@ -79,7 +79,7 @@ class Transpiler:
                 self.go_next_token()
                 self.goNextTokenCount +=1
                 
-                while self.currentToken in Resources.whitespaces:
+                while self.currentToken in Resources.whitespaces or self.currentToken == "Space":
                     self.go_next_token()
                     self.goNextTokenCount += 1
                     
@@ -96,22 +96,11 @@ class Transpiler:
                     # Check if the parentheses comes before the exponentiation operator
                     if self.prevTokenParenth is True:
                         self.go_back_token()
-                        self.goBackTokenCount +=1
                         
                         # Skip whitespaces
                         while self.currentToken in Resources.whitespaces:
                             self.go_back_token()
-                            self.goBackTokenCount += 1
-                            
-                            #Here
-                            
-                            
-                            
-                            
-                            
-                            
-                            
-                            
+                            self.removeTokenCount += 1   
                                 
                         if self.currentToken == ")":
                             self.parenthCount += 1
@@ -140,6 +129,10 @@ class Transpiler:
                             # Check to see if the next token of the exponentiation operator is a parenthesis also.
                             self.go_next_token()
                             
+                            while self.currentToken in Resources.whitespaces or self.currentToken == "Space":
+                                self.go_next_token()
+                                self.goNextTokenCount +=1
+                            
                             # If it is a parenthesis, get the entire expression as operandTwo.
                             if self.currentToken == "(":
                                 self.parenthCount += 1
@@ -167,7 +160,10 @@ class Transpiler:
                                 # Go to the end point of the operandTwo, while getting the entire operandTwo
                                 while self.goNextTokenCount > 0:
                                     self.go_next_token()
-                                    self.operandTwo += self.currentToken
+                                    if self.currentToken == "Space": 
+                                        self.operandTwo += Resources.whitespaces[0]
+                                    else:
+                                        self.operandTwo += self.currentToken
                                     self.goNextTokenCount -= 1
                                     
                                 # Remove operandOne from translatedTokens
@@ -191,6 +187,7 @@ class Transpiler:
                             
                             # Else just get operandtwo and append.
                             else: 
+                           
                                 # We get operandtwo
                                 self.operandTwo = self.currentToken
                                 
@@ -215,7 +212,14 @@ class Transpiler:
                             
                     # If the parentheses come after the exponentiation token.
                     elif self.nextTokenParenth is True:
+                        
                         self.go_next_token()
+                        
+                        # Skip whitespaces
+                        while self.currentToken in Resources.whitespaces or self.currentToken == "Space":
+                            self.go_next_token()
+                            self.goNextTokenCount += 1
+                                
                         # If it is a parenthesis, get the entire expression as operandTwo.
                         if self.currentToken == "(":
                             self.parenthCount += 1
@@ -239,11 +243,14 @@ class Transpiler:
                             # Go to exponentiation token
                             while self.currentToken != "**":   
                                 self.go_back_token()
-                            
-                            # Go to the end point of the operandTwo, while getting the entire operandTwo
+                                
+                            # Go to the end point of the operandTwo, while getting the entire operandTwo  
                             while self.goNextTokenCount > 0:
                                 self.go_next_token()
-                                self.operandTwo += self.currentToken
+                                if self.currentToken == "Space": 
+                                    self.operandTwo += Resources.whitespaces[0]
+                                else:
+                                    self.operandTwo += self.currentToken
                                 self.goNextTokenCount -= 1
                             
                             # Go to exponentiation token
@@ -254,6 +261,12 @@ class Transpiler:
                             # Go to the token before the exponentiation token
                             self.go_back_token()
                             self.goBackTokenCount +=1
+                            
+                            # Skip whitespaces
+                            while self.currentToken in Resources.whitespaces:
+                                self.go_back_token()
+                                self.goBackTokenCount +=1
+                                self.removeTokenCount +=1
                             
                             # Check if the operandone is also a parenthesis expression, if so get the entire operandOne.
                             if self.currentToken == ")":
@@ -305,7 +318,8 @@ class Transpiler:
                                 continue
                                 
                             else: 
-                                self.removeTokenCount += 1
+                                self.removeTokenCount += 1   
+                                        
                                 # We get operandone
                                 self.operandOne = self.currentToken
                                 
@@ -340,11 +354,6 @@ class Transpiler:
                     # Go back to the token before the exponentiation operator
                     self.go_back_token()
                     self.removeTokenCount += 1
-                    
-                    # If whitespace, skip until token is reached.
-                    while self.currentToken in Resources.whitespaces:
-                        self.go_back_token()
-                        self.removeTokenCount +=1
                     
                     # Store the operandone
                     self.operandOne = self.tokens[self.tokenIndex][0]
