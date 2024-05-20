@@ -29,6 +29,8 @@ class SemanticAnalyzer:
         self.output_var = False
         self.input_var = False
         self.return_var = False
+        self.condition_var = False
+        self.array_var = False
         self.classISS_scope = False
         # assignment cecking
         self.assignment_variable = None
@@ -426,10 +428,6 @@ class SemanticAnalyzer:
     def match_arrID_output(self, expected_token):
         # SEMANTIC CHECK
         self.array_variable = self.peek_previous_lexeme()
-        if self.array_variable in self.array2_variable_table and not self.isParameterVariable:
-            self.errors.append(
-                f"(Line {self.line_number}) | Semantic Error: (Assignment Mismatch) Variable '{self.array_variable}' is declared as a 2D array.")
-
         self.get_next_token()
         while self.current_token == "Space":
             self.get_next_token()
@@ -448,6 +446,9 @@ class SemanticAnalyzer:
                         self.match("}")
                         # Terminate it
                         if self.peek_next_token() == "#":
+                            if self.array_variable in self.array2_variable_table and not self.isParameterVariable:
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Semantic Error: (Assignment Mismatch) Variable '{self.array_variable}' is declared as a 2D array.")
                             return True
                         # add another size to become 2D array
                         elif self.peek_next_token() == "{":
@@ -463,6 +464,9 @@ class SemanticAnalyzer:
                                 return False
                         #  more display
                         elif self.peek_next_token() == "<<":
+                            if self.array_variable in self.array2_variable_table and not self.isParameterVariable:
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Semantic Error: (Assignment Mismatch) Variable '{self.array_variable}' is declared as a 2D array.")
                             return True
                         #  not terminated or followed
                         else:
@@ -478,6 +482,9 @@ class SemanticAnalyzer:
                     self.match("}")
                     #  terminate it
                     if self.peek_next_token() == "#":
+                        if self.array_variable in self.array2_variable_table and not self.isParameterVariable:
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Semantic Error: (Assignment Mismatch) Variable '{self.array_variable}' is declared as a 2D array.")
                         return True
                     # add another size to become 2D array
                     elif self.peek_next_token() == "{":
@@ -493,6 +500,9 @@ class SemanticAnalyzer:
                             return False
                     #  more display
                     elif self.peek_next_token() == "<<":
+                        if self.array_variable in self.array2_variable_table and not self.isParameterVariable:
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Semantic Error: (Assignment Mismatch) Variable '{self.array_variable}' is declared as a 2D array.")
                         return True
                     #  not terminated or followed
                     else:
@@ -520,9 +530,15 @@ class SemanticAnalyzer:
                         return False
                 #  more display
                 elif self.peek_next_token() == "<<":
+                    if self.array_variable in self.array2_variable_table and not self.isParameterVariable:
+                        self.errors.append(
+                            f"(Line {self.line_number}) | Semantic Error: (Assignment Mismatch) Variable '{self.array_variable}' is declared as a 2D array.")
                     return True
                 #  terminate it
                 elif self.peek_next_token() == "#":
+                    if self.array_variable in self.array2_variable_table and not self.isParameterVariable:
+                        self.errors.append(
+                            f"(Line {self.line_number}) | Semantic Error: (Assignment Mismatch) Variable '{self.array_variable}' is declared as a 2D array.")
                     return True
                 #  not terminated or followed
                 else:
@@ -1162,8 +1178,12 @@ class SemanticAnalyzer:
                     self.current_match = self.peek_previous_lexeme()
                 else:
                     self.current_match = self.peek_previous_token()
-                if re.match(r'Identifier\d*$', self.peek_previous_token()):
-                    self.check_variable_usage()
+                    # SEMANTIC CHECK
+                    if re.match(r'Identifier\d*$', self.peek_previous_token()) and not self.isParameterVariable:
+                        self.check_ifVariable_isParameter()
+
+                        if not self.condition_var:
+                            self.check_variable_usage()
                 #  if the next is a conditional operator, proceed to check if it is followed by the following values
                 if (self.peek_next_token() == "==" or self.peek_next_token() == "!=" or self.peek_next_token() == "<"
                         or self.peek_next_token() == ">" or self.peek_next_token() == "<=" or self.peek_next_token() == ">="
@@ -1178,8 +1198,11 @@ class SemanticAnalyzer:
                             or self.peek_next_token() == "StarsysLiteral" or self.peek_next_token() == "True" or self.peek_next_token() == "False"):
                         self.match(Resources.Value1)
                         # SEMANTIC CHECK
-                        if re.match(r'Identifier\d*$', self.peek_previous_token()):
-                            self.check_variable_usage()
+                        if re.match(r'Identifier\d*$', self.peek_previous_token()) and not self.isParameterVariable:
+                            self.check_ifVariable_isParameter()
+
+                            if not self.condition_var:
+                                self.check_variable_usage()
                         self.check_variable_type_usage()
 
                         if re.match(r'Identifier\d*$', self.peek_previous_token()):
@@ -1256,8 +1279,11 @@ class SemanticAnalyzer:
             self.get_next_token()
 
         # SEMANTIC CHECK
-        if re.match(r'Identifier\d*$', self.peek_previous_token()):
-            self.check_variable_usage()
+        if re.match(r'Identifier\d*$', self.peek_previous_token()) and not self.isParameterVariable:
+            self.check_ifVariable_isParameter()
+
+            if not self.condition_var:
+                self.check_variable_usage()
 
         #  expected token could be: id, sunliteral, luhmanliteral, starsysliteral, true, false
         if isinstance(expected_token, list):
@@ -1276,8 +1302,11 @@ class SemanticAnalyzer:
                             or self.peek_next_token() == "StarsysLiteral" or self.peek_next_token() == "True" or self.peek_next_token() == "False"):
                         self.match(Resources.Value1)
                         # SEMANTIC CHECK
-                        if re.match(r'Identifier\d*$', self.peek_previous_token()):
-                            self.check_variable_usage()
+                        if re.match(r'Identifier\d*$', self.peek_previous_token()) and not self.isParameterVariable:
+                            self.check_ifVariable_isParameter()
+
+                            if not self.condition_var:
+                                self.check_variable_usage()
                         #  more values
                         #  if the next is a conditional operator, proceed to check if it is followed by the following values
                         if (
@@ -1334,9 +1363,13 @@ class SemanticAnalyzer:
         self.get_next_token()
         while self.current_token == "Space":
             self.get_next_token()
+
         # SEMANTIC CHECK
-        if re.match(r'Identifier\d*$', self.peek_previous_token()):
-            self.check_variable_usage()
+        if re.match(r'Identifier\d*$', self.peek_previous_token()) and not self.isParameterVariable:
+            self.check_ifVariable_isParameter()
+
+            if not self.condition_var:
+                self.check_variable_usage()
         self.check_variable_type_usage()
 
         if re.match(r'Identifier\d*$', self.peek_previous_token()):
@@ -26644,6 +26677,8 @@ class SemanticAnalyzer:
             self.output_var = True
             self.input_var = True
             self.return_var = True
+            self.condition_var = True
+            self.array_var = True
             return True
         else:
             return
