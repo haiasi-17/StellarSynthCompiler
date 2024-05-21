@@ -349,11 +349,15 @@ class Transpiler:
                 
                 # No parenthesis in this expression
                 else:
-                    self.removeTokenCount += 1
                     
                     # Go back to the token before the exponentiation operator
                     self.go_back_token()
                     self.removeTokenCount += 1
+                    
+                    # If whitespace, skip until token is reached.
+                    while self.currentToken in Resources.whitespaces:
+                        self.go_back_token()
+                        self.removeTokenCount += 1
                     
                     # Store the operandone
                     self.operandOne = self.tokens[self.tokenIndex][0]
