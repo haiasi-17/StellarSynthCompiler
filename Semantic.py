@@ -1371,9 +1371,7 @@ class SemanticAnalyzer:
 
             if not self.condition_var:
                 self.check_variable_usage()
-        
-        print(self.peek_previous_lexeme())
-        print(self.fore_table)
+
         self.check_variable_type_usage()
 
         if re.match(r'Identifier\d*$', self.peek_previous_token()):
@@ -3368,6 +3366,15 @@ class SemanticAnalyzer:
             self.isMultiple = False
             # check if it is enclosed with parentheses
             if self.peek_next_token() == "(":
+                # SEMANTIC CHECK: Dataype values
+                if self.datatype == "Sun":
+                    self.value = "SunLiteral"
+                elif self.datatype == "Luhman":
+                    self.value = "LuhmanLiteral"
+                self.declare_variable(self.var_name, self.datatype, self.scope,
+                                      self.value)  # Store in the table (Symbol Table)
+                self.check_value_semantics()
+                
                 self.match_parenth("(")
                 if self.peek_previous_token() == ")":
                     #  terminate it
@@ -12472,6 +12479,7 @@ class SemanticAnalyzer:
                     self.errors.append(
                         f"(Line {self.line_number}) | Semantic Error: (Undeclared Variable) Variable '{self.peek_previous_lexeme()}' is not declared.")
                 elif not self.isParameterVariable:
+                    self.variable_dec = False
                     self.check_variable_usage()
                     self.assignment_variable = self.peek_previous_lexeme()  # store variable
                 elif self.isParameterVariable:
@@ -17096,7 +17104,6 @@ class SemanticAnalyzer:
 
     def instance_path(self, expected_token):
         # SEMANTIC CHECK
-        print(self.instance_variable_table)
         variable = self.peek_previous_lexeme()
         variable_declared = any(variable in instance_list for instance_list in self.instance_variable_table.values())
 
@@ -26496,7 +26503,7 @@ class SemanticAnalyzer:
             return True
             # self.errors.append(f"Syntax Error: Expected 'ISS', 'Static', 'Boolean', 'Autom', 'Luhman', "
             # f"'Starsys', 'Void', 'Class', 'Sun' after 'Formulate'")
-        print(self.symbol_table)
+
         # SEMANTIC CHECK
         self.check_undefined_functions()
 
