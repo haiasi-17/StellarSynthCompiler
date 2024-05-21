@@ -18,6 +18,7 @@ class SyntaxAnalyzer:
         self.line_number = 1  # Initialize line number to 1
         self.after_disintegrate = False
         self.main_exist = 0
+        self.parenthFlag = False
 
     #  method that peeks at the next token after the current_token
     def peek_next_token(self):
@@ -3054,7 +3055,6 @@ class SyntaxAnalyzer:
                         self.match("#")
                     #  error: not terminated
                     else:
-                        print("1")
                         self.errors.append(
                             f"(Line {self.line_number}) | Syntax error: Expected '#', ',', '+', '-', '*', '/', '%' but instead got '{self.peek_next_token()}'")
                 else:
@@ -3137,6 +3137,45 @@ class SyntaxAnalyzer:
                     else:
                         self.errors.append(
                             f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', but instead got '{self.peek_next_token()}'")
+                #POST DECRREMENT PATH - VARIABLE
+                elif self.peek_next_token() == "++" or self.peek_next_token() == "--":
+                    self.match(Resources.loopup)
+                    #  add is next
+                    if self.peek_next_token() == "+":
+                        self.match_mathop("+")
+                        # Terminate it
+                        if self.peek_next_token() == "#":
+                            return
+                    #  exponentiation is next
+                    elif self.peek_next_token() == "**":
+                        self.match_exponent("**")
+                        # Terminate it
+                        if self.peek_next_token() == "#":
+                            return
+                    #  subtract is next
+                    elif self.peek_next_token() == "-":
+                        self.match_mathop("-")
+                        # Terminate it
+                        if self.peek_next_token() == "#":
+                            return
+                    #  multiply is next
+                    elif self.peek_next_token() == "*":
+                        self.match_mathop("*")
+                        # Terminate it
+                        if self.peek_next_token() == "#":
+                            return
+                    #  divide is next
+                    elif self.peek_next_token() == "/":
+                        self.match_mathop("/")
+                        # Terminate it
+                        if self.peek_next_token() == "#":
+                            return
+                    #  modulo is next
+                    elif self.peek_next_token() == "%":
+                        self.match_mathop("%")
+                        # Terminate it
+                        if self.peek_next_token() == "#":
+                            return
                 #  add is next
                 elif self.peek_next_token() == "+":
                     self.match_mathop("+")
@@ -3981,7 +4020,7 @@ class SyntaxAnalyzer:
             #  else: if it is not followed by any of the value it shows the error
             else:
                 self.errors.append(
-                    f"(Line {self.line_number}) | Syntax error: Expected 'Sun', 'Luhman', 'Starsys' '(', 'Identifier', 'SunLiteral', 'LuhmanLiteral', 'StarsysLiteral', but instead got '{self.peek_next_token()}'")
+                    f"(Line {self.line_number}) | Syntax error: Expected 'Sun', 'Luhman', 'Starsys' '(', 'Identifier', 'SunLiteral', 'LuhmanLiteral', 'StarsysLiteral', '++', '--' but instead got '{self.peek_next_token()}'")
         #  else: no equals sign
         else:
             self.errors.append(
@@ -4036,7 +4075,6 @@ class SyntaxAnalyzer:
                         self.match("#")
                     #  error: not terminated
                     else:
-                        print("2")
                         self.errors.append(
                             f"(Line {self.line_number}) | Syntax error: Expected '#', ',', '+', '-', '*', '/', '%' but instead got '{self.peek_next_token()}'")
                 else:
@@ -4990,10 +5028,11 @@ class SyntaxAnalyzer:
     # method for parsing multiple variable assignments with expression
     def match_mathop(self, expected_token):
         if (self.peek_previous_token() != "SunLiteral" and self.peek_previous_token() != "LuhmanLiteral"
-                and self.peek_previous_token() != ")" and self.peek_previous_token() != "}" and not re.match(
+                and self.peek_previous_token() != ")" and self.peek_previous_token() != "}"
+                and self.peek_previous_token() != "++" and self.peek_previous_token() != "--" and not re.match(
                     r'Identifier\d*$', self.peek_previous_token())):
             self.errors.append(
-                f"(Line {self.line_number}) | Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral' before {self.peek_next_token()}")
+                f"(Line {self.line_number}) | Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', 'RCurlBraces', ')', '++', '--',  before {self.peek_next_token()}")
 
         self.get_next_token()
         while self.current_token == "Space":
@@ -5272,6 +5311,46 @@ class SyntaxAnalyzer:
                             return False
                     else:
                         return True  # else: last identifier has no following identifiers (comma)
+                #POST DECRREMENT PATH - VARIABLE
+                elif (self.peek_next_token() == "++" or self.peek_next_token() == "--"
+                      and re.match(r'Identifier\d*$', self.peek_previous_token())):
+                    self.match(Resources.loopup)
+                    #  add is next
+                    if self.peek_next_token() == "+":
+                        self.match_mathop("+")
+                        # Terminate it
+                        if self.peek_next_token() == "#":
+                            return
+                    #  exponentiation is next
+                    elif self.peek_next_token() == "**":
+                        self.match_exponent("**")
+                        # Terminate it
+                        if self.peek_next_token() == "#":
+                            return
+                    #  subtract is next
+                    elif self.peek_next_token() == "-":
+                        self.match_mathop("-")
+                        # Terminate it
+                        if self.peek_next_token() == "#":
+                            return
+                    #  multiply is next
+                    elif self.peek_next_token() == "*":
+                        self.match_mathop("*")
+                        # Terminate it
+                        if self.peek_next_token() == "#":
+                            return
+                    #  divide is next
+                    elif self.peek_next_token() == "/":
+                        self.match_mathop("/")
+                        # Terminate it
+                        if self.peek_next_token() == "#":
+                            return
+                    #  modulo is next
+                    elif self.peek_next_token() == "%":
+                        self.match_mathop("%")
+                        # Terminate it
+                        if self.peek_next_token() == "#":
+                            return
                 #  add
                 elif self.peek_next_token() == "+":
                     self.match_mathop("+")
@@ -5307,8 +5386,13 @@ class SyntaxAnalyzer:
                 # elif mo rito for parenth
                 elif self.peek_next_token() == ")":
                     return True
-                else:
+                elif self.peek_next_token() == "#":
                     return True
+                elif self.parenthFlag == True:
+                    self.errors.append(
+                        f"(Line {self.line_number}) | Syntax Error: Expected '#', ')', '+', '-', '*', '/', '%', '**' but instead got '{self.peek_next_token()}'")
+                else:
+                    return False
             else:
                 self.errors.append(
                     f"(Line {self.line_number}) | Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
@@ -5317,9 +5401,11 @@ class SyntaxAnalyzer:
     #  method for handling expression inside a parentheses
     def match_mathop2(self, expected_token):
         if (self.peek_previous_token() != "SunLiteral" and self.peek_previous_token() != "LuhmanLiteral"
-                and not re.match(r'Identifier\d*$', self.peek_previous_token()) and self.peek_previous_token() != "}"):
+                and not re.match(r'Identifier\d*$', self.peek_previous_token())
+                and self.peek_previous_token() != "}" and self.peek_previous_token() != "--"
+                and self.peek_previous_token() != "++" ):
             self.errors.append(
-                f"(Line {self.line_number}) | Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral' before {self.peek_next_token()}")
+                f"(Line {self.line_number}) | Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', 'RCurlBraces', ')', '++', '--',  before {self.peek_next_token()}")
 
         self.get_next_token()
         while self.current_token == "Space":
@@ -5592,6 +5678,7 @@ class SyntaxAnalyzer:
 
     #  method for values in a parentheses
     def match_parenth(self, expected_token):
+        self.parenthFlag = True
         self.get_next_token()
         while self.current_token == "Space":
             self.get_next_token()
@@ -5647,7 +5734,6 @@ class SyntaxAnalyzer:
                             return True
                     #  error: not followed by mathop or closed with ')'
                     else:
-                        print("H")
                         self.errors.append(
                             f"(Line {self.line_number}) | Syntax Error: Expected ')', '+', '-', '*', '/', '%' "
                             f" but instead got '{self.peek_next_token()}'")
@@ -5685,7 +5771,6 @@ class SyntaxAnalyzer:
                             return True
                     #  error: not followed by mathop or closed with ')'
                     else:
-                        print("E")
                         self.errors.append(
                             f"(Line {self.line_number}) | Syntax Error: Expected ')', '+', '-', '*', '/', '%' "
                             f" but instead got '{self.peek_next_token()}'")
@@ -5736,7 +5821,6 @@ class SyntaxAnalyzer:
                             return True
                     #  error: not followed by mathop or closed with ')'
                     else:
-                        print("L")
                         self.errors.append(
                             f"(Line {self.line_number}) | Syntax Error: Expected ')', '+', '-', '*', '/', '%' "
                             f" but instead got '{self.peek_next_token()}'")
@@ -5787,7 +5871,6 @@ class SyntaxAnalyzer:
                             return True
                     #  error: not followed by mathop or closed with ')'
                     else:
-                        print("O")
                         self.errors.append(
                             f"(Line {self.line_number}) | Syntax Error: Expected ')', '+', '-', '*', '/', '%' "
                             f" but instead got '{self.peek_next_token()}'")
@@ -5838,7 +5921,6 @@ class SyntaxAnalyzer:
                             return True
                     #  error: not followed by mathop or closed with ')'
                     else:
-                        print("W")
                         self.errors.append(
                             f"(Line {self.line_number}) | Syntax Error: Expected ')', '+', '-', '*', '/', '%' "
                             f" but instead got '{self.peek_next_token()}'")
@@ -5889,7 +5971,6 @@ class SyntaxAnalyzer:
                             return True
                     #  error: not followed by mathop or closed with ')'
                     else:
-                        print("R")
                         self.errors.append(
                             f"(Line {self.line_number}) | Syntax Error: Expected ')', '+', '-', '*', '/', '%' "
                             f" but instead got '{self.peek_next_token()}'")
@@ -11481,7 +11562,6 @@ class SyntaxAnalyzer:
                             self.match("#")
                         #  error: not terminated
                         else:
-                            print("3")
                             self.errors.append(
                                 f"(Line {self.line_number}) | Syntax error: Expected '#', ',', '+', '-', '*', '/', '%' but instead got '{self.peek_next_token()}'")
                     else:
@@ -23200,7 +23280,6 @@ class SyntaxAnalyzer:
                    or self.peek_previous_token() == "StarsysLiteral" or self.peek_previous_token() == "True"
                    or self.peek_previous_token() == "False" or re.match(r'Identifier\d*$',
                                                                         self.peek_previous_token()))):
-                print(self.peek_previous_token())
                 self.errors.append(
                     f"(Line {self.line_number}) | Syntax Error: Expected '#', '<<' but instead got '{self.peek_next_token()}'")
             else:
@@ -24342,11 +24421,10 @@ class SyntaxAnalyzer:
             if self.peek_next_token() == "++" or self.peek_next_token() == "--":
                 self.match(Resources.loopup)
                 if self.peek_next_token() == ")" or self.peek_next_token() == "#":
-                    return True
+                    return
                 #  error: not closed with ')'
                 else:
-                    self.errors.append(
-                        f"(Line {self.line_number}) | Syntax Error: Expected ')', '#' but instead got '{self.peek_next_token()}'")
+                    return
             #  assign value? (=)
             elif self.peek_next_token() == "=":
                 self.match("=")
