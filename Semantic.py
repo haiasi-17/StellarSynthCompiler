@@ -1175,10 +1175,11 @@ class SemanticAnalyzer:
                            self.peek_next_token()) or self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral"
                   or self.peek_next_token() == "StarsysLiteral" or self.peek_next_token() == "True" or self.peek_next_token() == "False"):
                 self.match(Resources.Value1)  # consume terms
+                self.parse_array_condition()  # is it an array index?
                 # SEMANTIC CHECK
                 if re.match(r'Identifier\d*$', self.peek_previous_token()):
                     self.current_match = self.peek_previous_lexeme()
-                else:
+                elif self.peek_previous_token() != "}":
                     self.current_match = self.peek_previous_token()
                     # SEMANTIC CHECK
                     if re.match(r'Identifier\d*$', self.peek_previous_token()) and not self.isParameterVariable:
@@ -1199,17 +1200,20 @@ class SemanticAnalyzer:
                                  self.peek_next_token()) or self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral"
                             or self.peek_next_token() == "StarsysLiteral" or self.peek_next_token() == "True" or self.peek_next_token() == "False"):
                         self.match(Resources.Value1)
+                        self.parse_array_condition()  # is it an array index?
                         # SEMANTIC CHECK
                         if re.match(r'Identifier\d*$', self.peek_previous_token()) and not self.isParameterVariable:
                             self.check_ifVariable_isParameter()
 
                             if not self.condition_var:
                                 self.check_variable_usage()
-                        self.check_variable_type_usage()
+
+                        if self.peek_previous_token != "}":
+                            self.check_variable_type_usage()
 
                         if re.match(r'Identifier\d*$', self.peek_previous_token()):
                             self.current_match = self.peek_previous_lexeme()
-                        else:
+                        elif self.peek_previous_token() != "}":
                             self.current_match = self.peek_previous_token()
 
                         #  more values
@@ -1274,6 +1278,53 @@ class SemanticAnalyzer:
                     f", 'StarsysLiteral', 'True', 'False', '(' but instead got '{self.peek_next_token()}'")
                 return False
 
+    def parse_array_condition(self):
+        # array index value
+        if self.peek_next_token() == "{" and re.match(r'Identifier\d*$',self.peek_previous_token()):
+            self.arrayError = True
+            self.match("{")
+            #  array index assign path
+            if (re.match(r'Identifier\d*$', self.peek_next_token())
+                    or self.peek_next_token() == "SunLiteral"):
+                self.match(Resources.Value3)  # consume the values
+                #  size expression
+                if (
+                        self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                        or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                    self.match_mathop3(Resources.mathop1)  # size is a math expr
+                    #  close it with "}" if size is fulfilled
+                    if self.peek_next_token() == "}":
+                        self.match("}")
+                        # add another size to become 2D array
+                        if self.peek_next_token() == "{":
+                            self.match_arrID2D_assign("{")
+                            return
+                        #  not terminated or followed
+                        else:
+                            return
+                    #  not closed with '}'
+                    else:
+                        self.errors.append(
+                            f"(Line {self.line_number}) | Syntax Error: Expected 'Rcurlbrace', but instead got '{self.peek_next_token()}'")
+                #  size is single value
+                elif self.peek_next_token() == "}":
+                    self.match("}")
+                    # add another size to become 2D array
+                    if self.peek_next_token() == "{":
+                        self.match_arrID2D_assign("{")
+                        return
+                    else:
+                        return
+                #  size value is not followed by any of the following (# and Rcurl)
+                else:
+                    self.errors.append(
+                        f"(Line {self.line_number}) | Syntax Error: Expected 'Rcurlbraces', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
+            else:
+                self.errors.append(
+                    f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral' but instead got '{self.peek_next_token()}'")
+        else:
+            return
+
     #  method that handles condition, for loop
     def match_condition2(self, expected_token):
         self.get_next_token()
@@ -1292,6 +1343,7 @@ class SemanticAnalyzer:
             if (re.match(r'Identifier\d*$',
                          self.current_token) or self.current_token == "SunLiteral" or self.current_token == "LuhmanLiteral"
                     or self.current_token == "StarsysLiteral" or self.current_token == "True" or self.current_token == "False"):
+                self.parse_array_condition() #is it an array index?
                 #  if the next is a conditional operator, proceed to check if it is followed by the following values
                 if (self.peek_next_token() == "==" or self.peek_next_token() == "!=" or self.peek_next_token() == "<"
                         or self.peek_next_token() == ">" or self.peek_next_token() == "<=" or self.peek_next_token() == ">="
@@ -1303,6 +1355,7 @@ class SemanticAnalyzer:
                                  self.peek_next_token()) or self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral"
                             or self.peek_next_token() == "StarsysLiteral" or self.peek_next_token() == "True" or self.peek_next_token() == "False"):
                         self.match(Resources.Value1)
+                        self.parse_array_condition()  # is it an array index?
                         # SEMANTIC CHECK
                         if re.match(r'Identifier\d*$', self.peek_previous_token()) and not self.isParameterVariable:
                             self.check_ifVariable_isParameter()
@@ -1373,17 +1426,19 @@ class SemanticAnalyzer:
             if not self.condition_var:
                 self.check_variable_usage()
 
-        self.check_variable_type_usage()
+        if self.peek_previous_token != "}":
+            self.check_variable_type_usage()
 
         if re.match(r'Identifier\d*$', self.peek_previous_token()):
             self.current_match = self.peek_previous_lexeme()
-        else:
+        elif self.peek_previous_token != "}":
             self.current_match = self.peek_previous_token()
 
         if isinstance(expected_token, list):
             if (re.match(r'Identifier\d*$',
                          self.current_token) or self.current_token == "SunLiteral" or self.current_token == "LuhmanLiteral"
                     or self.current_token == "StarsysLiteral" or self.current_token == "True" or self.current_token == "False"):
+                self.parse_array_condition()
                 #  if the next is a conditional operator, proceed to check if it is followed by the following values
                 if (
                         self.peek_next_token() == "==" or self.peek_next_token() == "!=" or self.peek_next_token() == "<"

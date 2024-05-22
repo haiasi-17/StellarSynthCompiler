@@ -967,9 +967,10 @@ class SyntaxAnalyzer:
                     #  not closed with ')' or followed by a conditional operator
                 else:
                     return False
-            elif (re.match(r'Identifier\d*$', self.peek_next_token()) or "SunLiteral" or "LuhmanLiteral"
-                  or "StarsysLiteral" or "True" or "False"):
+            elif (re.match(r'Identifier\d*$', self.peek_next_token()) or self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral"
+                  or self.peek_next_token() == "StarsysLiteral" or self.peek_next_token() == "True" or self.peek_next_token() == "False"):
                 self.match(Resources.Value1)  # consume terms
+                self.parse_array_condition() #is it an array index?
                 #  if the next is a conditional operator, proceed to check if it is followed by the following values
                 if (self.peek_next_token() == "==" or self.peek_next_token() == "!=" or self.peek_next_token() == "<"
                         or self.peek_next_token() == ">" or self.peek_next_token() == "<=" or self.peek_next_token() == ">="
@@ -980,6 +981,7 @@ class SyntaxAnalyzer:
                     if (re.match(r'Identifier\d*$', self.peek_next_token()) or "SunLiteral" or "LuhmanLiteral"
                             or "StarsysLiteral" or "True" or "False"):
                         self.match(Resources.Value1)
+                        self.parse_array_condition()  # is it an array index?
                         #  more values
                         #  if the next is a conditional operator, proceed to check if it is followed by the following values
                         if (
@@ -997,7 +999,7 @@ class SyntaxAnalyzer:
                                 if self.peek_next_token() == ")":
                                     return True
                                 #  not closed with ')' or followed by a conditional operator
-                                else:
+                                elif not self.arrayError:
                                     self.errors.append(
                                         f"(Line {self.line_number}) | Syntax error: Expected ')', '==', '!=', '<', '>', "
                                         f"'<=', '>=', '&&', '||', '!', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
@@ -1017,7 +1019,7 @@ class SyntaxAnalyzer:
                         elif self.peek_next_token() == ")":
                             return True  # else: last identifier has no following '>>' to display
                         #  not closed with ')' or followed by a conditional operator
-                        else:
+                        elif not self.arrayError:
                             self.errors.append(
                                 f"(Line {self.line_number}) | Syntax error: Expected ')', '==', '!=', '<', '>', "
                                 f"'<=', '>=', '&&', '||', '!', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
@@ -1030,7 +1032,7 @@ class SyntaxAnalyzer:
                 elif self.peek_next_token() == ")":
                     return True  # else: last identifier has no following '>>' to display
                 #  not closed with ')' or followed by a conditional operator
-                else:
+                elif not self.arrayError:
                     self.errors.append(f"(Line {self.line_number}) | Syntax error: Expected ')', '==', '!=', '<', '>', "
                                        f"'<=', '>=', '&&', '||', '!', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
             # empty condition error
@@ -1039,6 +1041,54 @@ class SyntaxAnalyzer:
                     f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral'"
                     f", 'StarsysLiteral', 'True', 'False', '(' but instead got '{self.peek_next_token()}'")
                 return False
+
+
+    def parse_array_condition(self):
+        # array index value
+        if self.peek_next_token() == "{" and re.match(r'Identifier\d*$',self.peek_previous_token()):
+            self.arrayError = True
+            self.match("{")
+            #  array index assign path
+            if (re.match(r'Identifier\d*$', self.peek_next_token())
+                    or self.peek_next_token() == "SunLiteral"):
+                self.match(Resources.Value3)  # consume the values
+                #  size expression
+                if (
+                        self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                        or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                    self.match_mathop3(Resources.mathop1)  # size is a math expr
+                    #  close it with "}" if size is fulfilled
+                    if self.peek_next_token() == "}":
+                        self.match("}")
+                        # add another size to become 2D array
+                        if self.peek_next_token() == "{":
+                            self.match_arrID2D_assign("{")
+                            return
+                        #  not terminated or followed
+                        else:
+                            return
+                    #  not closed with '}'
+                    else:
+                        self.errors.append(
+                            f"(Line {self.line_number}) | Syntax Error: Expected 'Rcurlbrace', but instead got '{self.peek_next_token()}'")
+                #  size is single value
+                elif self.peek_next_token() == "}":
+                    self.match("}")
+                    # add another size to become 2D array
+                    if self.peek_next_token() == "{":
+                        self.match_arrID2D_assign("{")
+                        return
+                    else:
+                        return
+                #  size value is not followed by any of the following (# and Rcurl)
+                else:
+                    self.errors.append(
+                        f"(Line {self.line_number}) | Syntax Error: Expected 'Rcurlbraces', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
+            else:
+                self.errors.append(
+                    f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral' but instead got '{self.peek_next_token()}'")
+        else:
+            return
 
     #  method that handles condition, for loop
     def match_condition2(self, expected_token):
@@ -1051,6 +1101,7 @@ class SyntaxAnalyzer:
             if (re.match(r'Identifier\d*$',
                          self.current_token) or self.current_token == "SunLiteral" or self.current_token == "LuhmanLiteral"
                     or self.current_token == "StarsysLiteral" or self.current_token == "True" or self.current_token == "False"):
+                self.parse_array_condition() #is it an array index?
                 #  if the next is a conditional operator, proceed to check if it is followed by the following values
                 if (self.peek_next_token() == "==" or self.peek_next_token() == "!=" or self.peek_next_token() == "<"
                         or self.peek_next_token() == ">" or self.peek_next_token() == "<=" or self.peek_next_token() == ">="
@@ -1062,6 +1113,7 @@ class SyntaxAnalyzer:
                                  self.peek_next_token()) or self.peek_next_token() == "SunLiteral" or self.peek_next_token() == "LuhmanLiteral"
                             or self.peek_next_token() == "StarsysLiteral" or self.peek_next_token() == "True" or self.peek_next_token() == "False"):
                         self.match(Resources.Value1)
+                        self.parse_array_condition()  # is it an array index?
                         #  more values
                         #  if the next is a conditional operator, proceed to check if it is followed by the following values
                         if (
@@ -1123,6 +1175,7 @@ class SyntaxAnalyzer:
             if (re.match(r'Identifier\d*$',
                          self.current_token) or self.current_token == "SunLiteral" or self.current_token == "LuhmanLiteral"
                     or self.current_token == "StarsysLiteral" or self.current_token == "True" or self.current_token == "False"):
+                self.parse_array_condition() #is it an array index?
                 #  if the next is a conditional operator, proceed to check if it is followed by the following values
                 if (
                         self.peek_next_token() == "==" or self.peek_next_token() == "!=" or self.peek_next_token() == "<"
