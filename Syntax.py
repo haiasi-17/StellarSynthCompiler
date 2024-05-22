@@ -3096,6 +3096,434 @@ class SyntaxAnalyzer:
                     self.match_mathop("%")
                 else:
                     return True  # else: last identifier has no following identifiers (comma)
+            # PRE INCREMENT/DECREMENT PATH - VARIABLE AND ARRAY
+            elif self.peek_next_token() == "++" or self.peek_next_token() == "--":
+                self.match(Resources.loopup)
+                #  function assign value path
+                if re.match(r'Identifier\d*$', self.peek_next_token()):
+                    self.match("Identifier")  # consume
+                    #  assign value?
+                    if self.peek_next_token() == ",":
+                        self.isMultiple = True
+                        self.match(",")
+                        if re.match(r'Identifier\d*$', self.peek_next_token()):
+                            self.matchID_mult("Identifier")
+                            if self.peek_next_token() == "=":
+                                self.match_mult_assign("=")
+                            # Terminate it
+                            elif self.peek_next_token() == "#":
+                                return
+                            else:
+                                return
+                        else:
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', but instead got '{self.peek_next_token()}'")
+                    #  add is next
+                    elif self.peek_next_token() == "+":
+                        self.match_mathop("+")
+                        # Terminate it
+                        if self.peek_next_token() == "#":
+                            return
+                        else:
+                            return
+                    #  exponentiation is next
+                    elif self.peek_next_token() == "**":
+                        self.match_exponent("**")
+                        # Terminate it
+                        if self.peek_next_token() == "#":
+                            return
+                        else:
+                            return
+                    #  subtract is next
+                    elif self.peek_next_token() == "-":
+                        self.match_mathop("-")
+                        # Terminate it
+                        if self.peek_next_token() == "#":
+                            return
+                        else:
+                            return
+                    #  multiply is next
+                    elif self.peek_next_token() == "*":
+                        self.match_mathop("*")
+                        # Terminate it
+                        if self.peek_next_token() == "#":
+                            return
+                        else:
+                            return
+                    #  divide is next
+                    elif self.peek_next_token() == "/":
+                        self.match_mathop("/")
+                        # Terminate it
+                        if self.peek_next_token() == "#":
+                            return
+                        else:
+                            return
+                    #  modulo is next
+                    elif self.peek_next_token() == "%":
+                        self.match_mathop("%")
+                        # Terminate it
+                        if self.peek_next_token() == "#":
+                            return
+                        else:
+                            return
+                    #  array index assign path
+                    elif self.peek_next_token() == "{":
+                        self.arrayError = True
+                        self.match("{")
+                        #  array index assign path
+                        if (re.match(r'Identifier\d*$', self.peek_next_token())
+                                or self.peek_next_token() == "SunLiteral"):
+                            self.match(Resources.Value3)  # consume the values
+                            #  size expression
+                            if (
+                                    self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                                    or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                                self.match_mathop3(Resources.mathop1)  # size is a math expr
+                                #  close it with "}" if size is fulfilled
+                                if self.peek_next_token() == "}":
+                                    self.match("}")
+                                    # Terminate it
+                                    if self.peek_next_token() == "#":
+                                        return
+                                    #  add is next
+                                    elif self.peek_next_token() == "+":
+                                        self.match_mathop("+")
+                                        # Terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                                    #  exponentiation is next
+                                    elif self.peek_next_token() == "**":
+                                        self.match_exponent("**")
+                                        # Terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                                    #  subtract is next
+                                    elif self.peek_next_token() == "-":
+                                        self.match_mathop("-")
+                                        # Terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                                    #  multiply is next
+                                    elif self.peek_next_token() == "*":
+                                        self.match_mathop("*")
+                                        # Terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                                    #  divide is next
+                                    elif self.peek_next_token() == "/":
+                                        self.match_mathop("/")
+                                        # Terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                                    #  modulo is next
+                                    elif self.peek_next_token() == "%":
+                                        self.match_mathop("%")
+                                        # Terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                                    #  assign value?
+                                    elif self.peek_next_token() == ",":
+                                        self.isMultiple = True
+                                        self.arrayError = False
+                                        self.match(",")
+                                        if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                            self.matchID_mult("Identifier")
+                                            if self.peek_next_token() == "=":
+                                                self.match_mult_assign("=")
+                                            # Terminate it
+                                            elif self.peek_next_token() == "#":
+                                                self.match("#")
+                                            else:
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '=', ',' but instead got '{self.peek_next_token()}'")
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', but instead got '{self.peek_next_token()}'")
+                                    # add another size to become 2D array
+                                    elif self.peek_next_token() == "{":
+                                        self.match_arrID2D_assign("{")
+                                        # Terminate it
+                                        if self.peek_next_token() == "#":
+                                            return
+                                        #  add is next
+                                        elif self.peek_next_token() == "+":
+                                            self.match_mathop("+")
+                                            # Terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            else:
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                                        #  exponentiation is next
+                                        elif self.peek_next_token() == "**":
+                                            self.match_exponent("**")
+                                            # Terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            else:
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                                        #  subtract is next
+                                        elif self.peek_next_token() == "-":
+                                            self.match_mathop("-")
+                                            # Terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            else:
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                                        #  multiply is next
+                                        elif self.peek_next_token() == "*":
+                                            self.match_mathop("*")
+                                            # Terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            else:
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                                        #  divide is next
+                                        elif self.peek_next_token() == "/":
+                                            self.match_mathop("/")
+                                            # Terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            else:
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                                        #  modulo is next
+                                        elif self.peek_next_token() == "%":
+                                            self.match_mathop("%")
+                                            # Terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            else:
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                                        #  assign value?
+                                        elif self.peek_next_token() == ",":
+                                            self.isMultiple = True
+                                            self.arrayError = False
+                                            self.match(",")
+                                            if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                                self.matchID_mult("Identifier")
+                                                if self.peek_next_token() == "=":
+                                                    self.match_mult_assign("=")
+                                                # Terminate it
+                                                elif self.peek_next_token() == "#":
+                                                    self.match("#")
+                                                else:
+                                                    self.errors.append(
+                                                        f"(Line {self.line_number}) | Syntax Error: Expected '#', '=', ',' but instead got '{self.peek_next_token()}'")
+                                            else:
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', but instead got '{self.peek_next_token()}'")
+                                        #  not terminated or followed
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--' but instead got '{self.peek_next_token()}'")
+                                    #  not terminated or followed
+                                    else:
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                                #  not closed with '}'
+                                else:
+                                    self.errors.append(
+                                        f"(Line {self.line_number}) | Syntax Error: Expected 'Rcurlbrace', but instead got '{self.peek_next_token()}'")
+                            #  size is single value
+                            elif self.peek_next_token() == "}":
+                                self.match("}")
+                                # Terminate it
+                                if self.peek_next_token() == "#":
+                                    return
+                                #  add is next
+                                elif self.peek_next_token() == "+":
+                                    self.match_mathop("+")
+                                    # Terminate it
+                                    if self.peek_next_token() == "#":
+                                        self.match("#")
+                                    else:
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                                #  exponentiation is next
+                                elif self.peek_next_token() == "**":
+                                    self.match_exponent("**")
+                                    # Terminate it
+                                    if self.peek_next_token() == "#":
+                                        self.match("#")
+                                    else:
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                                #  subtract is next
+                                elif self.peek_next_token() == "-":
+                                    self.match_mathop("-")
+                                    # Terminate it
+                                    if self.peek_next_token() == "#":
+                                        self.match("#")
+                                    else:
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                                #  multiply is next
+                                elif self.peek_next_token() == "*":
+                                    self.match_mathop("*")
+                                    # Terminate it
+                                    if self.peek_next_token() == "#":
+                                        self.match("#")
+                                    else:
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                                #  divide is next
+                                elif self.peek_next_token() == "/":
+                                    self.match_mathop("/")
+                                    # Terminate it
+                                    if self.peek_next_token() == "#":
+                                        self.match("#")
+                                    else:
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                                #  modulo is next
+                                elif self.peek_next_token() == "%":
+                                    self.match_mathop("%")
+                                    # Terminate it
+                                    if self.peek_next_token() == "#":
+                                        self.match("#")
+                                    else:
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                                #  assign value?
+                                elif self.peek_next_token() == ",":
+                                    self.isMultiple = True
+                                    self.arrayError = False
+                                    self.match(",")
+                                    if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                        self.matchID_mult("Identifier")
+                                        if self.peek_next_token() == "=":
+                                            self.match_mult_assign("=")
+                                        # Terminate it
+                                        elif self.peek_next_token() == "#":
+                                            self.match("#")
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax Error: Expected '#', '=', ',' but instead got '{self.peek_next_token()}'")
+                                    else:
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', but instead got '{self.peek_next_token()}'")
+                                # add another size to become 2D array
+                                elif self.peek_next_token() == "{":
+                                    self.match_arrID2D_assign("{")
+                                    # Terminate it
+                                    if self.peek_next_token() == "#":
+                                        return
+                                    #  add is next
+                                    elif self.peek_next_token() == "+":
+                                        self.match_mathop("+")
+                                        # Terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                                    #  exponentiation is next
+                                    elif self.peek_next_token() == "**":
+                                        self.match_exponent("**")
+                                        # Terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                                    #  subtract is next
+                                    elif self.peek_next_token() == "-":
+                                        self.match_mathop("-")
+                                        # Terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                                    #  multiply is next
+                                    elif self.peek_next_token() == "*":
+                                        self.match_mathop("*")
+                                        # Terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                                    #  divide is next
+                                    elif self.peek_next_token() == "/":
+                                        self.match_mathop("/")
+                                        # Terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                                    #  modulo is next
+                                    elif self.peek_next_token() == "%":
+                                        self.match_mathop("%")
+                                        # Terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                                    #  assign value?
+                                    elif self.peek_next_token() == ",":
+                                        self.isMultiple = True
+                                        self.arrayError = False
+                                        self.match(",")
+                                        if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                            self.matchID_mult("Identifier")
+                                            if self.peek_next_token() == "=":
+                                                self.match_mult_assign("=")
+                                            # Terminate it
+                                            elif self.peek_next_token() == "#":
+                                                self.match("#")
+                                            else:
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '=', ',' but instead got '{self.peek_next_token()}'")
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', but instead got '{self.peek_next_token()}'")
+                                    #  not terminated or followed
+                                    else:
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', but instead got '{self.peek_next_token()}'")
+                                #  not terminated or followed
+                                else:
+                                    self.errors.append(
+                                        f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                            #  size value is not followed by any of the following (# and Rcurl)
+                            else:
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax Error: Expected 'Rcurlbraces', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
+                        else:
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Syntax error: Expected  'Identifier', 'SunLiteral', but instead got '{self.peek_next_token()}'")
+                    # Terminate it
+                    else:
+                        return
+                else:
+                    self.errors.append(
+                        f"(Line {self.line_number}) | Syntax Error: Expected 'Identifier', but instead got '{self.peek_next_token()}'")
             #  function assign value path
             elif re.match(r'Identifier\d*$', self.peek_next_token()):
                 self.match("Identifier")  # consume
@@ -3212,6 +3640,8 @@ class SyntaxAnalyzer:
                         else:
                             self.errors.append(
                                 f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', but instead got '{self.peek_next_token()}'")
+                    elif self.peek_next_token() == "#":
+                        self.match("#")
                     #  not terminated or followed
                     else:
                         self.errors.append(
@@ -3328,6 +3758,8 @@ class SyntaxAnalyzer:
                                         else:
                                             self.errors.append(
                                                 f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', but instead got '{self.peek_next_token()}'")
+                                    elif self.peek_next_token() == "#":
+                                        self.match("#")
                                     #  not terminated or followed
                                     else:
                                         self.errors.append(
@@ -3485,6 +3917,8 @@ class SyntaxAnalyzer:
                                             else:
                                                 self.errors.append(
                                                     f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', but instead got '{self.peek_next_token()}'")
+                                        elif self.peek_next_token() == "#":
+                                            self.match("#")
                                         #  not terminated or followed
                                         else:
                                             self.errors.append(
@@ -3654,6 +4088,8 @@ class SyntaxAnalyzer:
                                     else:
                                         self.errors.append(
                                             f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', but instead got '{self.peek_next_token()}'")
+                                elif self.peek_next_token() == "#":
+                                    self.match("#")
                                 #  not terminated or followed
                                 else:
                                     self.errors.append(
@@ -3811,6 +4247,8 @@ class SyntaxAnalyzer:
                                         else:
                                             self.errors.append(
                                                 f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', but instead got '{self.peek_next_token()}'")
+                                    elif self.peek_next_token() == "#":
+                                        self.match("#")
                                     #  not terminated or followed
                                     else:
                                         self.errors.append(
@@ -6221,6 +6659,427 @@ class SyntaxAnalyzer:
                         f"(Line {self.line_number}) | Syntax Error: Expected '#', ')', '+', '-', '*', '/', '%', '**' but instead got '{self.peek_next_token()}'")
                 else:
                     return False
+            # PRE INCREMENT/DECREMENT PATH - VARIABLE AND ARRAY
+            elif self.peek_next_token() == "++" or self.peek_next_token() == "--":
+                self.match(Resources.loopup)
+                #  function assign value path
+                if re.match(r'Identifier\d*$', self.peek_next_token()):
+                    self.match("Identifier")  # consume
+                    #  assign value?
+                    if self.peek_next_token() == ",":
+                        self.isMultiple = True
+                        self.match(",")
+                        if re.match(r'Identifier\d*$', self.peek_next_token()):
+                            self.matchID_mult("Identifier")
+                            if self.peek_next_token() == "=":
+                                self.match_mult_assign("=")
+                            # Terminate it
+                            elif self.peek_next_token() == "#":
+                                return
+                            else:
+                                return
+                        else:
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', but instead got '{self.peek_next_token()}'")
+                    #  add is next
+                    elif self.peek_next_token() == "+":
+                        self.match_mathop("+")
+                        # Terminate it
+                        if self.peek_next_token() == "#":
+                            return
+                        else:
+                            return
+                    #  exponentiation is next
+                    elif self.peek_next_token() == "**":
+                        self.match_exponent("**")
+                        # Terminate it
+                        if self.peek_next_token() == "#":
+                            return
+                        else:
+                            return
+                    #  subtract is next
+                    elif self.peek_next_token() == "-":
+                        self.match_mathop("-")
+                        # Terminate it
+                        if self.peek_next_token() == "#":
+                            return
+                        else:
+                            return
+                    #  multiply is next
+                    elif self.peek_next_token() == "*":
+                        self.match_mathop("*")
+                        # Terminate it
+                        if self.peek_next_token() == "#":
+                            return
+                        else:
+                            return
+                    #  divide is next
+                    elif self.peek_next_token() == "/":
+                        self.match_mathop("/")
+                        # Terminate it
+                        if self.peek_next_token() == "#":
+                            return
+                        else:
+                            return
+                    #  modulo is next
+                    elif self.peek_next_token() == "%":
+                        self.match_mathop("%")
+                        # Terminate it
+                        if self.peek_next_token() == "#":
+                            return
+                        else:
+                            return
+                    #  array index assign path
+                    elif self.peek_next_token() == "{":
+                        self.arrayError = True
+                        self.match("{")
+                        #  array index assign path
+                        if (re.match(r'Identifier\d*$', self.peek_next_token())
+                                or self.peek_next_token() == "SunLiteral"):
+                            self.match(Resources.Value3)  # consume the values
+                            #  size expression
+                            if (
+                                    self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                                    or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                                self.match_mathop3(Resources.mathop1)  # size is a math expr
+                                #  close it with "}" if size is fulfilled
+                                if self.peek_next_token() == "}":
+                                    self.match("}")
+                                    # Terminate it
+                                    if self.peek_next_token() == "#":
+                                        return
+                                    #  add is next
+                                    elif self.peek_next_token() == "+":
+                                        self.match_mathop("+")
+                                        # Terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                                    #  exponentiation is next
+                                    elif self.peek_next_token() == "**":
+                                        self.match_exponent("**")
+                                        # Terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                                    #  subtract is next
+                                    elif self.peek_next_token() == "-":
+                                        self.match_mathop("-")
+                                        # Terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                                    #  multiply is next
+                                    elif self.peek_next_token() == "*":
+                                        self.match_mathop("*")
+                                        # Terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                                    #  divide is next
+                                    elif self.peek_next_token() == "/":
+                                        self.match_mathop("/")
+                                        # Terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                                    #  modulo is next
+                                    elif self.peek_next_token() == "%":
+                                        self.match_mathop("%")
+                                        # Terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                                    #  assign value?
+                                    elif self.peek_next_token() == ",":
+                                        self.isMultiple = True
+                                        self.arrayError = False
+                                        self.match(",")
+                                        if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                            self.matchID_mult("Identifier")
+                                            if self.peek_next_token() == "=":
+                                                self.match_mult_assign("=")
+                                            # Terminate it
+                                            elif self.peek_next_token() == "#":
+                                                self.match("#")
+                                            else:
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '=', ',' but instead got '{self.peek_next_token()}'")
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', but instead got '{self.peek_next_token()}'")
+                                    # add another size to become 2D array
+                                    elif self.peek_next_token() == "{":
+                                        self.match_arrID2D_assign("{")
+                                        # Terminate it
+                                        if self.peek_next_token() == "#":
+                                            return
+                                        #  add is next
+                                        elif self.peek_next_token() == "+":
+                                            self.match_mathop("+")
+                                            # Terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            else:
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                                        #  exponentiation is next
+                                        elif self.peek_next_token() == "**":
+                                            self.match_exponent("**")
+                                            # Terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            else:
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                                        #  subtract is next
+                                        elif self.peek_next_token() == "-":
+                                            self.match_mathop("-")
+                                            # Terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            else:
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                                        #  multiply is next
+                                        elif self.peek_next_token() == "*":
+                                            self.match_mathop("*")
+                                            # Terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            else:
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                                        #  divide is next
+                                        elif self.peek_next_token() == "/":
+                                            self.match_mathop("/")
+                                            # Terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            else:
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                                        #  modulo is next
+                                        elif self.peek_next_token() == "%":
+                                            self.match_mathop("%")
+                                            # Terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            else:
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                                        #  assign value?
+                                        elif self.peek_next_token() == ",":
+                                            self.isMultiple = True
+                                            self.arrayError = False
+                                            self.match(",")
+                                            if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                                self.matchID_mult("Identifier")
+                                                if self.peek_next_token() == "=":
+                                                    self.match_mult_assign("=")
+                                                # Terminate it
+                                                elif self.peek_next_token() == "#":
+                                                    self.match("#")
+                                                else:
+                                                    self.errors.append(
+                                                        f"(Line {self.line_number}) | Syntax Error: Expected '#', '=', ',' but instead got '{self.peek_next_token()}'")
+                                            else:
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', but instead got '{self.peek_next_token()}'")
+                                        #  not terminated or followed
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--' but instead got '{self.peek_next_token()}'")
+                                    #  not terminated or followed
+                                    else:
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                                #  not closed with '}'
+                                else:
+                                    self.errors.append(
+                                        f"(Line {self.line_number}) | Syntax Error: Expected 'Rcurlbrace', but instead got '{self.peek_next_token()}'")
+                            #  size is single value
+                            elif self.peek_next_token() == "}":
+                                self.match("}")
+                                # Terminate it
+                                if self.peek_next_token() == "#":
+                                    return
+                                #  add is next
+                                elif self.peek_next_token() == "+":
+                                    self.match_mathop("+")
+                                    # Terminate it
+                                    if self.peek_next_token() == "#":
+                                        return True
+                                    else:
+                                        return False
+                                #  exponentiation is next
+                                elif self.peek_next_token() == "**":
+                                    self.match_exponent("**")
+                                    # Terminate it
+                                    if self.peek_next_token() == "#":
+                                        return True
+                                    else:
+                                        return False
+                                #  subtract is next
+                                elif self.peek_next_token() == "-":
+                                    self.match_mathop("-")
+                                    # Terminate it
+                                    if self.peek_next_token() == "#":
+                                        return True
+                                    else:
+                                        return False
+                                #  multiply is next
+                                elif self.peek_next_token() == "*":
+                                    self.match_mathop("*")
+                                    # Terminate it
+                                    if self.peek_next_token() == "#":
+                                        return True
+                                    else:
+                                        return False
+                                #  divide is next
+                                elif self.peek_next_token() == "/":
+                                    self.match_mathop("/")
+                                    # Terminate it
+                                    if self.peek_next_token() == "#":
+                                        return True
+                                    else:
+                                        return False
+                                #  modulo is next
+                                elif self.peek_next_token() == "%":
+                                    self.match_mathop("%")
+                                    # Terminate it
+                                    if self.peek_next_token() == "#":
+                                        return True
+                                    else:
+                                        return False
+                                #  assign value?
+                                elif self.peek_next_token() == ",":
+                                    self.isMultiple = True
+                                    self.arrayError = False
+                                    self.match(",")
+                                    if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                        self.matchID_mult("Identifier")
+                                        if self.peek_next_token() == "=":
+                                            self.match_mult_assign("=")
+                                        # Terminate it
+                                        elif self.peek_next_token() == "#":
+                                            return True
+                                        else:
+                                            return False
+                                    else:
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', but instead got '{self.peek_next_token()}'")
+                                # add another size to become 2D array
+                                elif self.peek_next_token() == "{":
+                                    self.match_arrID2D_assign("{")
+                                    # Terminate it
+                                    if self.peek_next_token() == "#":
+                                        return
+                                    #  add is next
+                                    elif self.peek_next_token() == "+":
+                                        self.match_mathop("+")
+                                        # Terminate it
+                                        if self.peek_next_token() == "#":
+                                            return True
+                                        else:
+                                            return False
+                                    #  exponentiation is next
+                                    elif self.peek_next_token() == "**":
+                                        self.match_exponent("**")
+                                        # Terminate it
+                                        if self.peek_next_token() == "#":
+                                            return True
+                                        else:
+                                            return False
+                                    #  subtract is next
+                                    elif self.peek_next_token() == "-":
+                                        self.match_mathop("-")
+                                        # Terminate it
+                                        if self.peek_next_token() == "#":
+                                            return True
+                                        else:
+                                            return False
+                                    #  multiply is next
+                                    elif self.peek_next_token() == "*":
+                                        self.match_mathop("*")
+                                        # Terminate it
+                                        if self.peek_next_token() == "#":
+                                            return True
+                                        else:
+                                            return False
+                                    #  divide is next
+                                    elif self.peek_next_token() == "/":
+                                        self.match_mathop("/")
+                                        # Terminate it
+                                        if self.peek_next_token() == "#":
+                                            return True
+                                        else:
+                                            return False
+                                    #  modulo is next
+                                    elif self.peek_next_token() == "%":
+                                        self.match_mathop("%")
+                                        # Terminate it
+                                        if self.peek_next_token() == "#":
+                                            return True
+                                        else:
+                                            return False
+                                    #  assign value?
+                                    elif self.peek_next_token() == ",":
+                                        self.isMultiple = True
+                                        self.arrayError = False
+                                        self.match(",")
+                                        if re.match(r'Identifier\d*$', self.peek_next_token()):
+                                            self.matchID_mult("Identifier")
+                                            if self.peek_next_token() == "=":
+                                                self.match_mult_assign("=")
+                                            # Terminate it
+                                            elif self.peek_next_token() == "#":
+                                                return True
+                                            else:
+                                                return False
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax error: Expected 'Identifier', but instead got '{self.peek_next_token()}'")
+                                    #  not terminated or followed
+                                    else:
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', but instead got '{self.peek_next_token()}'")
+                                #  not terminated or followed
+                                else:
+                                    self.errors.append(
+                                        f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                            #  size value is not followed by any of the following (# and Rcurl)
+                            else:
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax Error: Expected 'Rcurlbraces', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
+                        else:
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Syntax error: Expected  'Identifier', 'SunLiteral', but instead got '{self.peek_next_token()}'")
+                    # elif mo rito for parenth
+                    elif self.peek_next_token() == ")":
+                        return True
+                    elif self.peek_next_token() == "#":
+                        return True
+                    elif self.parenthFlag == True:
+                        self.errors.append(
+                            f"(Line {self.line_number}) | Syntax Error: Expected '#', ')', '+', '-', '*', '/', '%', '**' but instead got '{self.peek_next_token()}'")
+                    else:
+                        return False
+                else:
+                    self.errors.append(
+                        f"(Line {self.line_number}) | Syntax Error: Expected 'Identifier', but instead got '{self.peek_next_token()}'")
             else:
                 self.errors.append(
                     f"(Line {self.line_number}) | Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
@@ -6648,6 +7507,333 @@ class SyntaxAnalyzer:
                     self.match_mathop2("%")
                 else:
                     return True
+            # PRE INCREMENT/DECREMENT PATH - VARIABLE AND ARRAY
+            elif self.peek_next_token() == "++" or self.peek_next_token() == "--":
+                self.match(Resources.loopup)
+                #  function assign value path
+                if re.match(r'Identifier\d*$', self.peek_next_token()):
+                    self.match("Identifier")  # consume
+                    #  add is next
+                    if self.peek_next_token() == "+":
+                        self.match_mathop2("+")
+                        # Terminate it
+                        if self.peek_next_token() == "#":
+                            return
+                        else:
+                            return
+                    #  exponentiation is next
+                    elif self.peek_next_token() == "**":
+                        self.match_exponent2("**")
+                        # Terminate it
+                        if self.peek_next_token() == "#":
+                            return
+                        else:
+                            return
+                    #  subtract is next
+                    elif self.peek_next_token() == "-":
+                        self.match_mathop2("-")
+                        # Terminate it
+                        if self.peek_next_token() == "#":
+                            return
+                        else:
+                            return
+                    #  multiply is next
+                    elif self.peek_next_token() == "*":
+                        self.match_mathop2("*")
+                        # Terminate it
+                        if self.peek_next_token() == "#":
+                            return
+                        else:
+                            return
+                    #  divide is next
+                    elif self.peek_next_token() == "/":
+                        self.match_mathop2("/")
+                        # Terminate it
+                        if self.peek_next_token() == "#":
+                            return
+                        else:
+                            return
+                    #  modulo is next
+                    elif self.peek_next_token() == "%":
+                        self.match_mathop2("%")
+                        # Terminate it
+                        if self.peek_next_token() == "#":
+                            return
+                        else:
+                            return
+                    #  array index assign path
+                    elif self.peek_next_token() == "{":
+                        self.arrayError = True
+                        self.match("{")
+                        #  array index assign path
+                        if (re.match(r'Identifier\d*$', self.peek_next_token())
+                                or self.peek_next_token() == "SunLiteral"):
+                            self.match(Resources.Value3)  # consume the values
+                            #  size expression
+                            if (
+                                    self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                                    or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                                self.match_mathop3(Resources.mathop1)  # size is a math expr
+                                #  close it with "}" if size is fulfilled
+                                if self.peek_next_token() == "}":
+                                    self.match("}")
+                                    # Terminate it
+                                    if self.peek_next_token() == "#":
+                                        return
+                                    #  add is next
+                                    elif self.peek_next_token() == "+":
+                                        self.match_mathop2("+")
+                                        # Terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                                    #  exponentiation is next
+                                    elif self.peek_next_token() == "**":
+                                        self.match_exponent2("**")
+                                        # Terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                                    #  subtract is next
+                                    elif self.peek_next_token() == "-":
+                                        self.match_mathop2("-")
+                                        # Terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                                    #  multiply is next
+                                    elif self.peek_next_token() == "*":
+                                        self.match_mathop2("*")
+                                        # Terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                                    #  divide is next
+                                    elif self.peek_next_token() == "/":
+                                        self.match_mathop2("/")
+                                        # Terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                                    #  modulo is next
+                                    elif self.peek_next_token() == "%":
+                                        self.match_mathop2("%")
+                                        # Terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                                    # add another size to become 2D array
+                                    elif self.peek_next_token() == "{":
+                                        self.match_arrID2D_assign("{")
+                                        # Terminate it
+                                        if self.peek_next_token() == "#":
+                                            return
+                                        #  add is next
+                                        elif self.peek_next_token() == "+":
+                                            self.match_mathop2("+")
+                                            # Terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            else:
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                                        #  exponentiation is next
+                                        elif self.peek_next_token() == "**":
+                                            self.match_exponent2("**")
+                                            # Terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            else:
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                                        #  subtract is next
+                                        elif self.peek_next_token() == "-":
+                                            self.match_mathop2("-")
+                                            # Terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            else:
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                                        #  multiply is next
+                                        elif self.peek_next_token() == "*":
+                                            self.match_mathop2("*")
+                                            # Terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            else:
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                                        #  divide is next
+                                        elif self.peek_next_token() == "/":
+                                            self.match_mathop2("/")
+                                            # Terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            else:
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                                        #  modulo is next
+                                        elif self.peek_next_token() == "%":
+                                            self.match_mathop2("%")
+                                            # Terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            else:
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                                        #  not terminated or followed
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--' but instead got '{self.peek_next_token()}'")
+                                    #  not terminated or followed
+                                    else:
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                                #  not closed with '}'
+                                else:
+                                    self.errors.append(
+                                        f"(Line {self.line_number}) | Syntax Error: Expected 'Rcurlbrace', but instead got '{self.peek_next_token()}'")
+                            #  size is single value
+                            elif self.peek_next_token() == "}":
+                                self.match("}")
+                                # Terminate it
+                                if self.peek_next_token() == "#":
+                                    return
+                                #  add is next
+                                elif self.peek_next_token() == "+":
+                                    self.match_mathop2("+")
+                                    # Terminate it
+                                    if self.peek_next_token() == "#":
+                                        return True
+                                    else:
+                                        return False
+                                #  exponentiation is next
+                                elif self.peek_next_token() == "**":
+                                    self.match_exponent2("**")
+                                    # Terminate it
+                                    if self.peek_next_token() == "#":
+                                        return True
+                                    else:
+                                        return False
+                                #  subtract is next
+                                elif self.peek_next_token() == "-":
+                                    self.match_mathop2("-")
+                                    # Terminate it
+                                    if self.peek_next_token() == "#":
+                                        return True
+                                    else:
+                                        return False
+                                #  multiply is next
+                                elif self.peek_next_token() == "*":
+                                    self.match_mathop2("*")
+                                    # Terminate it
+                                    if self.peek_next_token() == "#":
+                                        return True
+                                    else:
+                                        return False
+                                #  divide is next
+                                elif self.peek_next_token() == "/":
+                                    self.match_mathop2("/")
+                                    # Terminate it
+                                    if self.peek_next_token() == "#":
+                                        return True
+                                    else:
+                                        return False
+                                #  modulo is next
+                                elif self.peek_next_token() == "%":
+                                    self.match_mathop2("%")
+                                    # Terminate it
+                                    if self.peek_next_token() == "#":
+                                        return True
+                                    else:
+                                        return False
+                                # add another size to become 2D array
+                                elif self.peek_next_token() == "{":
+                                    self.match_arrID2D_assign("{")
+                                    # Terminate it
+                                    if self.peek_next_token() == "#":
+                                        return
+                                    #  add is next
+                                    elif self.peek_next_token() == "+":
+                                        self.match_mathop2("+")
+                                        # Terminate it
+                                        if self.peek_next_token() == "#":
+                                            return True
+                                        else:
+                                            return False
+                                    #  exponentiation is next
+                                    elif self.peek_next_token() == "**":
+                                        self.match_exponent2("**")
+                                        # Terminate it
+                                        if self.peek_next_token() == "#":
+                                            return True
+                                        else:
+                                            return False
+                                    #  subtract is next
+                                    elif self.peek_next_token() == "-":
+                                        self.match_mathop2("-")
+                                        # Terminate it
+                                        if self.peek_next_token() == "#":
+                                            return True
+                                        else:
+                                            return False
+                                    #  multiply is next
+                                    elif self.peek_next_token() == "*":
+                                        self.match_mathop2("*")
+                                        # Terminate it
+                                        if self.peek_next_token() == "#":
+                                            return True
+                                        else:
+                                            return False
+                                    #  divide is next
+                                    elif self.peek_next_token() == "/":
+                                        self.match_mathop2("/")
+                                        # Terminate it
+                                        if self.peek_next_token() == "#":
+                                            return True
+                                        else:
+                                            return False
+                                    #  modulo is next
+                                    elif self.peek_next_token() == "%":
+                                        self.match_mathop2("%")
+                                        # Terminate it
+                                        if self.peek_next_token() == "#":
+                                            return True
+                                        else:
+                                            return False
+                                    #  not terminated or followed
+                                    else:
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', but instead got '{self.peek_next_token()}'")
+                                #  not terminated or followed
+                                else:
+                                    self.errors.append(
+                                        f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', '**', ',', '++', '--', 'LCurlBraces' but instead got '{self.peek_next_token()}'")
+                            #  size value is not followed by any of the following (# and Rcurl)
+                            else:
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax Error: Expected 'Rcurlbraces', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
+                        else:
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Syntax error: Expected  'Identifier', 'SunLiteral', but instead got '{self.peek_next_token()}'")
+                    else:
+                        return True
+                else:
+                    self.errors.append(
+                        f"(Line {self.line_number}) | Syntax Error: Expected 'Identifier', but instead got '{self.peek_next_token()}'")
             else:
                 self.errors.append(
                     f"(Line {self.line_number}) | Syntax Error: Expected 'Identifier', 'SunLiteral', 'LuhmanLiteral', "
@@ -13445,11 +14631,486 @@ class SyntaxAnalyzer:
                     else:
                         self.errors.append(
                             f"(Line {self.line_number}) | Syntax Error: Expected '(', '#', '+', '-', '*', '/', '%', '**', but instead got '{self.peek_next_token()}'")
+                # PRE INCREMENT/DECREMENT PATH - VARIABLE AND ARRAY
+                elif self.peek_next_token() == "++" or self.peek_next_token() == "--":
+                    self.match(Resources.loopup)
+                    if re.match(r'Identifier\d*$', self.peek_next_token()):
+                        self.match(Resources.Value2)  # consume values
+                        # terminate it?
+                        if self.peek_next_token() == "#":
+                            self.match("#")
+                        #  add it?
+                        elif self.peek_next_token() == "+":
+                            self.match_mathop2("+")
+                            # terminate it
+                            if self.peek_next_token() == "#":
+                                self.match("#")
+                            #  error: not terminated
+                            elif (
+                                    self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                    or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                    and (self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                         or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                         or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%' but instead got '{self.peek_next_token()}'")
+                        #  subtract it?
+                        elif self.peek_next_token() == "-":
+                            self.match_mathop2("-")
+                            # terminate it
+                            if self.peek_next_token() == "#":
+                                self.match("#")
+                            #  error: not terminated
+                            elif (
+                                    self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                    or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                    and (self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                         or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                         or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
+                        #  multiply it?
+                        elif self.peek_next_token() == "*":
+                            self.match_mathop2("*")
+                            # terminate it
+                            if self.peek_next_token() == "#":
+                                self.match("#")
+                            #  error: not terminated
+                            elif (
+                                    self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                    or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                    and (self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                         or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                         or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
+                        #  divide it?
+                        elif self.peek_next_token() == "/":
+                            self.match_mathop2("/")
+                            # terminate it
+                            if self.peek_next_token() == "#":
+                                self.match("#")
+                            #  error: not terminated
+                            elif (
+                                    self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                    or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                    and (self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                         or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                         or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
+                        #  modulo it?
+                        elif self.peek_next_token() == "%":
+                            self.match_mathop2("%")
+                            # terminate it
+                            if self.peek_next_token() == "#":
+                                self.match("#")
+                            #  error: not terminated
+                            elif (
+                                    self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                    or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                    and (self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                         or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                         or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
+                        #  exponentiate it?
+                        elif self.peek_next_token() == "**":
+                            self.match_exponent2("**")
+                            # terminate it
+                            if self.peek_next_token() == "#":
+                                self.match("#")
+                            #  error: not terminated
+                            elif (
+                                    self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                    or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                    and (self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                         or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                         or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
+                        # array index value
+                        elif self.peek_next_token() == "{" and re.match(r'Identifier\d*$',
+                                                                      self.peek_previous_token()):
+                            self.arrayError = True
+                            self.match("{")
+                            #  array index assign path
+                            if (re.match(r'Identifier\d*$', self.peek_next_token())
+                                    or self.peek_next_token() == "SunLiteral"):
+                                self.match(Resources.Value3)  # consume the values
+                                #  size expression
+                                if (
+                                        self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                                        or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                                    self.match_mathop3(Resources.mathop1)  # size is a math expr
+                                    #  close it with "}" if size is fulfilled
+                                    if self.peek_next_token() == "}":
+
+                                        self.match("}")
+                                        # Terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        #  add is next
+                                        elif self.peek_next_token() == "+":
+                                            self.match_mathop2("+")
+                                            # terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  error: not terminated
+                                            elif (
+                                                    self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                                    or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                                    and (
+                                                            self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                                            or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                                            or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%' but instead got '{self.peek_next_token()}'")
+                                        #  exponentiation is next
+                                        elif self.peek_next_token() == "**":
+                                            self.match_exponent2("**")
+                                            # terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  error: not terminated
+                                            elif (
+                                                    self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                                    or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                                    and (
+                                                            self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                                            or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                                            or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%' but instead got '{self.peek_next_token()}'")
+                                        #  subtract is next
+                                        elif self.peek_next_token() == "-":
+                                            self.match_mathop2("-")
+                                            # terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  error: not terminated
+                                            elif (
+                                                    self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                                    or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                                    and (
+                                                            self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                                            or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                                            or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%' but instead got '{self.peek_next_token()}'")
+                                        #  multiply is next
+                                        elif self.peek_next_token() == "*":
+                                            self.match_mathop2("*")
+                                            # terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  error: not terminated
+                                            elif (
+                                                    self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                                    or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                                    and (
+                                                            self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                                            or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                                            or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%' but instead got '{self.peek_next_token()}'")
+                                        #  divide is next
+                                        elif self.peek_next_token() == "/":
+                                            self.match_mathop2("/")
+                                            # terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  error: not terminated
+                                            elif (
+                                                    self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                                    or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                                    and (
+                                                            self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                                            or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                                            or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%' but instead got '{self.peek_next_token()}'")
+                                        #  modulo is next
+                                        elif self.peek_next_token() == "%":
+                                            self.match_mathop2("%")
+                                            # terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  error: not terminated
+                                            elif (
+                                                    self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                                    or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                                    and (
+                                                            self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                                            or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                                            or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%' but instead got '{self.peek_next_token()}'")
+                                        # add another size to become 2D array
+                                        elif self.peek_next_token() == "{":
+                                            self.match_arrID2D_assign("{")
+                                            # Terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  add is next
+                                            elif self.peek_next_token() == "+":
+                                                self.match_mathop2("+")
+                                                # terminate it
+                                                if self.peek_next_token() == "#":
+                                                    self.match("#")
+                                                #  error: not terminated
+                                                elif (
+                                                        self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                                        or re.match(r'Identifier\d*$',
+                                                                    self.peek_previous_token())
+                                                        and (
+                                                                self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                                                or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                                                or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                                                    self.errors.append(
+                                                        f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%' but instead got '{self.peek_next_token()}'")
+                                        #  not terminated or followed
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax Error: Expected '#', 'Lcurlbrace', '+', '-', '*', '/', '%', '**'  but instead got '{self.peek_next_token()}'")
+                                    #  not closed with '}'
+                                    else:
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax Error: Expected 'Rcurlbrace', but instead got '{self.peek_next_token()}'")
+                                #  size is single value
+                                elif self.peek_next_token() == "}":
+                                    self.match("}")
+                                    # Terminate it
+                                    if self.peek_next_token() == "#":
+                                        self.match("#")
+                                    #  add is next
+                                    elif self.peek_next_token() == "+":
+                                        self.match_mathop2("+")
+                                        # terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        #  error: not terminated
+                                        elif (
+                                                self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                                or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                                and (
+                                                        self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                                        or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                                        or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%' but instead got '{self.peek_next_token()}'")
+                                    #  exponentiation is next
+                                    elif self.peek_next_token() == "**":
+                                        self.match_exponent2("**")
+                                        # terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        #  error: not terminated
+                                        elif (
+                                                self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                                or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                                and (
+                                                        self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                                        or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                                        or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%' but instead got '{self.peek_next_token()}'")
+                                    #  subtract is next
+                                    elif self.peek_next_token() == "-":
+                                        self.match_mathop2("-")
+                                        # terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        #  error: not terminated
+                                        elif (
+                                                self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                                or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                                and (
+                                                        self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                                        or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                                        or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%' but instead got '{self.peek_next_token()}'")
+                                    #  multiply is next
+                                    elif self.peek_next_token() == "*":
+                                        self.match_mathop2("*")
+                                        # terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        #  error: not terminated
+                                        elif (
+                                                self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                                or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                                and (
+                                                        self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                                        or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                                        or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%' but instead got '{self.peek_next_token()}'")
+                                    #  divide is next
+                                    elif self.peek_next_token() == "/":
+                                        self.match_mathop2("/")
+                                        # terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        #  error: not terminated
+                                        elif (
+                                                self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                                or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                                and (
+                                                        self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                                        or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                                        or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%' but instead got '{self.peek_next_token()}'")
+                                    #  modulo is next
+                                    elif self.peek_next_token() == "%":
+                                        self.match_mathop2("%")
+                                        # terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        #  error: not terminated
+                                        elif (
+                                                self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                                or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                                and (
+                                                        self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                                        or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                                        or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%' but instead got '{self.peek_next_token()}'")
+                                    # add another size to become 2D array
+                                    elif self.peek_next_token() == "{":
+                                        self.match_arrID2D_assign("{")
+                                        # Terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        #  add is next
+                                        elif self.peek_next_token() == "+":
+                                            self.match_mathop2("+")
+                                            # terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  error: not terminated
+                                            elif (
+                                                    self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                                    or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                                    and (
+                                                            self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                                            or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                                            or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%' but instead got '{self.peek_next_token()}'")
+                                        #  exponentiation is next
+                                        elif self.peek_next_token() == "**":
+                                            self.match_exponent2("**")
+                                            # terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  error: not terminated
+                                            elif (
+                                                    self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                                    or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                                    and (
+                                                            self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                                            or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                                            or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%' but instead got '{self.peek_next_token()}'")
+                                        #  subtract is next
+                                        elif self.peek_next_token() == "-":
+                                            self.match_mathop2("-")
+                                            # terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  error: not terminated
+                                            elif (
+                                                    self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                                    or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                                    and (
+                                                            self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                                            or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                                            or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%' but instead got '{self.peek_next_token()}'")
+                                        #  multiply is next
+                                        elif self.peek_next_token() == "*":
+                                            self.match_mathop2("*")
+                                            # terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  error: not terminated
+                                            elif (
+                                                    self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                                    or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                                    and (
+                                                            self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                                            or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                                            or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%' but instead got '{self.peek_next_token()}'")
+                                        #  divide is next
+                                        elif self.peek_next_token() == "/":
+                                            self.match_mathop2("/")
+                                            # terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  error: not terminated
+                                            elif (
+                                                    self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                                    or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                                    and (
+                                                            self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                                            or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                                            or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%' but instead got '{self.peek_next_token()}'")
+                                        #  modulo is next
+                                        elif self.peek_next_token() == "%":
+                                            self.match_mathop2("%")
+                                            # terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  error: not terminated
+                                            elif (
+                                                    self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                                    or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                                    and (
+                                                            self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                                            or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                                            or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%' but instead got '{self.peek_next_token()}'")
+                                        #  not terminated or followed
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax Error: Expected '#', but instead got '{self.peek_next_token()}'")
+                                    #  not terminated or followed
+                                    else:
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax Error: Expected '#', 'Lcurlbrace', '+', '-', '*', '/', '%', '**'  but instead got '{self.peek_next_token()}'")
+                                #  size value is not followed by any of the following (# and Rcurl)
+                                else:
+                                    self.errors.append(
+                                        f"(Line {self.line_number}) | Syntax Error: Expected 'Rcurlbraces', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
+                            else:
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax error: Expected 'Rcurlbraces', 'Identifier', 'SunLiteral', 'LuhmanLiteral' but instead got '{self.peek_next_token()}'")
+                        elif self.peek_next_token() == "#":
+                            self.match("#")
+                        #  error: not terminated
+                        else:
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Syntax Error: Expected  '#', 'LCurlBrace', '+', '-', '*', '/', '%', '**', but instead got '{self.peek_next_token()}'")
+                    #  error: not followed
+                    else:
+                        self.errors.append(
+                        f"(Line {self.line_number}) | Syntax Error: Expected  'Identifier', but instead got '{self.peek_next_token()}'")
                 #  error: not followed by any of the values
                 else:
                     self.errors.append(
                         f"(Line {self.line_number}) | Syntax Error: Expected 'SunLiteral', 'LuhmanLiteral', 'StarsysLiteral'"
-                        f" , 'Identifier', 'True', 'False', but instead got '{self.peek_next_token()}'")
+                        f" , 'Identifier', 'True', 'False', '++', '--' but instead got '{self.peek_next_token()}'")
             #  access module/s, function path
             elif self.peek_next_token() == ".":
                 self.instance_path(".")  # >>>>call method
@@ -14602,11 +16263,486 @@ class SyntaxAnalyzer:
                     else:
                         self.errors.append(
                             f"(Line {self.line_number}) | Syntax Error: Expected '(', '#', 'LCurlBrace', '+', '-', '*', '/', '%', '**', but instead got '{self.peek_next_token()}'")
+                # PRE INCREMENT/DECREMENT PATH - VARIABLE AND ARRAY
+                elif self.peek_next_token() == "++" or self.peek_next_token() == "--":
+                    self.match(Resources.loopup)
+                    if re.match(r'Identifier\d*$', self.peek_next_token()):
+                        self.match(Resources.Value2)  # consume values
+                        # terminate it?
+                        if self.peek_next_token() == "#":
+                            self.match("#")
+                        #  add it?
+                        elif self.peek_next_token() == "+":
+                            self.match_mathop2("+")
+                            # terminate it
+                            if self.peek_next_token() == "#":
+                                self.match("#")
+                            #  error: not terminated
+                            elif (
+                                    self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                    or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                    and (self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                         or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                         or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%' but instead got '{self.peek_next_token()}'")
+                        #  subtract it?
+                        elif self.peek_next_token() == "-":
+                            self.match_mathop2("-")
+                            # terminate it
+                            if self.peek_next_token() == "#":
+                                self.match("#")
+                            #  error: not terminated
+                            elif (
+                                    self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                    or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                    and (self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                         or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                         or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
+                        #  multiply it?
+                        elif self.peek_next_token() == "*":
+                            self.match_mathop2("*")
+                            # terminate it
+                            if self.peek_next_token() == "#":
+                                self.match("#")
+                            #  error: not terminated
+                            elif (
+                                    self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                    or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                    and (self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                         or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                         or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
+                        #  divide it?
+                        elif self.peek_next_token() == "/":
+                            self.match_mathop2("/")
+                            # terminate it
+                            if self.peek_next_token() == "#":
+                                self.match("#")
+                            #  error: not terminated
+                            elif (
+                                    self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                    or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                    and (self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                         or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                         or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
+                        #  modulo it?
+                        elif self.peek_next_token() == "%":
+                            self.match_mathop2("%")
+                            # terminate it
+                            if self.peek_next_token() == "#":
+                                self.match("#")
+                            #  error: not terminated
+                            elif (
+                                    self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                    or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                    and (self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                         or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                         or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
+                        #  exponentiate it?
+                        elif self.peek_next_token() == "**":
+                            self.match_exponent2("**")
+                            # terminate it
+                            if self.peek_next_token() == "#":
+                                self.match("#")
+                            #  error: not terminated
+                            elif (
+                                    self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                    or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                    and (self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                         or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                         or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
+                        # array index value
+                        elif self.peek_next_token() == "{" and re.match(r'Identifier\d*$',
+                                                                      self.peek_previous_token()):
+                            self.arrayError = True
+                            self.match("{")
+                            #  array index assign path
+                            if (re.match(r'Identifier\d*$', self.peek_next_token())
+                                    or self.peek_next_token() == "SunLiteral"):
+                                self.match(Resources.Value3)  # consume the values
+                                #  size expression
+                                if (
+                                        self.peek_next_token() == "+" or self.peek_next_token() == "-" or self.peek_next_token() == "*"
+                                        or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
+                                    self.match_mathop3(Resources.mathop1)  # size is a math expr
+                                    #  close it with "}" if size is fulfilled
+                                    if self.peek_next_token() == "}":
+
+                                        self.match("}")
+                                        # Terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        #  add is next
+                                        elif self.peek_next_token() == "+":
+                                            self.match_mathop2("+")
+                                            # terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  error: not terminated
+                                            elif (
+                                                    self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                                    or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                                    and (
+                                                            self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                                            or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                                            or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%' but instead got '{self.peek_next_token()}'")
+                                        #  exponentiation is next
+                                        elif self.peek_next_token() == "**":
+                                            self.match_exponent2("**")
+                                            # terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  error: not terminated
+                                            elif (
+                                                    self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                                    or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                                    and (
+                                                            self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                                            or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                                            or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%' but instead got '{self.peek_next_token()}'")
+                                        #  subtract is next
+                                        elif self.peek_next_token() == "-":
+                                            self.match_mathop2("-")
+                                            # terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  error: not terminated
+                                            elif (
+                                                    self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                                    or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                                    and (
+                                                            self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                                            or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                                            or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%' but instead got '{self.peek_next_token()}'")
+                                        #  multiply is next
+                                        elif self.peek_next_token() == "*":
+                                            self.match_mathop2("*")
+                                            # terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  error: not terminated
+                                            elif (
+                                                    self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                                    or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                                    and (
+                                                            self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                                            or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                                            or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%' but instead got '{self.peek_next_token()}'")
+                                        #  divide is next
+                                        elif self.peek_next_token() == "/":
+                                            self.match_mathop2("/")
+                                            # terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  error: not terminated
+                                            elif (
+                                                    self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                                    or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                                    and (
+                                                            self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                                            or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                                            or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%' but instead got '{self.peek_next_token()}'")
+                                        #  modulo is next
+                                        elif self.peek_next_token() == "%":
+                                            self.match_mathop2("%")
+                                            # terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  error: not terminated
+                                            elif (
+                                                    self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                                    or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                                    and (
+                                                            self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                                            or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                                            or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%' but instead got '{self.peek_next_token()}'")
+                                        # add another size to become 2D array
+                                        elif self.peek_next_token() == "{":
+                                            self.match_arrID2D_assign("{")
+                                            # Terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  add is next
+                                            elif self.peek_next_token() == "+":
+                                                self.match_mathop2("+")
+                                                # terminate it
+                                                if self.peek_next_token() == "#":
+                                                    self.match("#")
+                                                #  error: not terminated
+                                                elif (
+                                                        self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                                        or re.match(r'Identifier\d*$',
+                                                                    self.peek_previous_token())
+                                                        and (
+                                                                self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                                                or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                                                or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                                                    self.errors.append(
+                                                        f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%' but instead got '{self.peek_next_token()}'")
+                                        #  not terminated or followed
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax Error: Expected '#', 'Lcurlbrace', '+', '-', '*', '/', '%', '**'  but instead got '{self.peek_next_token()}'")
+                                    #  not closed with '}'
+                                    else:
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax Error: Expected 'Rcurlbrace', but instead got '{self.peek_next_token()}'")
+                                #  size is single value
+                                elif self.peek_next_token() == "}":
+                                    self.match("}")
+                                    # Terminate it
+                                    if self.peek_next_token() == "#":
+                                        self.match("#")
+                                    #  add is next
+                                    elif self.peek_next_token() == "+":
+                                        self.match_mathop2("+")
+                                        # terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        #  error: not terminated
+                                        elif (
+                                                self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                                or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                                and (
+                                                        self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                                        or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                                        or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%' but instead got '{self.peek_next_token()}'")
+                                    #  exponentiation is next
+                                    elif self.peek_next_token() == "**":
+                                        self.match_exponent2("**")
+                                        # terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        #  error: not terminated
+                                        elif (
+                                                self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                                or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                                and (
+                                                        self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                                        or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                                        or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%' but instead got '{self.peek_next_token()}'")
+                                    #  subtract is next
+                                    elif self.peek_next_token() == "-":
+                                        self.match_mathop2("-")
+                                        # terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        #  error: not terminated
+                                        elif (
+                                                self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                                or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                                and (
+                                                        self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                                        or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                                        or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%' but instead got '{self.peek_next_token()}'")
+                                    #  multiply is next
+                                    elif self.peek_next_token() == "*":
+                                        self.match_mathop2("*")
+                                        # terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        #  error: not terminated
+                                        elif (
+                                                self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                                or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                                and (
+                                                        self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                                        or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                                        or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%' but instead got '{self.peek_next_token()}'")
+                                    #  divide is next
+                                    elif self.peek_next_token() == "/":
+                                        self.match_mathop2("/")
+                                        # terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        #  error: not terminated
+                                        elif (
+                                                self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                                or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                                and (
+                                                        self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                                        or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                                        or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%' but instead got '{self.peek_next_token()}'")
+                                    #  modulo is next
+                                    elif self.peek_next_token() == "%":
+                                        self.match_mathop2("%")
+                                        # terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        #  error: not terminated
+                                        elif (
+                                                self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                                or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                                and (
+                                                        self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                                        or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                                        or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%' but instead got '{self.peek_next_token()}'")
+                                    # add another size to become 2D array
+                                    elif self.peek_next_token() == "{":
+                                        self.match_arrID2D_assign("{")
+                                        # Terminate it
+                                        if self.peek_next_token() == "#":
+                                            self.match("#")
+                                        #  add is next
+                                        elif self.peek_next_token() == "+":
+                                            self.match_mathop2("+")
+                                            # terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  error: not terminated
+                                            elif (
+                                                    self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                                    or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                                    and (
+                                                            self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                                            or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                                            or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%' but instead got '{self.peek_next_token()}'")
+                                        #  exponentiation is next
+                                        elif self.peek_next_token() == "**":
+                                            self.match_exponent2("**")
+                                            # terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  error: not terminated
+                                            elif (
+                                                    self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                                    or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                                    and (
+                                                            self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                                            or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                                            or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%' but instead got '{self.peek_next_token()}'")
+                                        #  subtract is next
+                                        elif self.peek_next_token() == "-":
+                                            self.match_mathop2("-")
+                                            # terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  error: not terminated
+                                            elif (
+                                                    self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                                    or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                                    and (
+                                                            self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                                            or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                                            or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%' but instead got '{self.peek_next_token()}'")
+                                        #  multiply is next
+                                        elif self.peek_next_token() == "*":
+                                            self.match_mathop2("*")
+                                            # terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  error: not terminated
+                                            elif (
+                                                    self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                                    or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                                    and (
+                                                            self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                                            or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                                            or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%' but instead got '{self.peek_next_token()}'")
+                                        #  divide is next
+                                        elif self.peek_next_token() == "/":
+                                            self.match_mathop2("/")
+                                            # terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  error: not terminated
+                                            elif (
+                                                    self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                                    or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                                    and (
+                                                            self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                                            or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                                            or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%' but instead got '{self.peek_next_token()}'")
+                                        #  modulo is next
+                                        elif self.peek_next_token() == "%":
+                                            self.match_mathop2("%")
+                                            # terminate it
+                                            if self.peek_next_token() == "#":
+                                                self.match("#")
+                                            #  error: not terminated
+                                            elif (
+                                                    self.peek_previous_token() == "SunLiteral" or self.peek_previous_token() == "LuhmanLiteral"
+                                                    or re.match(r'Identifier\d*$', self.peek_previous_token())
+                                                    and (
+                                                            self.peek_next_token() != "#" or self.peek_next_token() != "+"
+                                                            or self.peek_next_token() != "-" or self.peek_next_token() != "*"
+                                                            or self.peek_next_token() != "/" or self.peek_next_token() != "%" or self.peek_next_token() != "**")):
+                                                self.errors.append(
+                                                    f"(Line {self.line_number}) | Syntax Error: Expected '#', '+', '-', '*', '/', '%' but instead got '{self.peek_next_token()}'")
+                                        #  not terminated or followed
+                                        else:
+                                            self.errors.append(
+                                                f"(Line {self.line_number}) | Syntax Error: Expected '#', but instead got '{self.peek_next_token()}'")
+                                    #  not terminated or followed
+                                    else:
+                                        self.errors.append(
+                                            f"(Line {self.line_number}) | Syntax Error: Expected '#', 'Lcurlbrace', '+', '-', '*', '/', '%', '**'  but instead got '{self.peek_next_token()}'")
+                                #  size value is not followed by any of the following (# and Rcurl)
+                                else:
+                                    self.errors.append(
+                                        f"(Line {self.line_number}) | Syntax Error: Expected 'Rcurlbraces', '+', '-', '*', '/', '%', but instead got '{self.peek_next_token()}'")
+                            else:
+                                self.errors.append(
+                                    f"(Line {self.line_number}) | Syntax error: Expected 'Rcurlbraces', 'Identifier', 'SunLiteral', 'LuhmanLiteral' but instead got '{self.peek_next_token()}'")
+                        elif self.peek_next_token() == "#":
+                            self.match("#")
+                        #  error: not terminated
+                        else:
+                            self.errors.append(
+                                f"(Line {self.line_number}) | Syntax Error: Expected  '#', 'LCurlBrace', '+', '-', '*', '/', '%', '**', but instead got '{self.peek_next_token()}'")
+                    #  error: not followed
+                    else:
+                        self.errors.append(
+                        f"(Line {self.line_number}) | Syntax Error: Expected  'Identifier', but instead got '{self.peek_next_token()}'")
                 #  error: not followed by any of the values
                 else:
                     self.errors.append(
                         f"(Line {self.line_number}) | Syntax Error: Expected 'SunLiteral', 'LuhmanLiteral', 'StarsysLiteral'"
-                        f" , 'Identifier', 'True', 'False', but instead got '{self.peek_next_token()}'")
+                        f" , 'Identifier', 'True', 'False', '++', '--' but instead got '{self.peek_next_token()}'")
             #  access module/s, function path
             elif self.peek_next_token() == ".":
                 self.instance_path(".")  # >>>>call method
