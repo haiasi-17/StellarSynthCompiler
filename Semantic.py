@@ -869,8 +869,9 @@ class SemanticAnalyzer:
         if expected_token == ">>":
             if (re.match(r'Identifier\d*$', self.peek_next_token())):
                 self.match("Identifier")  # consume
+                self.parse_array_condition()  # is it an array index?
                 # SEMANTIC CHECK
-                if re.match(r'Identifier\d*$', self.peek_previous_token()) and not self.isParameterVariable:
+                if re.match(r'Identifier\d*$', self.peek_previous_token()) and self.peek_previous_token() != "}" and not self.isParameterVariable:
                     self.check_ifVariable_isParameter()
                     self.variable_dec = False
                     if not self.input_var:

@@ -672,6 +672,7 @@ class SyntaxAnalyzer:
         if expected_token == ">>":
             if (re.match(r'Identifier\d*$', self.peek_next_token())):
                 self.match("Identifier")  # consume
+                self.parse_array_condition() # is it an array index?
                 #  if the next is a '>>' proceed to check if it is followed by an identifier
                 if self.peek_next_token() == ">>":
                     self.match_input(">>")
