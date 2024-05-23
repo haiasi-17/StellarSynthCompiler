@@ -32,10 +32,11 @@ class Transpiler:
         self.isDisp = False
         self.isCapt = False
         
+        self.identCount = 0
+        
     def stellarTranslator(self):
         self.currentToken = self.tokens[self.tokenIndex][0]
         while self.tokenIndex < (len(self.tokens)-1):
-        
             # Remove Formulate and Disintegrate from the beginning of the program.
             if self.currentToken == "Formulate" or self.currentToken == "Disintegrate":
                 self.tokens.pop(self.tokenIndex)
@@ -413,6 +414,7 @@ class Transpiler:
                     
                     # go next token and set isDisp to false.
                     self.go_next_token()
+                    
                     self.isDisp = False
                     continue
             # if current token is a Capt token, a request for input is needed. Send a string to signal StellarSynth compiler that input awaits.
@@ -472,8 +474,44 @@ class Transpiler:
                         self.go_next_token()
                         continue
                 else:
+                    # getline method 
                     if self.currentToken == "Capt" and self.isCapt == True:
+                        tempvar = "iss "
+                        tempidentlist = []
+                                              
+                        while self.currentToken != "#":
+                            self.go_next_token()
+                            if self.tokens[self.tokenIndex][1][0:10] == "Identifier":
+                                self.identCount += 1
+                                tempidentlist.append(self.currentToken)
+                                
+                        # if multiple variables, separates by space.
+                        if len(tempidentlist) > 1:
+                            # getline(cin, line); append to translated tokens
+                            self.tokens[self.tokenIndex][0] = self.tokens[self.tokenIndex][1] = Resources.StellarCPlusPlusDict[self.currentToken] 
+                            self.translatedTokens.append(self.tokens[self.tokenIndex])
+                            
+                            # istringstream iss(line); append to translated tokens
+                            self.translatedTokens.append([Resources.getlineDistribStatement])
+                            
+                            
+                            for i in range(self.identCount):
+                                tempvar += f">> {tempidentlist[i]}"
+                            # iss >> ident1 >> ident2 >> ident3 append to translated tokens
+                            
+                            self.translatedTokens.append([tempvar])
+                        # if one variable string only, gets entire line.
+                        else:
+                            # getline(cin, <ident>); append to translated tokens
+                            self.tokens[self.tokenIndex][0] = self.tokens[self.tokenIndex][1] = f"getline(cin, {tempidentlist[0]});\n" 
+                            self.translatedTokens.append([f"getline(cin, {tempidentlist[0]});\n"])
+                        
                         self.isCapt = False
+                        tempvar = None
+                        tempidentlist = None
+                        
+                        continue     
+                
                     self.tokens[self.tokenIndex][0] = self.tokens[self.tokenIndex][1] = Resources.StellarCPlusPlusDict[self.currentToken] 
                     self.translatedTokens.append(self.tokens[self.tokenIndex])
                     self.go_next_token()
@@ -643,6 +681,7 @@ if __name__ == "__main__":
     transpilerInstance = Transpiler(tokens, None)
     transpilerInstance.stellarTranslator()
     transpilerInstance.writetoCPPFile()
+    
 
 """ 
 Algorithm:

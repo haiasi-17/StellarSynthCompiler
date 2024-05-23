@@ -242,7 +242,7 @@ StellarCPlusPlusDict = {
     "Void"          : "void",
     "Span"          : "while",
     "Starsys"       : "string", # STD Library
-    "Capt"          : "cin", # STD Library
+    "Capt"          : "getline(cin, line);\n", # STD Library, sstream, stirng. Using getline instead of cin because of string spaces. Instead uses iss to dispense multi variables
     "Disp"          : "cout", # STD Library
     '{'             : "[",
     '}'             : "]",
@@ -262,12 +262,11 @@ transdefaultvalueDict= {"int"        : '0',
 
 whitespaces = [" ", "\t", "\n"]
 
-headerInclude = ["#include <iostream>\n","#include <string>\n", "#include <math.h>\n", "#include <iomanip>\n", "using namespace std;"]
+headerInclude = ["#include <iostream>\n","#include <string>\n", "#include <sstream>\n", "#include <math.h>\n", "#include <iomanip>\n", "using namespace std;\n", "string line;"]
 
 inputSignal = "01000011 01001001 01001110 00100000 01000100 01000101 01010100 01000101 01000011 01010100 01000101 01000100 00101100 00100000 01010011 01010100 01000101 01001100 01001100 01000001 01010010 01010011 01011001 01001110 01010100 01001000 00100000 01010011 01000101 01001110 01000100 00100000 01000001 00100000 01000011 01001001 01001110 00100000 01010010 01000101 01010001 01010101 01000101 01010011 01010100 00100000 01001110 01001111 01010111 00100001"
 
-# GUI
-StellarSynthInputSignal = "cout << \"01000011 01001001 01001110 00100000 01000100 01000101 01010100 01000101 01000011 01010100 01000101 01000100 00101100 00100000 01010011 01010100 01000101 01001100 01001100 01000001 01010010 01010011 01011001 01001110 01010100 01001000 00100000 01010011 01000101 01001110 01000100 00100000 01000001 00100000 01000011 01001001 01001110 00100000 01010010 01000101 01010001 01010101 01000101 01010011 01010100 00100000 01001110 01001111 01010111 00100001\" << endl;"
+getlineDistribStatement = "istringstream iss(line);\n"
 
 
 """

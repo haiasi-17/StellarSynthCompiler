@@ -1,12 +1,9 @@
 Formulate
 
 Sun Universe()[
-    Starsys answer, name#
+    Starsys answer, name, cat#
     Disp << "Hello"#
-    Capt >> answer#
+    Capt >> answer ,cat#
     Disp << answer#
-    Disp << "Hello"#
-    Capt >> name#
 ]
-
 Disintegrate

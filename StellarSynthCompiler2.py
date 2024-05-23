@@ -636,6 +636,7 @@ class CreateButtons(customtkinter.CTkButton):
                 
                 # Get the text from the start of the last line to the end
                 input_data = self.inputConsole1.inputConsole.get(input_start, "end-1c")
+                print(input_data)
             
                 # Send input to the process
                 try:
@@ -665,7 +666,6 @@ class CreateButtons(customtkinter.CTkButton):
                     # Update GUI in the main thread
                     update_console(line)
                         
-                
 
         # Start a thread to read the process output to avoid freezing the GUI
         output_thread = threading.Thread(target=read_process_output)
