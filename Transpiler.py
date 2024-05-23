@@ -497,6 +497,7 @@ class Transpiler:
                             
                             for i in range(self.identCount):
                                 tempvar += f">> {tempidentlist[i]}"
+                            tempvar += ";"
                             # iss >> ident1 >> ident2 >> ident3 append to translated tokens
                             
                             self.translatedTokens.append([tempvar])
@@ -505,12 +506,13 @@ class Transpiler:
                             # getline(cin, <ident>); append to translated tokens
                             self.tokens[self.tokenIndex][0] = self.tokens[self.tokenIndex][1] = f"getline(cin, {tempidentlist[0]});\n" 
                             self.translatedTokens.append([f"getline(cin, {tempidentlist[0]});\n"])
-                        
+                            
+                            
                         self.isCapt = False
                         tempvar = None
                         tempidentlist = None
                         self.identCount = 0
-                        
+                        self.go_next_token()
                         continue     
                 
                     self.tokens[self.tokenIndex][0] = self.tokens[self.tokenIndex][1] = Resources.StellarCPlusPlusDict[self.currentToken] 
