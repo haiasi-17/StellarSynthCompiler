@@ -30,6 +30,7 @@ class Transpiler:
         self.nextTokenParenth = False
         
         self.isDisp = False
+        self.isCapt = False
         
     def stellarTranslator(self):
         self.currentToken = self.tokens[self.tokenIndex][0]
@@ -414,7 +415,12 @@ class Transpiler:
                     self.go_next_token()
                     self.isDisp = False
                     continue
-                     
+            # if current token is a Capt token, a request for input is needed. Send a string to signal StellarSynth compiler that input awaits.
+            elif (self.currentToken == "Capt" and self.isCapt is False):
+                self.isCapt = True
+                self.translatedTokens.append([f"cout << \"{Resources.inputSignal}\" << endl;\n"])
+                continue
+                
             # Set Sun as int instead of long long
             elif self.currentToken == "Universe" and self.mainfuncFlag == False:                 
                 # Go back to the Sun Token.
@@ -466,6 +472,8 @@ class Transpiler:
                         self.go_next_token()
                         continue
                 else:
+                    if self.currentToken == "Capt" and self.isCapt == True:
+                        self.isCapt = False
                     self.tokens[self.tokenIndex][0] = self.tokens[self.tokenIndex][1] = Resources.StellarCPlusPlusDict[self.currentToken] 
                     self.translatedTokens.append(self.tokens[self.tokenIndex])
                     self.go_next_token()

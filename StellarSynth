@@ -1,1 +1,12 @@
-Au/ntom#
+Formulate
+
+Sun Universe()[
+    Starsys answer, name#
+    Disp << "Hello"#
+    Capt >> answer#
+    Disp << answer#
+    Disp << "Hello"#
+    Capt >> name#
+]
+
+Disintegrate
