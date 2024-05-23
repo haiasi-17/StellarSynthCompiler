@@ -509,6 +509,7 @@ class Transpiler:
                         self.isCapt = False
                         tempvar = None
                         tempidentlist = None
+                        self.identCount = 0
                         
                         continue     
                 
