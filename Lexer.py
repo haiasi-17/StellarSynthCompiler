@@ -1327,13 +1327,27 @@ class Lexer:
             else:
                 self.retreat()
         elif self.current_char == "-":
-            self.current_lexeme += self.current_char
+            self.current_lexeme += self.current_char     
             self.advance()
             if self.current_char == "-":
                 self.current_lexeme += self.current_char
             elif self.current_char.isdigit():
-                self.process_digit()
-                return
+                self.retreat()
+                self.retreat()
+                while self.current_char == " " and self.current_char is not None:
+                    self.retreat()
+                if self.current_char.isalnum() or self.current_char == ")":
+                    self.advance()
+                    while self.current_char != "-":
+                        self.advance()
+                else:
+                    self.advance()
+                    while self.current_char != "-":
+                        self.advance()
+                    while not self.current_char.isdigit():
+                        self.advance()
+                    self.process_digit()
+                    return
             else:
                 self.retreat()
         elif self.current_char == "*":
