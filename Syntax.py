@@ -7151,7 +7151,7 @@ class SyntaxAnalyzer:
         while self.current_token == "Space":
             self.get_next_token()
 
-        if expected_token == "+" or "-" or "*" or "/" or "%":
+        if expected_token == "+" or expected_token == "-" or expected_token == "*" or expected_token == "/" or expected_token == "%":
             if self.peek_next_token() == "(":
                 self.match_parenth("(")
                 if self.peek_previous_token() == ")":
@@ -7894,8 +7894,7 @@ class SyntaxAnalyzer:
 
     # expr for array size
     def match_mathop3(self, expected_token):
-        if (self.peek_previous_token() != "SunLiteral" and not
-        re.match(r'Identifier\d*$', self.peek_previous_token())):
+        if (self.peek_previous_token() != "SunLiteral" and not re.match(r'Identifier\d*$', self.peek_previous_token())):
             self.errors.append(
                 f"(Line {self.line_number}) | Syntax Error: Expected 'Identifier', 'SunLiteral' before {self.peek_next_token()}")
 
@@ -7914,7 +7913,7 @@ class SyntaxAnalyzer:
                         self.parenthError = True
                         return False
                 if (re.match(r'Identifier\d*$', self.peek_next_token())
-                        or "SunLiteral"):
+                        or self.peek_next_token() == "SunLiteral"):
                     self.match(Resources.Value3)  # consume
                     if self.peek_next_token() == "+":
                         self.match_mathop3("+")  # consume
@@ -7932,12 +7931,49 @@ class SyntaxAnalyzer:
                     #  modulo is next
                     elif self.peek_next_token() == "%":
                         self.match_mathop3("%")
+                    elif self.peek_next_token() == "}":
+                        return
                     else:
                         return True
                 else:
                     self.errors.append(
                         f"(Line {self.line_number}) | Syntax Error: Expected 'Identifier', 'SunLiteral', "
                         f" but instead got '{self.peek_next_token()}'")
+        elif expected_token == "+" or expected_token == "-" or expected_token == "*" or expected_token == "/" or expected_token == "%":
+            if self.peek_next_token() == "(":
+                self.match_parenth("(")
+                if self.peek_previous_token() == ")":
+                    return True
+                else:
+                    self.parenthError = True
+                    return False
+            if (re.match(r'Identifier\d*$', self.peek_next_token())
+                    or self.peek_next_token() == "SunLiteral"):
+                self.match(Resources.Value3)  # consume
+                if self.peek_next_token() == "+":
+                    self.match_mathop3("+")  # consume
+                elif self.peek_next_token() == "**":
+                    self.match_exponent("**")
+                #  subtract is next
+                elif self.peek_next_token() == "-":
+                    self.match_mathop3("-")
+                #  multiply is next
+                elif self.peek_next_token() == "*":
+                    self.match_mathop3("*")
+                #  divide is next
+                elif self.peek_next_token() == "/":
+                    self.match_mathop3("/")
+                #  modulo is next
+                elif self.peek_next_token() == "%":
+                    self.match_mathop3("%")
+                elif self.peek_next_token() == "}":
+                    return
+                else:
+                    return True
+            else:
+                self.errors.append(
+                    f"(Line {self.line_number}) | Syntax Error: Expected 'Identifier', 'SunLiteral', "
+                    f" but instead got '{self.peek_next_token()}'")
 
     #  method for values in a parentheses
     def match_parenth(self, expected_token):
@@ -16830,6 +16866,7 @@ class SyntaxAnalyzer:
                         or self.peek_next_token() == "/" or self.peek_next_token() == "%"):
                     self.match_mathop3(Resources.mathop1)  # size is a math expr
                     #  close it with "}" if size is fulfilled
+                    print(self.peek_next_token())
                     if self.peek_next_token() == "}":
                         self.match("}")
                         #  must be followed by an '='

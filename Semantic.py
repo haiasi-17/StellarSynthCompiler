@@ -8313,7 +8313,49 @@ class SemanticAnalyzer:
                     self.errors.append(
                         f"(Line {self.line_number}) | Syntax Error: Expected 'Identifier', 'SunLiteral', "
                         f" but instead got '{self.peek_next_token()}'")
+        elif expected_token == "+" or expected_token == "-" or expected_token == "*" or expected_token == "/" or expected_token == "%":
+            if self.peek_next_token() == "(":
+                self.match_parenth("(")
+                if self.peek_previous_token() == ")":
+                    return True
+                else:
+                    self.parenthError = True
+                    return False
+            if (re.match(r'Identifier\d*$', self.peek_next_token())
+                    or "SunLiteral"):
+                self.match(Resources.Value3)  # consume
+                #  SEMANTIC CHECK
+                if re.match(r'Identifier\d*$', self.peek_previous_token()):
+                    self.function_parameter_variable()  # is it from a parameter
+                if self.isParameterVariable:
+                    self.function_assignment_variable = self.peek_previous_lexeme()
+                    self.check_function_assignment_type()  # check its type
+                if re.match(r'Identifier\d*$', self.peek_previous_token()) and not self.isParameterVariable:
+                    self.variable_dec = True
+                    self.check_variable_usage()
 
+                if self.peek_next_token() == "+":
+                    self.match_mathop3("+")  # consume
+                elif self.peek_next_token() == "**":
+                    self.match_exponent("**")
+                #  subtract is next
+                elif self.peek_next_token() == "-":
+                    self.match_mathop3("-")
+                #  multiply is next
+                elif self.peek_next_token() == "*":
+                    self.match_mathop3("*")
+                #  divide is next
+                elif self.peek_next_token() == "/":
+                    self.match_mathop3("/")
+                #  modulo is next
+                elif self.peek_next_token() == "%":
+                    self.match_mathop3("%")
+                else:
+                    return True
+            else:
+                self.errors.append(
+                    f"(Line {self.line_number}) | Syntax Error: Expected 'Identifier', 'SunLiteral', "
+                    f" but instead got '{self.peek_next_token()}'")
     #  method for values in a parentheses
     def match_parenth(self, expected_token):
         self.get_next_token()
@@ -31109,8 +31151,7 @@ class SemanticAnalyzer:
         else:
             pass
 
-    # POPULATE SYMBOL TABLE
-
+    # POPULATE SYMBOL TABLES
     # global, and local variables table
     def declare_variable(self, var_name, datatype, scope, value):
         # Append the function name to the scope if the current scope is a function
