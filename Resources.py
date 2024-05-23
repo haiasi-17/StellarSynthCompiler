@@ -242,7 +242,7 @@ StellarCPlusPlusDict = {
     "Void"          : "void",
     "Span"          : "while",
     "Starsys"       : "string", # STD Library
-    "Capt"          : "getline(cin, line);\n", # STD Library, sstream, stirng. Using getline instead of cin because of string spaces. Instead uses iss to dispense multi variables
+    "Capt"          : "getline(cin, line);\n", # STD Library, sstream, string. Using getline instead of cin because of string spaces. Instead uses iss to dispense multi variables
     "Disp"          : "cout", # STD Library
     '{'             : "[",
     '}'             : "]",
