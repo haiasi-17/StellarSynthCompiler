@@ -9,6 +9,7 @@ import Transpiler
 import os.path
 import threading
 import time
+import Resources
 
 class App(customtkinter.CTk):
     def __init__(self):
@@ -74,9 +75,6 @@ class App(customtkinter.CTk):
     def scrollwheel(self, event):
         return 'break'
 
-    """def populateLineNum(self,linenumber):
-        for i in range (1, 50):
-            linenumber.insert(tk.END, f"{i}\n")"""
 
 class CreateTextEditor(customtkinter.CTkTextbox):
     def __init__(self, master: any, **kwargs):
@@ -99,50 +97,50 @@ class CreateTextEditor(customtkinter.CTkTextbox):
                                               ,border_width=1, border_color="gray20", corner_radius=0, width=30)
         self.linenumber.grid(row=0,column=0,rowspan=3, sticky='nsw')
 
-        self.scrollbar1 = customtkinter.CTkScrollbar(self.texteditor, button_color="gray18",button_hover_color="gray30", command=lambda *args: (self.texteditor.yview(*args), self.linenumber.yview(*args)))
+        self.scrollbar1 = customtkinter.CTkScrollbar(self.texteditor, button_color="gray18",button_hover_color="gray30", command=self.on_scroll)
         self.scrollbar1.grid(row=0, column=1, sticky="ns",padx=(0,5),pady=(5,0))
         self.scrollbar2 = customtkinter.CTkScrollbar(self.texteditor, command=self.texteditor.xview,orientation="horizontal", button_color="gray18",button_hover_color="gray30")
         self.scrollbar2.grid(row=1, column=0, sticky="ew", padx=(5, 0), pady=(0, 5))
 
         self.texteditor.configure(yscrollcommand=self.scrollbar1.set, xscrollcommand = self.scrollbar2.set, tabs='0.5i')
+        self.linenumber.configure(yscrollcommand=self.scrollbar1.set)
+        
         self.linenumber.bind('<MouseWheel>', master.scrollwheel) # Overrides so that scrolling no longer works in linenumbers text widget.
         self.texteditor.bind('<MouseWheel>', master.scrollwheel) # I Overrode scrolling for texteditor too, since scrolling with mousewheel is currently clunky
 
-        self.addlineNumbers()
+        self.update_line_numbers()
+        self.texteditor.bind("<<Modified>>", self.on_text_change)
+        self.texteditor.bind("<KeyRelease>", self.on_text_change)
+    
+
+    def on_scroll(self, *args):
+        action, value = args
+        if action == 'moveto':
+            self.texteditor.yview_moveto(value)
+            self.linenumber.yview_moveto(value)
+        else:
+            self.texteditor.yview(action, int(value))
+            self.linenumber.yview(action, int(value))
+
+    def on_text_change(self, event=None):
+        self.update_line_numbers()
+        self.sync_scroll_position()
+        self.texteditor.edit_modified(False)  # Reset the modified flag
+
+    def update_line_numbers(self):
+        endline = int(self.texteditor.index('end-1c').split('.')[0]) + 1
+        lines = "\n".join(str(i) for i in range(1, endline))
+        self.linenumber.configure(state='normal')
+        self.linenumber.delete('1.0', 'end')
+        self.linenumber.insert('1.0', lines)
         self.linenumber.configure(state='disabled')
-        master.after(10, self.addlineNumbers) # Updates every 0.010 seconds. Very Inefficient but does the job.
         
-
-
-    """def HandleBackSpace(self):
-        # This solution is very improvised, does not work properly when moving back a line while still having characters on current line.
-        # end-2c It is so that on backspace, instead of calculating the position of cursor. It calculates the position of the last printable character (Not including newline)
-        numofline = int(float(self.texteditor.index("end-2c")))
-
-        self.linenumber.configure(state='normal')
-        self.linenumber.delete("1.0", tk.END)
-        if numofline < 9:
-            for i in range(1, 11):
-                self.linenumber.insert(tk.END, f"{i}\n")
-        else:
-            for i in range(1, numofline + 2):
-                self.linenumber.insert(tk.END, f"{i}\n")
-        self.linenumber.configure(state='disabled')"""
-
-
-    def addlineNumbers(self):
-        numofline = int(float(self.texteditor.index("end")))
-
-        self.linenumber.configure(state='normal')
-        self.linenumber.delete("1.0", tk.END)
-        if numofline < 9:
-            for i in range(1, 11):
-                self.linenumber.insert(tk.END, f"{i}\n")
-        else:
-            for i in range(1, numofline + 2):
-                self.linenumber.insert(tk.END, f"{i}\n")
-        self.linenumber.configure(state='disabled')
-        self.master.after(10, self.addlineNumbers)
+    def sync_scroll_position(self):
+        # Get the current view of the texteditor
+        current_view = self.texteditor.yview()
+        
+        # Set the linenumber's scrollbar to match texteditor's current view
+        self.linenumber.yview_moveto(current_view[0])
 
 class CreateTable(ttk.Treeview):
     def __init__(self, master: any, **kwargs):
@@ -595,12 +593,14 @@ class CreateButtons(customtkinter.CTkButton):
         self.console1.console.configure(state="disabled")
     
     def run_cpp_executable(self, executable_path):
+        self.received_output = None
+        
         
         # Creates a process that runs the c++ exe file.
         try:
             self.process = subprocess.Popen(
             executable_path, shell=True, stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,bufsize=0, text=True,
         )
         except Exception as e:
             print(f"Error writing to process: {e}")
@@ -614,6 +614,22 @@ class CreateButtons(customtkinter.CTkButton):
             self.console1.console.after(0, safeupdate)
             
         def read_process_output():
+            def check_for_input():
+                """ Function to delay input activation to check for more output. """
+                if not self.received_output:
+                    # No output received, assume input is needed
+                    # Enable input Console
+                    self.inputConsole1.inputConsole.configure(state="normal")
+                    # Request user input indicator
+                    self.inputConsole1.inputConsole.insert(tk.END, ">> ")
+                    # Set focus to the input console
+                    self.inputConsole1.inputConsole.focus_set()
+                     # User presses enter, and the data will be sent to the program.
+                    self.inputConsole1.inputConsole.bind("<Return>", lambda event: send_input())
+                else:
+                    # Reset flag for next iteration
+                    self.received_output = False
+                    
             def send_input(Event=None):
                 # Get the index of the third character (>> ^starts here) of the last line in the inputconsole
                 input_start = self.inputConsole1.inputConsole.index("end-1c linestart + 3 chars")
@@ -637,23 +653,19 @@ class CreateButtons(customtkinter.CTkButton):
                 # Disable input Console until next request
                 self.inputConsole1.inputConsole.configure(state="disabled")
             
-            for line in self.process.stdout:
-                outputNoWhiteSpace = line.strip()
-                if line:
+            while True:
+                line = self.process.stdout.readline()
+                if line == Resources.inputSignal + "\n":
+                    self.received_output = False
+                    threading.Timer(0.5, check_for_input).start()
+                    continue
+                
+                elif line:
+                    self.received_output = True 
                     # Update GUI in the main thread
                     update_console(line)
-                    # Check if the output, with leading and trailing whitespace removed, ends with a colon or question mark indicating an input request (This is a problem as it depends on the disp ending in : or ?)
-                    if outputNoWhiteSpace.endswith((':', '?')):
-                        # Enable input Console
-                        self.inputConsole1.inputConsole.configure(state="normal")
-                        # Request user input indicator
-                        self.inputConsole1.inputConsole.insert(tk.END, ">> ")
-                        # Set focus to the input console
-                        self.inputConsole1.inputConsole.focus_set()
-                        # User presses enter, and the data will be sent to the program.
-                        self.inputConsole1.inputConsole.bind("<Return>", lambda event: send_input())
-                else:
-                    break
+                        
+                
 
         # Start a thread to read the process output to avoid freezing the GUI
         output_thread = threading.Thread(target=read_process_output)

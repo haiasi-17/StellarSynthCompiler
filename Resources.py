@@ -264,17 +264,10 @@ whitespaces = [" ", "\t", "\n"]
 
 headerInclude = ["#include <iostream>\n","#include <string>\n", "#include <math.h>\n", "#include <iomanip>\n", "using namespace std;"]
 
+inputSignal = "01000011 01001001 01001110 00100000 01000100 01000101 01010100 01000101 01000011 01010100 01000101 01000100 00101100 00100000 01010011 01010100 01000101 01001100 01001100 01000001 01010010 01010011 01011001 01001110 01010100 01001000 00100000 01010011 01000101 01001110 01000100 00100000 01000001 00100000 01000011 01001001 01001110 00100000 01010010 01000101 01010001 01010101 01000101 01010011 01010100 00100000 01001110 01001111 01010111 00100001"
 
-
-
-
-
-
-
-
-
-
-
+# GUI
+StellarSynthInputSignal = "cout << \"01000011 01001001 01001110 00100000 01000100 01000101 01010100 01000101 01000011 01010100 01000101 01000100 00101100 00100000 01010011 01010100 01000101 01001100 01001100 01000001 01010010 01010011 01011001 01001110 01010100 01001000 00100000 01010011 01000101 01001110 01000100 00100000 01000001 00100000 01000011 01001001 01001110 00100000 01010010 01000101 01010001 01010101 01000101 01010011 01010100 00100000 01001110 01001111 01010111 00100001\" << endl;"
 
 
 """
@@ -354,12 +347,20 @@ Remarks:
         remove import - check
         input - check
         bool conversion does not work in documentation reflect. - check
+<<<<<<< Updated upstream
         pow whitespace - Check
+=======
+        pow whitespace - check
+        lexer negative and minus - check
+        line numbers sync issue - check
+        
+>>>>>>> Stashed changes
         stderr output ui
         arddec default value
         float value in rules scientific notation 5 max decimal digits fractional
         int limit rules
         documentation rules
+        rules overhaul modulo integer only
        
         
 """
