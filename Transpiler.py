@@ -488,26 +488,19 @@ class Transpiler:
                         while self.currentToken != "Capt":
                             self.go_back_token()
                                 
-                        # if multiple variables, separates by space.
-                        if len(tempidentlist) > 1:
-                            # getline(cin, line); append to translated tokens
-                            self.tokens[self.tokenIndex][0] = self.tokens[self.tokenIndex][1] = Resources.StellarCPlusPlusDict[self.currentToken] 
-                            self.translatedTokens.append(self.tokens[self.tokenIndex])
-                            
-                            # istringstream iss(line); append to translated tokens
-                            self.translatedTokens.append([Resources.getlineDistribStatement])
-                            
-                            for i in range(self.identCount):
-                                tempvar += f">> {tempidentlist[i]}"
-                            tempvar += ";"
-                            # iss >> ident1 >> ident2 >> ident3 append to translated tokens
-                            self.translatedTokens.append([tempvar])
-                        # if one variable string only, gets entire line.
-                        else:
-                            # getline(cin, <ident>); append to translated tokens
-                            self.tokens[self.tokenIndex][0] = self.tokens[self.tokenIndex][1] = f"getline(cin, {tempidentlist[0]});\n" 
-                            self.translatedTokens.append([f"getline(cin, {tempidentlist[0]});\n"])
+                        # getline(cin, line); append to translated tokens
+                        self.tokens[self.tokenIndex][0] = self.tokens[self.tokenIndex][1] = Resources.StellarCPlusPlusDict[self.currentToken] 
+                        self.translatedTokens.append(self.tokens[self.tokenIndex])
                         
+                        # istringstream iss(line); append to translated tokens
+                        self.translatedTokens.append([Resources.getlineDistribStatement])
+                        
+                        for i in range(self.identCount):
+                            tempvar += f">> {tempidentlist[i]}"
+                        tempvar += ";"
+                        # iss >> ident1 >> ident2 >> ident3 append to translated tokens
+                        self.translatedTokens.append([tempvar])
+    
                         while self.currentToken != "#":
                                 self.go_next_token()
                             

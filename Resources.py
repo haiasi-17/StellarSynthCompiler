@@ -279,7 +279,7 @@ Remarks:
     
     Semantic
         Bugs
-    Autom throw error if assigned value is not of the same type as initial type.
+    
 
     StellarSynthUI:
     # Issue:
@@ -299,11 +299,13 @@ Remarks:
     # Issue:
         # Having multiple strings end with : leads to multiple request for input bugs.
         # UNSOLVED: To resolve this, find a way to correctly determine when a cin request comes in, so for every cin request there is a send input.
-
+        # SOLVED: using string signal indicator that is not read by the gui
+        
     # Issue:
         # Currently does accept input in the ui but only on set conditions (Is followed by a disp statement that outputs something that ends in : or ?). 
         # UNSOLVED: We need to find a way that knows definitely when a cin is called during runtime. this way we can call the necessary method to accept and send input.
-    
+        # SOLVED: using string signal indicator that is not read by the gui
+        
     # Issue:
         # Importation -> Non-functional. 
                     1. RULES: Modify rules in that it can only appear before declarations.
@@ -329,11 +331,11 @@ Remarks:
                         > This is because for stdout to output in compiler, a newline is needed at the end of each line. Otherwise it doesn't output it and waits for the newline character forever.
                     2. ISSUE: Float values are printed sometimes rounded up, and sometimes in scientific notation when it is too large.
                     
-        Exponentiation Operator -> Functional with caveat
+        Exponentiation Operator -> Functional 
                     1. Solution was to use pow and math header.
                     2. RULES: Now, the order precedence is different, as pow is implemented that same as functions may need to revise the rules. 
                     3. NEVERMIND PEMDAS STILL THOUGH but add to rules and read.
-                    4. Space has Errors
+                    4. Solved
                     
         Type Conversion -> Functional with caveat
                     1. Currently utilizing implicit type conversion of c++, no idea how to modify it. 
@@ -346,20 +348,17 @@ Remarks:
         remove import - check
         input - check
         bool conversion does not work in documentation reflect. - check
-<<<<<<< Updated upstream
-        pow whitespace - Check
-=======
         pow whitespace - check
         lexer negative and minus - check
         line numbers sync issue - check
         
->>>>>>> Stashed changes
         stderr output ui
         arddec default value
         float value in rules scientific notation 5 max decimal digits fractional
         int limit rules
         documentation rules
         rules overhaul modulo integer only
+        Autom throw error if assigned value is not of the same type as initial type.
        
         
 """
